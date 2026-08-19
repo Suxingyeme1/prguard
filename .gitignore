@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+artifacts/
+work/*
+!work/.gitkeep
+benchmark/generated/
+benchmark/generated-fix/
+.DS_Store

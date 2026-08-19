@@ -1,0 +1,20 @@
+{
+  "case_id": "regression",
+  "mode": "review",
+  "repository": "repo",
+  "base_commit": "__BASE_COMMIT__",
+  "issue": "normalize should accept None as empty while preserving existing normalization.",
+  "candidate_patch": "candidate.patch",
+  "commands": [
+    {"argv": ["pytest", "-q", "tests/test_new_behavior.py"], "kind": "fail_to_pass"},
+    {"argv": ["pytest", "-q", "tests/test_regression.py"], "kind": "pass_to_pass"}
+  ],
+  "allowed_commands": [
+    ["pytest", "-q", "tests/test_new_behavior.py"],
+    ["pytest", "-q", "tests/test_regression.py"]
+  ],
+  "protected_paths": ["tests/hidden/**"],
+  "command_timeout_seconds": 5,
+  "task_timeout_seconds": 15
+}
+

@@ -1,0 +1,16 @@
+{
+  "case_id": "wrong-patch",
+  "mode": "review",
+  "repository": "repo",
+  "base_commit": "__BASE_COMMIT__",
+  "issue": "divide should return zero when count is zero.",
+  "candidate_patch": "candidate.patch",
+  "commands": [
+    {"argv": ["pytest", "-q", "tests"], "kind": "pytest"}
+  ],
+  "allowed_commands": [["pytest", "-q", "tests"]],
+  "protected_paths": ["tests/hidden/**"],
+  "command_timeout_seconds": 5,
+  "task_timeout_seconds": 15
+}
+

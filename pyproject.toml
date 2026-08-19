@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prguard"
+version = "0.5.0"
+description = "Verifiable coding, independent review, and controlled repair for repositories"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "PRGuard contributors" }]
+dependencies = ["pydantic>=2.7,<3"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2,<9", "ruff>=0.6,<1"]
+agent = ["openai>=2,<3"]
+
+[project.scripts]
+prguard = "prguard.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prguard"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "integration: exercises Git repositories and subprocesses",
+  "security: validates trust-boundary behavior",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

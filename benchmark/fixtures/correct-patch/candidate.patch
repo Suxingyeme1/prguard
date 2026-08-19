@@ -1,0 +1,9 @@
+diff --git a/calc.py b/calc.py
+--- a/calc.py
++++ b/calc.py
+@@ -1,2 +1,4 @@
+ def divide(total: int, count: int) -> float:
++    if count == 0:
++        return 0
+     return total / count
+

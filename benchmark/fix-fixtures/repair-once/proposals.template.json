@@ -1,0 +1,15 @@
+[
+  {
+    "plan": ["Inspect clamp and boundary tests", "Add lower-bound enforcement"],
+    "summary": "Initial lower-bound fix; deterministic verification will expose the missed upper bound.",
+    "patch_file": "attempt-0.patch",
+    "tests_changed": false
+  },
+  {
+    "plan": ["Use the failed upper-bound evidence", "Compose both bounds in one expression"],
+    "summary": "Repair the initial patch by enforcing lower and upper bounds together.",
+    "patch_file": "attempt-1.patch",
+    "tests_changed": false
+  }
+]
+
