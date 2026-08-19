@@ -1,5 +1,9 @@
 # PRGuard
 
+[![CI](https://github.com/Suxingyeme1/prguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Suxingyeme1/prguard/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 > Issue in. Verified patch out.
 
 PRGuard is a verifiable multi-agent coding system for real repositories. An Implementer turns an
