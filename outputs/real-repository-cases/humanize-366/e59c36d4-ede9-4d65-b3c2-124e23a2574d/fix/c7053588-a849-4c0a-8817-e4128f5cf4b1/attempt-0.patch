@@ -1,0 +1,59 @@
+diff --git a/src/humanize/filesize.py b/src/humanize/filesize.py
+--- a/src/humanize/filesize.py
++++ b/src/humanize/filesize.py
+@@ -37,6 +37,41 @@ suffixes = {
+     ),
+     "gnu": "KMGTPEZYRQ",
+ }
+ 
+ 
++def _formatted_value(format_string: str, value: float) -> float:
++    """Return the numeric result of applying a printf-style format string.
++
++    The format string may contain surrounding text, so only the conversion
++    specifier itself is used when parsing the result back to a float.
++    """
++    percent = format_string.find("%")
++    while percent != -1:
++        if percent + 1 < len(format_string) and format_string[percent + 1] == "%":
++            percent = format_string.find("%", percent + 2)
++            continue
++
++        end = percent + 1
++
++        if end < len(format_string) and format_string[end] == "(":
++            close = format_string.find(")", end + 1)
++            if close != -1:
++                end = close + 1
++
++        while end < len(format_string) and format_string[end] in "#0- +":
++            end += 1
++        while end < len(format_string) and format_string[end].isdigit():
++            end += 1
++        if end < len(format_string) and format_string[end] == ".":
++            end += 1
++            while end < len(format_string) and format_string[end].isdigit():
++                end += 1
++        if end < len(format_string):
++            end += 1
++
++        return float(format_string[percent:end] % value)
++
++    return float(format_string % value)
++
++
+ def naturalsize(
+     value: float | str,
+     binary: bool = False,
+@@ -103,7 +138,10 @@ def naturalsize(
+     # The suffix is chosen from the unrounded byte count, but `format` rounds the
+     # mantissa afterward; rounding can push it up to `base` (e.g. 999999 is
+     # 999.999 kB, which formats to "1000.0 kB"). When that happens and a larger
+-    if exp < len(suffix) and abs(float(format % (abs_bytes / (base**exp)))) >= base:
++    if (
++        exp < len(suffix)
++        and abs(_formatted_value(format, abs_bytes / (base**exp))) >= base
++    ):
+         exp += 1
+     space = "" if gnu else " "
+     ret: str = format % (bytes_ / (base**exp)) + space + _(suffix[exp - 1])

@@ -1,0 +1,9 @@
+diff --git a/inflect/__init__.py b/inflect/__init__.py
+--- a/inflect/__init__.py
++++ b/inflect/__init__.py
+@@ -3696,4 +3696,4 @@ def tenfn(self, tens, units, mindex=0) -> str:
+             unit_part = unit[units]
+             mill_part = self.millfn(mindex)
+             return f"{tens_part}{hyphen}{unit_part}{mill_part}"
+-        return f"{teen[units]}{mill[mindex]}"
++        return f"{teen[units]}{self.millfn(mindex)}"

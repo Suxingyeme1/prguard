@@ -1,0 +1,25 @@
+diff --git a/src/prettytable/_version.py b/src/prettytable/_version.py
+new file mode 100644
+index 0000000..3b5a4da
+--- /dev/null
++++ b/src/prettytable/_version.py
+@@ -0,0 +1,3 @@
++"""Test-checkout version stub generated for the PRGuard evaluation base."""
++
++__version__ = "3.17.0+prguard"
+diff --git a/tests/test_prguard_issue_474.py b/tests/test_prguard_issue_474.py
+new file mode 100644
+index 0000000..59de362
+--- /dev/null
++++ b/tests/test_prguard_issue_474.py
+@@ -0,0 +1,10 @@
++from __future__ import annotations
++
++from prettytable import from_html
++
++
++def test_from_html_pads_a_short_row() -> None:
++    tables = from_html(
++        "<table><tr><th>a</th><th>b</th></tr><tr><td>1</td></tr></table>"
++    )
++    assert tables[0].rows == [["1", ""]]

@@ -1,0 +1,15 @@
+diff --git a/src/prettytable/prettytable.py b/src/prettytable/prettytable.py
+index d3cdf99..365d496 100644
+--- a/src/prettytable/prettytable.py
++++ b/src/prettytable/prettytable.py
+@@ -3200,8 +3200,8 @@ def _make_table_handler():
+             for row in self.rows:
+                 if len(row[0]) < self.max_row_width:
+                     appends = self.max_row_width - len(row[0])
+-                    for i in range(1, appends):
+-                        row[0].append("-")
++                    for _ in range(appends):
++                        row[0].append("")
+ 
+                 if row[1]:
+                     self.make_fields_unique(row[0])

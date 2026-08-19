@@ -1,0 +1,55 @@
+diff --git a/src/humanize/filesize.py b/src/humanize/filesize.py
+index fb675fd..ec02689 100644
+--- a/src/humanize/filesize.py
++++ b/src/humanize/filesize.py
+@@ -37,6 +37,40 @@ suffixes = {
+ }
+ 
+ 
++def _extract_numeric_format(format: str) -> str:
++    """Return the printf conversion specifier that consumes the value."""
++    i = 0
++    while i < len(format):
++        if format[i] != "%":
++            i += 1
++            continue
++        if i + 1 < len(format) and format[i + 1] == "%":
++            i += 2
++            continue
++        start = i
++        i += 1
++        while i < len(format) and format[i] in "#0- +":
++            i += 1
++        if i < len(format) and format[i] == "*":
++            i += 1
++        else:
++            while i < len(format) and format[i].isdigit():
++                i += 1
++        if i < len(format) and format[i] == ".":
++            i += 1
++            if i < len(format) and format[i] == "*":
++                i += 1
++            else:
++                while i < len(format) and format[i].isdigit():
++                    i += 1
++        if i < len(format) and format[i] in "hlL":
++            i += 1
++        if i < len(format) and format[i] in "diouxXeEfFgGcrsa":
++            return format[start : i + 1]
++        i += 1
++    return format
++
++
+ def naturalsize(
+     value: float | str,
+     binary: bool = False,
+@@ -103,7 +137,8 @@ def naturalsize(
+     # mantissa afterward; rounding can push it up to `base` (e.g. 999999 is
+     # 999.999 kB, which formats to "1000.0 kB"). When that happens and a larger
+     # suffix is available, step up one suffix so the result reads "1.0 MB".
+-    if exp < len(suffix) and abs(float(format % (abs_bytes / (base**exp)))) >= base:
++    numeric_format = _extract_numeric_format(format)
++    if exp < len(suffix) and abs(float(numeric_format % (abs_bytes / (base**exp)))) >= base:
+         exp += 1
+     space = "" if gnu else " "
+     ret: str = format % (bytes_ / (base**exp)) + space + _(suffix[exp - 1])

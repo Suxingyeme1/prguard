@@ -213,7 +213,7 @@ wheels = [
 
 [[package]]
 name = "prguard"
-version = "0.5.0"
+version = "0.5.1"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },

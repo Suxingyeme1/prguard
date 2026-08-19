@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,17 @@ from prguard.schemas import (
     Verdict,
 )
 from tests.conftest import run_git
+
+
+class SlowReviewerProvider:
+    name = "slow-reviewer"
+    model = "deterministic-sleeper"
+
+    def review(self, request, tools):
+        time.sleep(0.6)
+        return ScriptedReviewerProvider(
+            ReviewerSubmission(summary="No defects found.", findings=[])
+        ).review(request, tools)
 
 
 def write_patch(path: Path, value: str) -> Path:
@@ -112,6 +124,39 @@ def test_clean_patch_and_empty_review_accept(make_repo, tmp_path: Path) -> None:
     assert report.verdict is Verdict.ACCEPT
     assert report.verification.commands[0].passed is True
     assert report.review.submission.findings == []
+
+
+@pytest.mark.integration
+def test_reviewer_result_returned_after_deadline_fails_closed(make_repo, tmp_path: Path) -> None:
+    repo, commit = make_repo(
+        {
+            "calc.py": "def add(a: int, b: int) -> int:\n    return a - b\n",
+        }
+    )
+    patch = write_patch(
+        tmp_path / "candidate.patch",
+        "diff --git a/calc.py b/calc.py\n--- a/calc.py\n+++ b/calc.py\n"
+        "@@ -1,2 +1,2 @@\n def add(a: int, b: int) -> int:\n"
+        "-    return a - b\n+    return a + b\n",
+    )
+    task = ReviewTask(
+        case_id="reviewer-deadline",
+        repository=repo,
+        base_commit=commit,
+        issue="Correct addition.",
+        candidate_patch=patch,
+        commands=[],
+        allowed_commands=[],
+        protected_paths=[],
+        command_timeout_seconds=1,
+        task_timeout_seconds=0.5,
+    )
+
+    report = ReviewRunner(tmp_path / "review-artifacts", SlowReviewerProvider()).run(task)
+
+    assert report.outcome.value == "reviewer_failed"
+    assert report.verdict is Verdict.FAILED
+    assert report.error == "task deadline expired during Reviewer call"
 
 
 @pytest.mark.integration

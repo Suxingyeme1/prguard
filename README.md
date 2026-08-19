@@ -21,10 +21,12 @@ plus optional DeepSeek Chat Completions and OpenAI Responses adapters. A blockin
 review can trigger exactly one bounded Implementer replacement Patch followed by a fresh final
 gate. It intentionally does not yet integrate GitHub, an API server, or containers.
 
-The minimum DeepSeek live gate has passed on two manually checked public fixtures. Both produced
-minimal one-file patches and passed deterministic verification on the first accepted attempt. This
-is small-sample adapter evidence, not a broad model benchmark; live repair-after-test-failure is
-still unobserved.
+The coding MVP has now been exercised against three current public Issues from Humanize,
+PrettyTable, and Inflect at frozen upstream commits. All three reached a verified one-file Patch;
+the Humanize run demonstrated one evidence-guided replacement attempt and passed pytest plus ruff.
+Extended functional regression checks passed 701, 338, and 208 tests respectively. The frozen set
+also retains a provider timeout, two malformed-Patch failures, and one tool-budget exhaustion rather
+than reporting only successful runs. See the [real-repository report](outputs/real-repository-cases-report.md).
 
 The Phase 4A Demo B gate has also passed locally and on an unprivileged server run: DeepSeek
 identified a seeded regression, requested changes, produced one complete replacement Patch, and
@@ -63,6 +65,7 @@ composition is now deterministically tested and has passed local and unprivilege
 - checks and applies a candidate patch without invoking a shell;
 - executes only explicitly allowed `pytest` and `ruff` argv forms;
 - enforces per-command and total task deadlines and bounded captured output;
+- fails closed when an Implementer or Reviewer result returns after its logical stage deadline;
 - records structured verification results and trace events;
 - blocks protected-file changes and reports writes beside the isolated worktree;
 - writes JSON, Markdown, the final diff, and a SHA-256 manifest;
@@ -154,6 +157,8 @@ for a later phase. See [the threat model](docs/threat-model.md).
 - `src/prguard/pipeline`: top-level Issue-to-PR composition and recursive delivery artifacts;
 - `benchmark/fixtures`: deterministic fixture templates;
 - `benchmark/fix-fixtures`: manually checked Issue-to-Patch workflow fixtures;
+- `outputs/real-repository-cases`: frozen live-run reports, diffs, traces, and manifests for three
+  public open-source Issues;
 - `tests`: unit, integration, contract, and security checks;
 - `docs`: architecture, evaluation protocol, case authoring, and ADRs.
 

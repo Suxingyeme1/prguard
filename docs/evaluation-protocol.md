@@ -26,6 +26,12 @@ A case resolves only if all fail-to-pass tests pass, all pass-to-pass tests rema
 patch applies to the recorded base commit, and no deterministic policy gate blocks it. Textual
 similarity to a gold patch is never sufficient.
 
+Before freezing commands, evaluators must run each proposed lint/type/test command on the unpatched
+base and distinguish product failures from missing generated files or optional test dependencies.
+Any repository check that passes on the base and fails only after the candidate belongs in the
+deterministic gate. Broader post-run checks may be reported separately, but they cannot retroactively
+turn an incomplete configured gate into evidence that the original run was review-ready.
+
 The initial scorecard is deliberately compact: task resolution, fail-to-pass/pass-to-pass,
 regression-free rate, Review Finding precision/recall, false block, token use, elapsed time, and
 repair rounds. Keep frozen manifests and raw artifacts. Add confidence intervals or paired tests

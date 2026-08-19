@@ -62,7 +62,9 @@ a deterministic tool, never a Test Runner Agent.
 - **Review runner** verifies the candidate first, creates a separate patched worktree, gives an
   independently scoped Reviewer only the Issue, candidate diff, deterministic evidence, and
   bounded read tools, then computes the verdict deterministically. P0-P2 findings block; P3 is
-  non-blocking; failed verification blocks even when the Reviewer misses a finding.
+  non-blocking; failed verification blocks even when the Reviewer misses a finding. A model result
+  returned after the logical stage deadline is retained as evidence but cannot produce an accepting
+  verdict.
 - **Review-repair runner** preserves the initial review, shows the Implementer only the original
   candidate plus structured public findings and verification evidence, accepts one complete
   replacement diff against the same Base Commit, then invokes a fresh Harness final gate. It never
@@ -79,6 +81,10 @@ a deterministic tool, never a Test Runner Agent.
   deadlines (command and task). Its deterministic Python import path contains only the detached
   worktree's `src/` directory and repository root, supporting common source layouts without an
   editable host installation.
+- **Deadline enforcement** checks remaining time before provider calls and again after each provider
+  returns. The latter prevents a late SDK response from being accepted. Network-client cancellation
+  is best-effort, so a stalled SDK may still delay process return even though the run ultimately
+  fails closed.
 - **Policy audit** compares Git-visible changes with protected globs and compares the run
   directory outside managed worktree/runtime paths before and after verification.
 - **Artifact store** emits canonical JSON, Markdown, patch/diff evidence, individual hashes, and

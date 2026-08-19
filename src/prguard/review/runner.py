@@ -96,6 +96,8 @@ class ReviewRunner:
                     ),
                     RepositoryTools(review_worktree, task),
                 )
+                if time.monotonic() >= deadline:
+                    raise ImplementerError("task deadline expired during Reviewer call")
                 blocking = any(
                     finding.severity in _BLOCKING_SEVERITIES
                     for finding in envelope.submission.findings

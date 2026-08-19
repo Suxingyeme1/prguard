@@ -11,7 +11,7 @@ Load a local Git repository and base commit, create an isolated worktree, apply 
 execute pytest/ruff through an argv allowlist, enforce deadlines, audit protected/outside writes,
 and emit JSON/Markdown/diff artifacts with a SHA-256 manifest.
 
-## Phase 2: single Implementer Issue-to-Patch MVP — minimum live validation complete
+## Phase 2: single Implementer Issue-to-Patch MVP — real-repository gate complete
 
 Implement repository search, bounded source reads, an internal plan, restricted source/test edits,
 candidate diff production, deterministic verification, and at most one repair from failure
@@ -21,17 +21,20 @@ Acceptance: given a real local repository, base commit, and Issue, the system pr
 tested Review-ready Patch or an evidence-backed failure without modifying the source checkout.
 
 Implemented evidence includes a working `fix` CLI, provider contract, bounded repository tools,
-Patch policy, direct success and one-repair fixtures, nested artifacts, security tests, and two
-accepted DeepSeek fixture runs with frozen token/latency/verification evidence. Broader confidence
-still requires two or three manually checked real-repository Issues.
+Patch policy, direct success and one-repair fixtures, nested artifacts, security tests, and three
+accepted real-repository Issue outcomes at frozen Humanize, PrettyTable, and Inflect commits. The
+Humanize final run used one bounded replacement attempt and passed pytest plus ruff; all three
+received wider functional regression checks. This remains a three-case engineering gate, not a
+general task-resolution benchmark.
 
 ### Phase 2.1: DeepSeek live-provider gate — minimum gate complete
 
 The provider-neutral boundary now includes a DeepSeek Chat Completions adapter with bounded
 function calls, thinking-context preservation, token/cache accounting, backend fingerprint
 metadata, environment-only credentials, and unsafe endpoint rejection. Its offline API contract is
-tested. Two explicitly authorized runs over the small public fixtures were accepted and independently
-verified. The next evidence increment is two or three manually checked repository Issues. Scripted
+tested. Two explicitly authorized fixture runs and three real-repository Issue outcomes were
+accepted by deterministic gates; one real-repository case also completed independent review.
+Frozen failures expose provider latency, malformed diffs, and tool-budget exhaustion. Scripted
 results remain orchestration evidence; only online runs are model task-resolution evidence.
 
 ## Phase 3: Independent Reviewer and `review` CLI — MVP complete
@@ -67,8 +70,10 @@ Implemented evidence includes `IssueToPRTask` stage budgets, `fix --review`, sho
 Fix failure, independent semantic review of a regression not covered by the configured command,
 one controlled replacement repair, and a recursive top-level Manifest. A live DeepSeek run produced
 an accepted Fix Patch locally and on the unprivileged server, passed independent review without
-unnecessary repair, and verified both recursive Manifests. The remaining evidence gap is a small
-manually checked real-repository set.
+unnecessary repair, and verified both recursive Manifests. A Humanize Issue has also completed the
+full live Issue-to-PR path on a real repository, while revealing that a 300-second Reviewer result
+could return after the logical budget. The runner now fails closed on any post-deadline Reviewer
+result. Reviewer net-benefit evidence across the three-case set remains future work.
 
 ## Phase 5: evidence-driven hardening
 

@@ -1,0 +1,16 @@
+diff --git a/tests/test_prguard_issue_242.py b/tests/test_prguard_issue_242.py
+new file mode 100644
+index 0000000..3be5c49
+--- /dev/null
++++ b/tests/test_prguard_issue_242.py
+@@ -0,0 +1,10 @@
++from __future__ import annotations
++
++import pytest
++
++from inflect import NumOutOfRangeError, engine
++
++
++def test_number_to_words_uses_public_error_for_huge_input() -> None:
++    with pytest.raises(NumOutOfRangeError):
++        engine().number_to_words(10**40)

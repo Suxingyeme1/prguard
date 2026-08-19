@@ -1,0 +1,44 @@
+{
+  "frozen_at": "2026-08-19",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "reasoning_effort": "high",
+  "agent_context_policy": "behavior, reproduction, and expected result only; public issue root-cause and suggested-fix text excluded",
+  "cases": [
+    {
+      "case_id": "humanize-366",
+      "issue_url": "https://github.com/python-humanize/humanize/issues/366",
+      "license": "MIT",
+      "upstream_commit": "ce4147b6c8f8a132f772be0929d58305eb22c5d9",
+      "evaluation_base_commit": "431dbbed77d867519447e02eebf1a14879b80603",
+      "selected_run_id": "5d9ce5bf-6a54-478d-942b-0ddd19df1791"
+    },
+    {
+      "case_id": "prettytable-474",
+      "issue_url": "https://github.com/prettytable/prettytable/issues/474",
+      "license": "BSD-3-Clause",
+      "upstream_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+      "evaluation_base_commit": "f7871e3ecb1d51ee5320d567a4e3eb42cea7fe75",
+      "selected_run_id": "e14562ed-6b2f-4b8e-b2a1-e2896ade8007"
+    },
+    {
+      "case_id": "inflect-242",
+      "issue_url": "https://github.com/jaraco/inflect/issues/242",
+      "license": "MIT",
+      "upstream_commit": "262a247d2d99a47a520cdb2d46adb90df88b4326",
+      "evaluation_base_commit": "f612162c36f057fc18a97b0ddfec9c4bccaaa5af",
+      "selected_run_id": "144a2bf1-3c83-4995-a14a-32b2ee1e1eda"
+    }
+  ],
+  "evaluation_environment": {
+    "python": "3.12",
+    "pytest": "9.1.1",
+    "ruff": "0.16.3",
+    "more-itertools": "11.1.0",
+    "typeguard": "4.6.0",
+    "wcwidth": "0.8.2",
+    "pytest-lazy-fixtures": "1.4.1",
+    "freezegun": "1.5.5",
+    "python-dateutil": "2.9.0.post0"
+  }
+}
