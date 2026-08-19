@@ -6,4 +6,3 @@ Agent output is treated as an untrusted proposal. Git state, patch application, 
 timeouts, policy gates, and terminal outcomes are deterministic services. No LLM dependency or
 orchestrator is included in Phase 0/1. This preserves attribution and gives all later A/B groups
 the same verifier.
-

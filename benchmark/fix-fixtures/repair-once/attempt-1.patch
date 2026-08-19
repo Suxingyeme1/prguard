@@ -5,4 +5,3 @@ diff --git a/clamp.py b/clamp.py
  def clamp(value: int, lower: int, upper: int) -> int:
 -    return min(value, upper)
 +    return max(lower, min(value, upper))
-

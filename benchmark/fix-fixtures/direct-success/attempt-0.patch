@@ -5,4 +5,3 @@ diff --git a/slug.py b/slug.py
  def slugify(value: str) -> str:
 -    return value.strip().lower().replace(" ", "-")
 +    return "-".join(value.strip().lower().split())
-

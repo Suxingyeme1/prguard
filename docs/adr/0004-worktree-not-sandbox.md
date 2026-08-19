@@ -6,4 +6,3 @@ A detached worktree prevents normal verification from mutating the developer che
 diff capture deterministic. It does not constrain malicious native code. Phase 1 therefore uses
 strict command grammar, sanitized environment, deadlines, and post-run audits while documenting
 that hostile repositories require a later container sandbox.
-

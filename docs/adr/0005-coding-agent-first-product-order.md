@@ -7,4 +7,3 @@ Issue to tested patch; `review` is a later quality module. Therefore Phase 2 imp
 Implementer with repository search, bounded reads/edits, deterministic tests, and one repair before
 adding the Independent Reviewer. Planning stays inside the Implementer and test execution remains
 deterministic. Evaluation stays small and reproducible until the product paths work end to end.
-

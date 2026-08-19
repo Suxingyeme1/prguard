@@ -11,4 +11,3 @@ deterministic.
 
 The live adapter uses the OpenAI Responses API with strict function schemas. An offline scripted
 adapter is retained for deterministic workflow tests; its success is not reported as model quality.
-

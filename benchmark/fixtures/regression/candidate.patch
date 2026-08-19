@@ -7,4 +7,3 @@ diff --git a/service.py b/service.py
 +    if value is None:
 +        return ""
 +    return value.strip()
-

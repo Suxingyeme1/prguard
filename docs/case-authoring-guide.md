@@ -16,4 +16,3 @@ Before freezing a case:
 
 The committed templates under `benchmark/fixtures` are harness fixtures, not benchmark evidence.
 Run `scripts/materialize_fixtures.py` to create real Git repositories and runnable Task JSON files.
-
