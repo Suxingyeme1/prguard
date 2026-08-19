@@ -1,7 +1,9 @@
 # Real-repository coding gate report
 
-Date: 2026-08-19  
-PRGuard version: 0.5.1  
+Date: 2026-08-19
+
+PRGuard version: 0.5.1
+
 Provider: DeepSeek `deepseek-v4-pro`, high reasoning
 
 ## Outcome
