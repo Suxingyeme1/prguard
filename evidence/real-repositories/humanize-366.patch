@@ -1,0 +1,21 @@
+diff --git a/src/humanize/filesize.py b/src/humanize/filesize.py
+--- a/src/humanize/filesize.py
++++ b/src/humanize/filesize.py
+@@ -101,8 +101,15 @@ def naturalsize(
+     exp = int(min(log(abs_bytes, base), len(suffix)))
+     # The suffix is chosen from the unrounded byte count, but `format` rounds the
+     # mantissa afterward; rounding can push it up to `base` (e.g. 999999 is
+     # 999.999 kB, which formats to "1000.0 kB"). When that happens and a larger
+     # suffix is available, step up one suffix so the result reads "1.0 MB".
+-    if exp < len(suffix) and abs(float(format % (abs_bytes / (base**exp)))) >= base:
+-        exp += 1
++    if exp < len(suffix):
++        try:
++            rounded = float(format % (abs_bytes / (base**exp)))
++        except ValueError:
++            # Text around the formatted number (e.g. "Size: %.1f") cannot be
++            # converted back to a float, so leave the suffix unchanged.
++            rounded = 0.0
++        if abs(rounded) >= base:
++            exp += 1
+     space = "" if gnu else " "

@@ -1,0 +1,30 @@
+{
+  "schema_version": "prguard-public-evidence-1",
+  "frozen_at": "2026-08-19",
+  "cases": [
+    {
+      "case_id": "humanize-366",
+      "issue_url": "https://github.com/python-humanize/humanize/issues/366",
+      "upstream_commit": "ce4147b6c8f8a132f772be0929d58305eb22c5d9",
+      "evaluation_base_commit": "431dbbed77d867519447e02eebf1a14879b80603",
+      "patch": "humanize-366.patch",
+      "patch_sha256": "88d8ad72fe9ff82c0167b4cbf78e47ae5fac69aca0f3b651835a87e44dac71c7"
+    },
+    {
+      "case_id": "prettytable-474",
+      "issue_url": "https://github.com/prettytable/prettytable/issues/474",
+      "upstream_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+      "evaluation_base_commit": "f7871e3ecb1d51ee5320d567a4e3eb42cea7fe75",
+      "patch": "prettytable-474.patch",
+      "patch_sha256": "7238e58a5e3fa12167f9b901ce9c26da91a5aabea48d1445df8d88a2c70238bf"
+    },
+    {
+      "case_id": "inflect-242",
+      "issue_url": "https://github.com/jaraco/inflect/issues/242",
+      "upstream_commit": "262a247d2d99a47a520cdb2d46adb90df88b4326",
+      "evaluation_base_commit": "f612162c36f057fc18a97b0ddfec9c4bccaaa5af",
+      "patch": "inflect-242.patch",
+      "patch_sha256": "3f0f0b94671a9450c04c2f6f8877f877b139ef2e887108ff188555839d31187e"
+    }
+  ]
+}

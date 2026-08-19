@@ -1,0 +1,6 @@
+diff --git a/value.py b/value.py
+--- a/value.py
++++ b/value.py
+@@ -1 +1 @@
+-VALUE = 999
++VALUE = 2

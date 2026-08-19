@@ -1,0 +1,8 @@
+[
+  {
+    "plan": ["Inspect slugify and its tests", "Normalize whitespace with split and join"],
+    "summary": "Collapse arbitrary whitespace while preserving lowercase slug behavior.",
+    "patch_file": "attempt-0.patch",
+    "tests_changed": false
+  }
+]
