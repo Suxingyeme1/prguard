@@ -45,3 +45,29 @@ def test_ruff_result_is_structured(make_repo, tmp_path: Path) -> None:
     assert report.outcome is RunOutcome.PASSED
     assert report.commands[0].kind == "ruff"
     assert report.commands[0].exit_code == 0
+
+
+@pytest.mark.integration
+def test_pytest_imports_repository_src_layout(make_repo, tmp_path: Path) -> None:
+    repo, commit = make_repo(
+        {
+            "src/example_pkg/__init__.py": "VALUE = 42\n",
+            "tests/test_src_layout.py": (
+                "from example_pkg import VALUE\n\n"
+                "def test_value():\n"
+                "    assert VALUE == 42\n"
+            ),
+        }
+    )
+    command = ["pytest", "-q", "tests/test_src_layout.py"]
+    task = Task(
+        case_id="src-layout-import",
+        repository=repo,
+        base_commit=commit,
+        issue="Verify repository-local src imports.",
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+    )
+    report = VerificationHarness(tmp_path / "artifacts").run(task)
+    assert report.outcome is RunOutcome.PASSED
+    assert report.commands[0].passed is True

@@ -60,6 +60,9 @@ class CommandExecutor:
             "HOME": os.fspath(self.runtime_directory / "home"),
             "TMPDIR": os.fspath(self.runtime_directory / "tmp"),
             "LC_ALL": "C.UTF-8",
+            "PYTHONPATH": os.pathsep.join(
+                [os.fspath(self.worktree / "src"), os.fspath(self.worktree)]
+            ),
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONNOUSERSITE": "1",
         }

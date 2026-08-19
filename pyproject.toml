@@ -13,7 +13,7 @@ authors = [{ name = "PRGuard contributors" }]
 dependencies = ["pydantic>=2.7,<3"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.2,<9", "ruff>=0.6,<1"]
+dev = ["pytest>=8.2,<10", "ruff>=0.6,<1"]
 agent = ["openai>=2,<3"]
 
 [project.scripts]

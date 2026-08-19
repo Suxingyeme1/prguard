@@ -76,7 +76,9 @@ a deterministic tool, never a Test Runner Agent.
 - **Command policy** accepts argv arrays only and supports pytest/ruff directly or through
   `python -m`. The task allowlist must exactly contain every invoked argv.
 - **Executor** uses `shell=False`, process groups, sanitized environment, output files, and two
-  deadlines (command and task).
+  deadlines (command and task). Its deterministic Python import path contains only the detached
+  worktree's `src/` directory and repository root, supporting common source layouts without an
+  editable host installation.
 - **Policy audit** compares Git-visible changes with protected globs and compares the run
   directory outside managed worktree/runtime paths before and after verification.
 - **Artifact store** emits canonical JSON, Markdown, patch/diff evidence, individual hashes, and
