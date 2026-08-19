@@ -6,6 +6,7 @@ __pycache__/
 .coverage
 htmlcov/
 artifacts/
+outputs/
 work/*
 !work/.gitkeep
 benchmark/generated/

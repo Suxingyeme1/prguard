@@ -81,6 +81,11 @@ Add a Diagnostician only if observed failures show that deterministic logs plus 
 are insufficient. Add container/network/resource isolation before running hostile repositories,
 and service/GitHub integrations only after local CLI contracts stabilize.
 
+The first Phase 5 increment is public-product hardening: a concise GitHub landing page, a key-free
+offline Demo A, continuous integration, contribution/security policies, and a sanitized public
+evidence subset. This work must not rewrite frozen raw Manifests; public summaries are derived and
+separately hashed.
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one
