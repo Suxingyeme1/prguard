@@ -22,7 +22,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install development environment
-        run: uv sync --frozen --extra dev --no-editable --reinstall-package prguard
+        run: uv sync --frozen --extra dev --extra agent --no-editable --reinstall-package prguard
       - name: Lint
         run: uv run ruff check src tests scripts
       - name: Test

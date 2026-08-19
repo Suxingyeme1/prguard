@@ -9,7 +9,7 @@ deterministic acceptance.
 Use Python 3.12, Git, and uv:
 
 ```bash
-uv sync --extra dev --no-editable --reinstall-package prguard
+uv sync --extra dev --extra agent --no-editable --reinstall-package prguard
 uv run ruff check src tests scripts
 uv run pytest -q
 ```

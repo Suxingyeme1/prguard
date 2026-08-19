@@ -58,6 +58,7 @@ the resulting recursive manifest. It prints the final patch and artifact directo
 Run the complete quality gate:
 
 ```bash
+uv sync --extra dev --extra agent --no-editable --reinstall-package prguard
 uv run ruff check src tests scripts
 uv run pytest -q
 ```
