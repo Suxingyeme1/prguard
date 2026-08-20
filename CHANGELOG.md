@@ -17,6 +17,8 @@ versions.
 
 - container commands remain exact pytest/Ruff argv with `shell=False` and image pulls disabled;
 - timed-out Docker runs are forcibly removed through a Harness-owned cidfile;
+- an internal Python-start marker separates runtime launch failures from test exit codes even when
+  Docker returns an ambiguous status;
 - host-mode behavior remains the default and its non-sandbox boundary remains explicit.
 
 ## 0.6.0 — 2026-08-20

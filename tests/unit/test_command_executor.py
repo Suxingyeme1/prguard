@@ -49,8 +49,11 @@ def test_container_argv_is_digest_pinned_and_fail_closed(tmp_path: Path) -> None
     assert "--security-opt=no-new-privileges" in argv
     assert "type=bind" in argv[argv.index("--mount") + 1]
     assert argv[argv.index("--mount") + 1].endswith(",readonly")
-    assert argv[-4:] == [digest, "-m", "pytest", "-q"]
-    assert all(token not in argv for token in ["sh", "bash", "-c"])
+    assert argv[-3:] == ["-m", "pytest", "-q"]
+    assert argv[argv.index("--entrypoint") + 2] == digest
+    assert argv[argv.index("--entrypoint") + 3] == "-c"
+    assert "sys.argv[1:]" in argv[argv.index("--entrypoint") + 4]
+    assert all(token not in argv for token in ["sh", "bash"])
 
 
 def _fake_docker(tmp_path: Path) -> Path:
@@ -66,8 +69,12 @@ def _fake_docker(tmp_path: Path) -> Path:
         "cidfile = pathlib.Path(args[args.index('--cidfile') + 1])\n"
         "cidfile.write_text('fake-container-id')\n"
         "(tmp / 'docker-argv.json').write_text(json.dumps(args))\n"
+        "sys.stderr.write('__PRGUARD_CONTAINER_PYTHON_STARTED__\\n')\n"
+        "sys.stderr.flush()\n"
         "if (tmp / 'sleep').exists():\n"
-        "    time.sleep(10)\n",
+        "    time.sleep(10)\n"
+        "if (tmp / 'fail').exists():\n"
+        "    raise SystemExit(1)\n",
         encoding="utf-8",
     )
     executable.chmod(0o755)
@@ -101,6 +108,7 @@ def test_container_executor_preserves_reported_argv(tmp_path: Path, monkeypatch)
     assert result.execution_backend is ExecutionBackend.CONTAINER
     assert result.container_image == "sha256:" + "a" * 64
     assert result.argv == ["pytest", "-q"]
+    assert result.stderr == ""
     assert launched[launched.index("--network") + 1] == "none"
 
 
@@ -117,3 +125,16 @@ def test_container_timeout_forces_daemon_cleanup(tmp_path: Path, monkeypatch) ->
     assert (tmp_path / "runtime" / "tmp" / "container-removed").read_text() == (
         "fake-container-id"
     )
+
+
+def test_container_test_failure_after_startup_is_not_infrastructure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    executor = _container_executor(tmp_path, monkeypatch)
+    (tmp_path / "runtime" / "tmp" / "fail").touch()
+
+    result = executor.execute(0, CommandSpec(argv=["pytest", "-q"]))
+
+    assert result.exit_code == 1
+    assert result.passed is False
+    assert result.infrastructure_error is False

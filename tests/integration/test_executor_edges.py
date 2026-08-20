@@ -110,3 +110,40 @@ def test_container_infrastructure_error_is_not_a_test_failure(
     assert report.outcome is RunOutcome.PREFLIGHT_FAILED
     assert report.commands[0].infrastructure_error is True
     assert report.commands[0].passed is False
+
+
+@pytest.mark.integration
+def test_container_missing_startup_marker_is_infrastructure_failure(
+    make_repo, tmp_path: Path, monkeypatch
+) -> None:
+    repo, commit = make_repo({"tests/test_ok.py": "def test_ok():\n    assert True\n"})
+    fake_bin = tmp_path / "fake-bin-no-marker"
+    fake_bin.mkdir()
+    docker = fake_bin / "docker"
+    docker.write_text(
+        f"#!{sys.executable}\n"
+        "import pathlib, sys\n"
+        "args = sys.argv[1:]\n"
+        "pathlib.Path(args[args.index('--cidfile') + 1]).write_text('fake-id')\n"
+        "sys.stderr.write('exec python3: operation not permitted\\n')\n"
+        "raise SystemExit(1)\n",
+        encoding="utf-8",
+    )
+    docker.chmod(0o755)
+    monkeypatch.setenv("PATH", os.pathsep.join([os.fspath(fake_bin), os.environ["PATH"]]))
+    command = ["pytest", "-q", "tests"]
+    task = Task(
+        case_id="container-startup-failure",
+        repository=repo,
+        base_commit=commit,
+        issue="Distinguish runtime startup failure from a failing test.",
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+        container=ContainerExecutionSpec(image="sha256:" + "b" * 64),
+    )
+
+    report = VerificationHarness(tmp_path / "container-startup-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.PREFLIGHT_FAILED
+    assert report.commands[0].exit_code == 1
+    assert report.commands[0].infrastructure_error is True
