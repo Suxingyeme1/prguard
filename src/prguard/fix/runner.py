@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import shutil
 import time
+from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from uuid import uuid4
 
@@ -24,6 +26,8 @@ from prguard.schemas import (
     TaskMode,
     TokenUsage,
 )
+
+FixProgressCallback = Callable[[str, dict[str, object]], None]
 
 
 def _verification_feedback(attempt: FixAttempt) -> str:
@@ -52,9 +56,24 @@ def _verification_feedback(attempt: FixAttempt) -> str:
 
 
 class FixRunner:
-    def __init__(self, artifact_root: Path, provider: ImplementerProvider) -> None:
+    def __init__(
+        self,
+        artifact_root: Path,
+        provider: ImplementerProvider,
+        *,
+        progress: FixProgressCallback | None = None,
+    ) -> None:
         self.artifact_root = artifact_root.expanduser().resolve()
         self.provider = provider
+        self.progress = progress
+
+    def _emit(self, event: str, **data: object) -> None:
+        """Notify an optional observer without letting presentation break the run."""
+
+        if self.progress is None:
+            return
+        with suppress(Exception):
+            self.progress(event, data)
 
     def run(self, task: FixTask) -> FixReport:
         run_id = str(uuid4())
@@ -69,15 +88,23 @@ class FixRunner:
         outcome = FixOutcome.PREFLIGHT_FAILED
         token_usage = TokenUsage()
         registered = False
+        self._emit("run.started", case_id=task.case_id, run_id=run_id)
         try:
             deadline = started + task.task_timeout_seconds
+            self._emit("preflight.started", base_commit=task.base_commit)
             resolved_commit = repository.preflight(task.base_commit, deadline=deadline)
             repository.add_worktree(agent_worktree, resolved_commit, deadline=deadline)
             registered = True
+            self._emit("preflight.completed", resolved_base_commit=resolved_commit)
             feedback: str | None = None
             for attempt_index in range(task.max_repair_attempts + 1):
                 attempt = FixAttempt(attempt=attempt_index)
                 attempts.append(attempt)
+                self._emit(
+                    "attempt.started",
+                    attempt=attempt_index,
+                    repair=attempt_index > 0,
+                )
                 try:
                     tools = RepositoryTools(agent_worktree, task)
                     envelope = self.provider.propose(
@@ -88,6 +115,14 @@ class FixRunner:
                             deadline_monotonic=deadline,
                         ),
                         tools,
+                    )
+                    self._emit(
+                        "proposal.completed",
+                        attempt=attempt_index,
+                        provider=envelope.provider,
+                        model=envelope.model,
+                        tool_calls=len(envelope.tool_calls),
+                        patch_bytes=len(envelope.proposal.patch.encode()),
                     )
                     attempt.proposal = envelope
                     token_usage.input_tokens += envelope.token_usage.input_tokens
@@ -125,10 +160,18 @@ class FixRunner:
                         task_timeout_seconds=remaining,
                         max_output_bytes=task.max_output_bytes,
                     )
+                    self._emit("verification.started", attempt=attempt_index)
                     verification = VerificationHarness(run_directory / "verification").run(
                         verification_task
                     )
                     attempt.verification = verification
+                    self._emit(
+                        "verification.completed",
+                        attempt=attempt_index,
+                        outcome=verification.outcome.value,
+                        command_count=len(verification.commands),
+                        changed_files=len(verification.changed_files),
+                    )
                     if verification.outcome == RunOutcome.PASSED:
                         final_patch = run_directory / "final.patch"
                         final_patch.write_text(envelope.proposal.patch, encoding="utf-8")
@@ -145,8 +188,19 @@ class FixRunner:
                         break
                     outcome = FixOutcome.FAILED_VERIFICATION
                     feedback = _verification_feedback(attempt)
+                    if attempt_index < task.max_repair_attempts:
+                        self._emit(
+                            "repair.requested",
+                            attempt=attempt_index + 1,
+                            failure=verification.outcome.value,
+                        )
                 except ImplementerError as exc:
                     attempt.error = str(exc)
+                    self._emit(
+                        "attempt.failed",
+                        attempt=attempt_index,
+                        error_type=type(exc).__name__,
+                    )
                     outcome = (
                         FixOutcome.POLICY_BLOCKED
                         if isinstance(exc, PatchPolicyError)
@@ -180,4 +234,10 @@ class FixRunner:
             artifact_directory=run_directory,
         )
         finalize_fix_artifacts(run_directory, task, report)
+        self._emit(
+            "run.completed",
+            outcome=report.outcome.value,
+            attempts=len(report.attempts),
+            duration_seconds=round(report.duration_seconds, 3),
+        )
         return report

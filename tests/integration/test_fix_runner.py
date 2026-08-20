@@ -124,3 +124,49 @@ def test_fix_cli_runs_scripted_issue_to_patch(
     output = json.loads(capsys.readouterr().out)
     assert exit_code == 0
     assert output["outcome"] == "accepted"
+
+
+def test_fix_cli_progress_uses_stderr_without_breaking_json_stdout(
+    materialized_fix_cases: dict[str, Path], tmp_path: Path, capsys
+) -> None:
+    case = materialized_fix_cases["direct-success"]
+
+    exit_code = main(
+        [
+            "fix",
+            str(case),
+            "--provider",
+            "scripted",
+            "--proposal-sequence",
+            str(case.parent / "proposals.json"),
+            "--artifacts",
+            str(tmp_path / "cli-progress-artifacts"),
+            "--progress",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+    assert exit_code == 0
+    assert output["outcome"] == "accepted"
+    assert "[prguard] Implementer working — attempt 0" in captured.err
+    assert "[prguard] verification completed — passed" in captured.err
+    assert "[prguard] run completed — accepted" in captured.err
+
+
+def test_progress_observer_failure_cannot_change_fix_outcome(
+    materialized_fix_cases: dict[str, Path], tmp_path: Path
+) -> None:
+    case = materialized_fix_cases["direct-success"]
+
+    def broken_observer(_event: str, _data: dict[str, object]) -> None:
+        raise RuntimeError("presentation failure")
+
+    report = FixRunner(
+        tmp_path / "observer-artifacts",
+        load_provider(case),
+        progress=broken_observer,
+    ).run(load_fix_task(case))
+
+    assert report.outcome is FixOutcome.ACCEPTED
+    assert report.final_patch is not None

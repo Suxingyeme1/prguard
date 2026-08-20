@@ -1,0 +1,22 @@
+diff --git a/src/humanize/_version.py b/src/humanize/_version.py
+new file mode 100644
+index 0000000..a3ef96a
+--- /dev/null
++++ b/src/humanize/_version.py
+@@ -0,0 +1,3 @@
++"""Test-checkout version stub generated for the PRGuard evaluation base."""
++
++__version__ = "4.16.0+prguard"
+diff --git a/tests/test_prguard_issue_366.py b/tests/test_prguard_issue_366.py
+new file mode 100644
+index 0000000..66a9159
+--- /dev/null
++++ b/tests/test_prguard_issue_366.py
+@@ -0,0 +1,7 @@
++from __future__ import annotations
++
++from humanize import naturalsize
++
++
++def test_naturalsize_custom_format_preserves_text() -> None:
++    assert naturalsize(999_999, gnu=True, format="Size: %.1f") == "Size: 976.6K"
