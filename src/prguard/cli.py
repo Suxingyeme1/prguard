@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
+import threading
+import time
 from pathlib import Path
+from typing import ClassVar
 
 from prguard.harness import VerificationHarness, load_replay_task, verify_manifest
 from prguard.harness.errors import ArtifactIntegrityError
@@ -20,6 +24,83 @@ from prguard.schemas import (
     RunOutcome,
     Task,
 )
+
+
+class _ProgressReporter:
+    """Human-readable stderr progress while stdout remains a JSON contract."""
+
+    _labels: ClassVar[dict[str, str]] = {
+        "run.started": "run created",
+        "preflight.started": "validating repository and base commit",
+        "preflight.completed": "isolated worktree ready",
+        "attempt.started": "Implementer working",
+        "proposal.completed": "candidate Patch received",
+        "verification.started": "deterministic verification running",
+        "verification.completed": "verification completed",
+        "repair.requested": "failure evidence returned for one repair",
+        "attempt.failed": "Implementer attempt failed",
+        "run.completed": "run completed",
+    }
+
+    def __init__(self, enabled: bool, heartbeat_seconds: float = 15.0) -> None:
+        self.enabled = enabled
+        self.heartbeat_seconds = heartbeat_seconds
+        self.started = time.monotonic()
+        self.phase = "starting"
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if not self.enabled:
+            return
+        print("[prguard] starting verified Issue-to-Patch run", file=sys.stderr, flush=True)
+        self._thread = threading.Thread(target=self._heartbeat, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        if not self.enabled:
+            return
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1)
+
+    def __call__(self, event: str, data: dict[str, object]) -> None:
+        if not self.enabled:
+            return
+        self.phase = self._labels.get(event, event)
+        details = self._details(event, data)
+        suffix = f" — {details}" if details else ""
+        print(f"[prguard] {self.phase}{suffix}", file=sys.stderr, flush=True)
+
+    def _heartbeat(self) -> None:
+        while not self._stop.wait(self.heartbeat_seconds):
+            elapsed = int(time.monotonic() - self.started)
+            print(
+                f"[prguard] still running ({elapsed}s) — {self.phase}",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    @staticmethod
+    def _details(event: str, data: dict[str, object]) -> str:
+        if event == "attempt.started":
+            attempt = int(data.get("attempt", 0))
+            return f"attempt {attempt}{' (repair)' if data.get('repair') else ''}"
+        if event == "proposal.completed":
+            return (
+                f"{data.get('tool_calls', 0)} tool calls, "
+                f"{data.get('patch_bytes', 0)} Patch bytes"
+            )
+        if event == "verification.completed":
+            return str(data.get("outcome", "unknown"))
+        if event == "repair.requested":
+            return str(data.get("failure", "failed"))
+        if event == "run.completed":
+            return (
+                f"{data.get('outcome', 'unknown')}, {data.get('attempts', 0)} attempt(s), "
+                f"{data.get('duration_seconds', 0)}s"
+            )
+        return ""
 
 
 def load_task(path: Path) -> Task:
@@ -94,6 +175,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fix.add_argument("--model")
     fix.add_argument("--reasoning-effort")
+    fix.add_argument(
+        "--progress",
+        action="store_true",
+        help="print human-readable stages and heartbeats to stderr",
+    )
     fix.add_argument("--proposal-sequence", type=Path)
     fix.add_argument(
         "--review",
@@ -161,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
         )
 
         task = load_issue_to_pr_task(args.task) if args.review else load_fix_task(args.task)
+        progress = _ProgressReporter(args.progress)
+        progress.start()
         try:
             if args.provider == "scripted":
                 if args.proposal_sequence is None:
@@ -229,10 +317,12 @@ def main(argv: list[str] | None = None) -> int:
                     args.artifacts, provider, reviewer, repair_provider
                 ).run(task)
             else:
-                report = FixRunner(args.artifacts, provider).run(task)
+                report = FixRunner(args.artifacts, provider, progress=progress).run(task)
         except ProviderError as exc:
             print(f"fix configuration failed: {exc}")
             return 2
+        finally:
+            progress.stop()
         print(report.model_dump_json(indent=2))
         if args.review:
             return 0 if report.outcome == IssueToPROutcome.ACCEPTED else 1

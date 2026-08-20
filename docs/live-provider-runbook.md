@@ -30,6 +30,7 @@ Run the direct-success case first:
   --provider deepseek \
   --model deepseek-v4-pro \
   --reasoning-effort high \
+  --progress \
   --artifacts work/deepseek-live-artifacts
 ```
 
@@ -53,6 +54,9 @@ A run counts as live evidence only when all of the following hold:
 
 Archive accepted evidence under `outputs/` only after these checks. Failed attempts also remain
 useful raw evidence but must be labelled as failures rather than silently discarded.
+
+For the public real-repository flow, follow [Demo A](demo-a.md). Its materializer reconstructs and
+checks the frozen Humanize evaluation Base Commit before any model call.
 
 ## Server execution
 

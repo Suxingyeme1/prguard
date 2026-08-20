@@ -86,6 +86,11 @@ offline Demo A, continuous integration, contribution/security policies, and a sa
 evidence subset. This work must not rewrite frozen raw Manifests; public summaries are derived and
 separately hashed.
 
+The second increment adds a reproducible real-repository Demo A materializer plus `fix --progress`.
+Stage updates and heartbeats go to stderr while the versioned JSON stdout contract stays stable. A
+fresh Humanize #366 run exercised malformed-Patch rejection, one evidence-guided replacement, 77
+passing pytest checks, and Ruff.
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

@@ -59,6 +59,10 @@ The demo materializes a tiny Git repository, submits an intentionally incomplete
 returns the pytest failure to a scripted Implementer, applies one replacement patch, and verifies
 the resulting recursive manifest. It prints the final patch and artifact directory.
 
+For the online real-repository walkthrough, use
+[Demo A: Humanize #366](docs/demo-a.md). It builds a frozen public Base Commit, runs DeepSeek with
+visible stages and heartbeats, and retains the failed first Patch alongside the accepted repair.
+
 Run the complete quality gate:
 
 ```bash
@@ -110,6 +114,7 @@ uv run prguard fix work/materialized-fix-fixtures/direct-success/task.json \
   --provider deepseek \
   --model deepseek-v4-pro \
   --reasoning-effort high \
+  --progress \
   --artifacts work/deepseek-live-artifacts
 unset DEEPSEEK_API_KEY
 ```
@@ -148,7 +153,7 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.5.1 proves the local Issue-to-PR mechanism and records three real-repository cases. The
+Version 0.6.0 proves the local Issue-to-PR mechanism and records three real-repository cases. The
 next priorities are a cleaner public case format, container-backed execution for untrusted code,
 GitHub integration, and a small frozen comparison that answers whether independent review produces
 net benefit. Large benchmark infrastructure and extra Agent roles remain intentionally deferred.

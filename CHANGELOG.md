@@ -3,6 +3,20 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.6.0 — 2026-08-20
+
+### Added
+
+- `fix --progress` stage updates and 15-second heartbeats on stderr without changing JSON stdout;
+- reproducible public Humanize #366 Demo A materializer with an exact evaluation Base Commit;
+- a fresh live repair run covering malformed-Patch rejection, one replacement, pytest, and Ruff.
+
+### Security and correctness
+
+- progress observers cannot change the workflow result;
+- the public Demo contains only an Issue, public reproduction, declared policy, and commands—no
+  hidden test, Gold Patch, defect label, or issue-discussion solution.
+
 ## 0.5.1 — 2026-08-19
 
 ### Added
