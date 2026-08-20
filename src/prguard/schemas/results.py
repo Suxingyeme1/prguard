@@ -12,6 +12,7 @@ from prguard.schemas.common import (
     POLICY_VERSION,
     SCHEMA_VERSION,
     ArtifactEntry,
+    ExecutionBackend,
     PolicyViolation,
     RunOutcome,
     StrictModel,
@@ -37,6 +38,9 @@ class VerificationResult(StrictModel):
     stderr: str = ""
     stdout_truncated: bool = False
     stderr_truncated: bool = False
+    execution_backend: ExecutionBackend = ExecutionBackend.HOST
+    container_image: str | None = None
+    infrastructure_error: bool = False
     passed: bool
 
 

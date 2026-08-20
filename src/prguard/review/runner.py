@@ -8,6 +8,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from prguard.harness import VerificationHarness
+from prguard.harness.errors import HarnessError
 from prguard.harness.git import GitRepository, apply_patch
 from prguard.implementer.errors import ImplementerError
 from prguard.implementer.tools import RepositoryTools
@@ -64,6 +65,7 @@ class ReviewRunner:
                 command_timeout_seconds=task.command_timeout_seconds,
                 task_timeout_seconds=max(0.1, deadline - time.monotonic()),
                 max_output_bytes=task.max_output_bytes,
+                container=task.container,
             )
             verification = VerificationHarness(run_directory / "verification").run(
                 verification_task
@@ -108,7 +110,7 @@ class ReviewRunner:
                     else Verdict.REQUEST_CHANGES
                 )
                 outcome = ReviewOutcome.REVIEWED
-        except (OSError, ValueError, ImplementerError) as exc:
+        except (OSError, ValueError, ImplementerError, HarnessError) as exc:
             error = str(exc)
             if verification and verification.outcome not in {
                 RunOutcome.PATCH_FAILED,

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -47,6 +48,51 @@ class RunOutcome(StrEnum):
     TIMED_OUT = "timed_out"
     POLICY_BLOCKED = "policy_blocked"
     PREFLIGHT_FAILED = "preflight_failed"
+
+
+class ExecutionBackend(StrEnum):
+    HOST = "host"
+    CONTAINER = "container"
+
+
+class ContainerExecutionSpec(StrictModel):
+    """Fail-closed Docker controls for deterministic verification commands."""
+
+    engine: Literal["docker"] = "docker"
+    image: str = Field(min_length=71, max_length=512)
+    python_executable: Literal["python", "python3", "python3.12"] = "python3"
+    network: Literal["none"] = "none"
+    read_only_root: Literal[True] = True
+    read_only_worktree: Literal[True] = True
+    user: str = Field(default="65532:65532", pattern=r"^[0-9]+:[0-9]+$")
+    memory_mb: int = Field(default=1024, ge=128, le=32768)
+    cpus: float = Field(default=1.0, ge=0.1, le=16)
+    pids_limit: int = Field(default=128, ge=16, le=4096)
+
+    @field_validator("image")
+    @classmethod
+    def immutable_image_reference(cls, value: str) -> str:
+        reference, separator, digest = value.rpartition("@")
+        if not separator:
+            digest = value
+            reference = ""
+        if len(digest) != 71 or not digest.startswith("sha256:"):
+            raise ValueError("container image must use an immutable sha256 digest or image ID")
+        if any(character not in "0123456789abcdef" for character in digest[7:]):
+            raise ValueError("container image sha256 must be lowercase hexadecimal")
+        if any(character.isspace() or ord(character) < 32 for character in value):
+            raise ValueError("container image contains whitespace or control characters")
+        if reference and re.fullmatch(r"[a-z0-9]+(?:[._:/-][a-z0-9]+)*", reference) is None:
+            raise ValueError("container image repository reference is malformed")
+        return value
+
+    @field_validator("user")
+    @classmethod
+    def non_root_numeric_user(cls, value: str) -> str:
+        uid, gid = (int(part) for part in value.split(":"))
+        if uid == 0 or gid == 0 or uid > 4_294_967_294 or gid > 4_294_967_294:
+            raise ValueError("container user and group must be valid non-root numeric IDs")
+        return value
 
 
 class TraceEvent(StrictModel):

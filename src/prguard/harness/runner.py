@@ -117,6 +117,7 @@ class VerificationHarness:
                         default_timeout=task.command_timeout_seconds,
                         max_output_bytes=task.max_output_bytes,
                         task_deadline=deadline,
+                        container=task.container,
                     )
                     if time.monotonic() >= deadline:
                         outcome = RunOutcome.TIMED_OUT
@@ -135,6 +136,9 @@ class VerificationHarness:
                             )
                             if result.timed_out:
                                 outcome = RunOutcome.TIMED_OUT
+                                break
+                            if result.infrastructure_error:
+                                outcome = RunOutcome.PREFLIGHT_FAILED
                                 break
                     changed = changed_files(worktree)
                     violations.extend(
@@ -165,7 +169,7 @@ class VerificationHarness:
                         )
                     if violations:
                         outcome = RunOutcome.POLICY_BLOCKED
-                    elif outcome != RunOutcome.TIMED_OUT:
+                    elif outcome not in {RunOutcome.TIMED_OUT, RunOutcome.PREFLIGHT_FAILED}:
                         outcome = (
                             RunOutcome.PASSED
                             if all(result.passed for result in results)

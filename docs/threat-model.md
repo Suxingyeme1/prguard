@@ -18,6 +18,7 @@ occurs in a detached worktree.
 | Path traversal in command args | absolute paths and `..` segments rejected | tools may discover paths internally |
 | Credential inheritance | minimal environment, private HOME/TMPDIR | host APIs/files remain reachable |
 | Hanging/forking process | new process group, deadline, group termination | no hard CPU/memory/pid quota |
+| Hostile verification code | optional digest-pinned container with no network, non-root UID, read-only mounts, dropped capabilities, and hard resource limits | host-mode tasks remain unsandboxed; kernel/daemon/image stay trusted |
 | Artifact tampering | SHA-256 per file and manifest payload hash | no signing/remote attestation |
 | Secret benchmark leakage | public Task excludes gold/labels/hidden-test fields | authoring discipline still required |
 | Repository secret disclosure | denied credential names/suffixes, symlink containment, byte-bounded reads | secrets in ordinary source files remain in scope |
@@ -37,11 +38,13 @@ occurs in a detached worktree.
 
 ## Explicit non-guarantees
 
-Git worktrees are isolation from accidental source-checkout edits, not a sandbox. Phase 1 cannot
-reliably prevent arbitrary native code from reading the network, host credentials, or writing an
-arbitrary absolute path. It detects source-repository mutation and writes next to the managed
-worktree, and fails closed when detected. Public or hostile repositories must wait for the later
-container sandbox with network denial, read-only mounts, uid separation, and resource quotas.
+Git worktrees are isolation from accidental source-checkout edits, not a sandbox. Host-mode
+verification cannot reliably prevent arbitrary native code from reading the network, host
+credentials, or writing an arbitrary absolute path; its audits are detection rather than
+containment. The optional container backend adds network denial, read-only mounts, non-root UID,
+dropped capabilities, and resource quotas. It still trusts the selected image, Docker daemon,
+container runtime, and host kernel; high-risk public code should run on a dedicated disposable VM
+under a rootless runtime.
 
 Symlinks in the resulting change set are policy-blocked when they resolve outside the worktree.
 Merge, push, release, and production deployment are outside this system and require humans.

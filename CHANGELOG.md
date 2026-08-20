@@ -3,6 +3,22 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.7.0 — 2026-08-20
+
+### Added
+
+- opt-in digest-pinned Docker execution in Task, Fix, Review, and Issue-to-PR contracts;
+- no-network, non-root, read-only root/worktree, capability, tmpfs, CPU, memory, and PID controls;
+- structured backend/image/infrastructure fields in each VerificationResult;
+- hash-locked online and offline reference verification-image builds;
+- an opt-in runtime probe for UID, privilege, capability, mount, network, and cgroup controls.
+
+### Security and correctness
+
+- container commands remain exact pytest/Ruff argv with `shell=False` and image pulls disabled;
+- timed-out Docker runs are forcibly removed through a Harness-owned cidfile;
+- host-mode behavior remains the default and its non-sandbox boundary remains explicit.
+
 ## 0.6.0 — 2026-08-20
 
 ### Added

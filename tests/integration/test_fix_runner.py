@@ -170,3 +170,16 @@ def test_progress_observer_failure_cannot_change_fix_outcome(
 
     assert report.outcome is FixOutcome.ACCEPTED
     assert report.final_patch is not None
+
+
+def test_fix_runner_structures_repository_preflight_failure(
+    materialized_fix_cases: dict[str, Path], tmp_path: Path
+) -> None:
+    case = materialized_fix_cases["direct-success"]
+    task = load_fix_task(case).model_copy(update={"repository": tmp_path / "missing-repository"})
+
+    report = FixRunner(tmp_path / "preflight-artifacts", load_provider(case)).run(task)
+
+    assert report.outcome is FixOutcome.PREFLIGHT_FAILED
+    assert report.attempts[0].error is not None
+    assert "repository does not exist" in report.attempts[0].error

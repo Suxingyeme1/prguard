@@ -78,6 +78,8 @@ uv run pytest -q
 - detached Git worktree execution at an exact base commit;
 - strict `pytest` and `ruff` argv grammars with `shell=False`;
 - per-command, per-stage, and total-run deadlines with bounded captured output;
+- optional digest-pinned container verification with no network, read-only mounts, and resource
+  limits;
 - structured pytest/ruff results, policy decisions, review findings, and trace events;
 - one evidence-guided implementation repair and one review-triggered controlled repair;
 - provider-neutral scripted, DeepSeek Chat Completions, and OpenAI Responses adapters;
@@ -125,10 +127,13 @@ Read the [live-provider runbook](docs/live-provider-runbook.md) before sending n
 
 ## Trust boundary
 
-PRGuard provides strict process orchestration and post-execution write detection; it is not yet a
-hostile-code sandbox. Tests run with the permissions available to the host user, so untrusted public
-repositories still require external container, network, and resource isolation. Model access is
-bounded, but repository bytes requested through read tools are sent to the selected provider.
+PRGuard provides strict process orchestration and post-execution write detection. Trusted tasks may
+use the default host executor; higher-risk tasks can opt into
+[container-backed verification](docs/container-execution.md) with a digest-pinned image, no
+network, read-only mounts, non-root execution, and hard resource limits. This is defense in depth,
+not protection from a malicious image, Docker daemon, container-runtime exploit, or host-kernel
+vulnerability. Model access is bounded, but repository bytes requested through read tools are sent
+to the selected provider.
 
 See the [threat model](docs/threat-model.md) and [security policy](SECURITY.md) before using real
 source code.
@@ -153,10 +158,10 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.6.0 proves the local Issue-to-PR mechanism and records three real-repository cases. The
-next priorities are a cleaner public case format, container-backed execution for untrusted code,
-GitHub integration, and a small frozen comparison that answers whether independent review produces
-net benefit. Large benchmark infrastructure and extra Agent roles remain intentionally deferred.
+Version 0.7.0 proves the local Issue-to-PR mechanism, records three real-repository cases, and adds
+opt-in container-backed verification. The next priorities are GitHub integration and a small frozen
+comparison that answers whether independent review produces net benefit. Large benchmark
+infrastructure and extra Agent roles remain intentionally deferred.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

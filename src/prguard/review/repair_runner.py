@@ -9,6 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from prguard.harness import VerificationHarness
+from prguard.harness.errors import HarnessError
 from prguard.harness.git import GitRepository, apply_patch
 from prguard.implementer.errors import ImplementerError, PatchPolicyError
 from prguard.implementer.providers import ImplementerProvider, ProviderRequest
@@ -114,6 +115,7 @@ def _as_fix_task(task: ReviewRepairTask, resolved_commit: str) -> FixTask:
         max_patch_bytes=task.max_patch_bytes,
         max_changed_files=task.max_changed_files,
         max_repair_attempts=0,
+        container=task.container,
     )
 
 
@@ -231,6 +233,7 @@ class ReviewRepairRunner:
                     command_timeout_seconds=task.command_timeout_seconds,
                     task_timeout_seconds=remaining,
                     max_output_bytes=task.max_output_bytes,
+                    container=task.container,
                 )
                 final_verification = VerificationHarness(run_directory / "final-verification").run(
                     verification_task
@@ -247,7 +250,7 @@ class ReviewRepairRunner:
                     verdict = Verdict.REQUEST_CHANGES
             else:
                 outcome = ReviewRepairOutcome.REVIEW_FAILED
-        except (OSError, ValueError, ImplementerError) as exc:
+        except (OSError, ValueError, ImplementerError, HarnessError) as exc:
             error = str(exc)
             if isinstance(exc, PatchPolicyError):
                 outcome = ReviewRepairOutcome.POLICY_BLOCKED
