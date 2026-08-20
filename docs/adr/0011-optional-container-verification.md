@@ -21,6 +21,8 @@ container run must:
 - use a read-only root filesystem plus CPU, memory, and PID limits;
 - override any image entrypoint with the allowlisted `python -m pytest/ruff` argv;
 - retain command and task deadlines, and forcibly remove a timed-out container by cidfile;
+- emit and strip an internal Python-start marker so runtime launch failures remain distinct from
+  product-test exit codes even when a Docker distribution returns the ambiguous exit code `1`;
 - record backend, image, and infrastructure errors in the normal VerificationResult Artifact.
 
 Docker is invoked as an argv array with `shell=False`. Engine/image launch failures are

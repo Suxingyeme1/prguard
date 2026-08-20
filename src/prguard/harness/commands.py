@@ -20,6 +20,13 @@ from prguard.schemas import (
     VerificationResult,
 )
 
+_CONTAINER_STARTUP_MARKER = "__PRGUARD_CONTAINER_PYTHON_STARTED__\n"
+_CONTAINER_STARTUP_WRAPPER = (
+    "import os,sys;"
+    f"os.write(2,{_CONTAINER_STARTUP_MARKER.encode()!r});"
+    "os.execv(sys.executable,[sys.executable,*sys.argv[1:]])"
+)
+
 
 def _read_bounded(path: Path, limit: int) -> tuple[str, bool]:
     size = path.stat().st_size
@@ -83,6 +90,8 @@ def build_container_argv(
         "--entrypoint",
         command[0],
         spec.image,
+        "-c",
+        _CONTAINER_STARTUP_WRAPPER,
         *command[1:],
     ]
 
@@ -213,11 +222,14 @@ class CommandExecutor:
         stdout_path.unlink(missing_ok=True)
         stderr_path.unlink(missing_ok=True)
         cidfile.unlink(missing_ok=True)
-        infrastructure_error = backend is ExecutionBackend.CONTAINER and exit_code in {
-            125,
-            126,
-            127,
-        }
+        container_started = _CONTAINER_STARTUP_MARKER in stderr
+        if container_started:
+            stderr = stderr.replace(_CONTAINER_STARTUP_MARKER, "", 1)
+        infrastructure_error = (
+            backend is ExecutionBackend.CONTAINER
+            and not timed_out
+            and (exit_code in {125, 126, 127} or not container_started)
+        )
         return VerificationResult(
             command_index=index,
             kind=spec.kind,

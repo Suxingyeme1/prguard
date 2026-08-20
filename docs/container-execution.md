@@ -76,6 +76,8 @@ writable private tmpfs paths, no network route, and the declared cgroup limits. 
 containers and produced verifiable Manifests.
 
 Ubuntu's snap-packaged Docker 29.6.1 rejected Python startup whenever
-`no-new-privileges` was enabled. PRGuard did not retry with weaker controls: the command timed out,
-the container was removed, and the run failed closed. Runtime compatibility is therefore part of
-worker qualification, not a reason to silently relax Task policy.
+`no-new-privileges` was enabled. PRGuard did not retry with weaker controls: process startup was
+blocked, the container was removed, and the run failed closed. Docker returned the ambiguous exit
+code `1`; the Harness' internal Python-start marker classified the missing process startup as an
+infrastructure error rather than a product-test failure. Runtime compatibility is therefore part
+of worker qualification, not a reason to silently relax Task policy.
