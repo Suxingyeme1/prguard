@@ -27,12 +27,23 @@ class CommandPolicy:
             self.validate_shape(argv)
 
     def authorize(self, argv: list[str]) -> list[str]:
-        self.validate_shape(argv)
-        if tuple(argv) not in self.allowed:
-            raise CommandPolicyError("command is not present in the task allowlist")
+        self._authorize_exact(argv)
         if argv[0] in _DIRECT_TOOLS:
             return [sys.executable, "-m", argv[0], *argv[1:]]
         return [sys.executable, *argv[1:]]
+
+    def authorize_container(self, argv: list[str], python_executable: str) -> list[str]:
+        self._authorize_exact(argv)
+        if python_executable not in _PYTHON_TOOLS:
+            raise CommandPolicyError("container Python executable is not allowed")
+        if argv[0] in _DIRECT_TOOLS:
+            return [python_executable, "-m", argv[0], *argv[1:]]
+        return [python_executable, *argv[1:]]
+
+    def _authorize_exact(self, argv: list[str]) -> None:
+        self.validate_shape(argv)
+        if tuple(argv) not in self.allowed:
+            raise CommandPolicyError("command is not present in the task allowlist")
 
     @staticmethod
     def validate_shape(argv: list[str]) -> None:

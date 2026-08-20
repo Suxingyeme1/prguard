@@ -10,6 +10,7 @@ from pydantic import Field, field_validator
 from prguard.schemas.common import (
     SCHEMA_VERSION,
     CommandSpec,
+    ContainerExecutionSpec,
     StrictModel,
     TaskMode,
     TokenUsage,
@@ -32,6 +33,7 @@ class Task(StrictModel):
     command_timeout_seconds: float = Field(default=120, gt=0, le=3600)
     task_timeout_seconds: float = Field(default=600, gt=0, le=7200)
     max_output_bytes: int = Field(default=200_000, ge=1024, le=10_000_000)
+    container: ContainerExecutionSpec | None = None
 
     @field_validator("protected_paths")
     @classmethod
@@ -61,6 +63,7 @@ class CodingTaskState(StrictModel):
     implementation_attempts: int = Field(default=0, ge=0)
     review_attempts: int = Field(default=0, ge=0)
     verification_results: list[VerificationResult] = Field(default_factory=list)
+    container: ContainerExecutionSpec | None = None
     findings: list[ReviewFinding] = Field(default_factory=list)
     verdict: Verdict = Verdict.PENDING
     token_usage: TokenUsage = Field(default_factory=TokenUsage)

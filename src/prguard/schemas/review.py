@@ -12,6 +12,7 @@ from prguard.schemas.common import (
     REVIEW_WORKFLOW_VERSION,
     SCHEMA_VERSION,
     CommandSpec,
+    ContainerExecutionSpec,
     StrictModel,
     TokenUsage,
     Verdict,
@@ -45,6 +46,7 @@ class ReviewTask(StrictModel):
     max_tool_calls: int = Field(default=24, ge=1, le=100)
     max_file_bytes: int = Field(default=100_000, ge=1024, le=1_000_000)
     max_context_bytes: int = Field(default=500_000, ge=4096, le=5_000_000)
+    container: ContainerExecutionSpec | None = None
 
     @field_validator("protected_paths")
     @classmethod

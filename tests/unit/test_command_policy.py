@@ -40,3 +40,15 @@ def test_task_allowlist_is_exact() -> None:
     policy = CommandPolicy([["pytest", "-q"]])
     with pytest.raises(CommandPolicyError, match="task allowlist"):
         policy.authorize(["pytest", "-q", "tests"])
+
+
+def test_container_authorization_uses_declared_bare_python() -> None:
+    command = ["pytest", "-q", "tests"]
+    policy = CommandPolicy([command])
+    assert policy.authorize_container(command, "python3") == [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "tests",
+    ]

@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from prguard.schemas import (
     CodingTaskState,
+    ContainerExecutionSpec,
     FindingCategory,
     ReviewFinding,
     Severity,
@@ -40,6 +41,23 @@ def test_task_public_context_has_no_evaluator_secrets() -> None:
 def test_task_rejects_parent_protected_path() -> None:
     with pytest.raises(ValidationError):
         Task.model_validate(task_payload() | {"protected_paths": ["../secret"]})
+
+
+def test_container_execution_requires_immutable_non_root_configuration() -> None:
+    digest = "sha256:" + "a" * 64
+    spec = ContainerExecutionSpec(image=digest)
+    assert spec.network == "none"
+    assert spec.read_only_root is True
+    assert spec.read_only_worktree is True
+
+    with pytest.raises(ValidationError):
+        ContainerExecutionSpec(image="python:3.12-slim")
+    with pytest.raises(ValidationError):
+        ContainerExecutionSpec(image=digest, user="0:0")
+    with pytest.raises(ValidationError):
+        ContainerExecutionSpec(image=digest, network="bridge")
+    with pytest.raises(ValidationError):
+        ContainerExecutionSpec(image="--privileged@" + digest)
 
 
 def test_finding_requires_evidence_and_relative_source_anchor() -> None:

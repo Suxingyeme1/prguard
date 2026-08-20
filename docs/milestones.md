@@ -91,6 +91,13 @@ Stage updates and heartbeats go to stderr while the versioned JSON stdout contra
 fresh Humanize #366 run exercised malformed-Patch rejection, one evidence-guided replacement, 77
 passing pytest checks, and Ruff.
 
+The third increment adds opt-in container-backed verification. Task contracts require an immutable
+image ID and non-root identity; the Docker argv hard-codes no network, read-only root/worktree,
+dropped capabilities, tmpfs runtime paths, and CPU/memory/PID limits. Host execution remains the
+compatible default. The reference image has online and hash-locked offline build paths. Docker
+Desktop passed the full boundary probe; a snap Docker incompatibility with `no-new-privileges`
+failed closed and left no container rather than triggering a weaker retry.
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

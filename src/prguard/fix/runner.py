@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from prguard.fix.artifacts import finalize_fix_artifacts
 from prguard.harness import VerificationHarness
+from prguard.harness.errors import HarnessError
 from prguard.harness.git import GitRepository
 from prguard.implementer.errors import ImplementerError, PatchPolicyError
 from prguard.implementer.providers import ImplementerProvider, ProviderRequest
@@ -159,6 +160,7 @@ class FixRunner:
                         command_timeout_seconds=task.command_timeout_seconds,
                         task_timeout_seconds=remaining,
                         max_output_bytes=task.max_output_bytes,
+                        container=task.container,
                     )
                     self._emit("verification.started", attempt=attempt_index)
                     verification = VerificationHarness(run_directory / "verification").run(
@@ -180,10 +182,10 @@ class FixRunner:
                     if verification.outcome == RunOutcome.POLICY_BLOCKED:
                         outcome = FixOutcome.POLICY_BLOCKED
                         break
-                    if verification.outcome in {
-                        RunOutcome.PREFLIGHT_FAILED,
-                        RunOutcome.TIMED_OUT,
-                    }:
+                    if verification.outcome is RunOutcome.PREFLIGHT_FAILED:
+                        outcome = FixOutcome.PREFLIGHT_FAILED
+                        break
+                    if verification.outcome is RunOutcome.TIMED_OUT:
                         outcome = FixOutcome.FAILED_VERIFICATION
                         break
                     outcome = FixOutcome.FAILED_VERIFICATION
@@ -207,7 +209,7 @@ class FixRunner:
                         else FixOutcome.AGENT_FAILED
                     )
                     break
-        except (OSError, ValueError, ImplementerError) as exc:
+        except (OSError, ValueError, ImplementerError, HarnessError) as exc:
             if not attempts:
                 attempts.append(FixAttempt(attempt=0, error=str(exc)))
             outcome = FixOutcome.PREFLIGHT_FAILED

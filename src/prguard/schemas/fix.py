@@ -11,6 +11,7 @@ from prguard.schemas.common import (
     FIX_WORKFLOW_VERSION,
     SCHEMA_VERSION,
     CommandSpec,
+    ContainerExecutionSpec,
     StrictModel,
     TokenUsage,
 )
@@ -44,6 +45,7 @@ class FixTask(StrictModel):
     max_patch_bytes: int = Field(default=200_000, ge=128, le=2_000_000)
     max_changed_files: int = Field(default=12, ge=1, le=100)
     max_repair_attempts: int = Field(default=1, ge=0, le=1)
+    container: ContainerExecutionSpec | None = None
 
     @field_validator("writable_paths", "protected_paths")
     @classmethod

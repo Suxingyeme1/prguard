@@ -78,9 +78,11 @@ a deterministic tool, never a Test Runner Agent.
 - **Command policy** accepts argv arrays only and supports pytest/ruff directly or through
   `python -m`. The task allowlist must exactly contain every invoked argv.
 - **Executor** uses `shell=False`, process groups, sanitized environment, output files, and two
-  deadlines (command and task). Its deterministic Python import path contains only the detached
-  worktree's `src/` directory and repository root, supporting common source layouts without an
-  editable host installation.
+  deadlines (command and task). Its default host backend keeps the deterministic Python import path
+  limited to the detached worktree's `src/` directory and repository root. Its explicit container
+  backend uses a digest-pinned image, no network, a non-root user, read-only root/worktree mounts,
+  dropped capabilities, tmpfs HOME/TMP, and CPU/memory/PID limits. Both retain the original
+  allowlisted argv in the report.
 - **Deadline enforcement** checks remaining time before provider calls and again after each provider
   returns. The latter prevents a late SDK response from being accepted. Network-client cancellation
   is best-effort, so a stalled SDK may still delay process return even though the run ultimately
