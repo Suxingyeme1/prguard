@@ -38,6 +38,10 @@ spends Reviewer tokens.
 
 ### `review` (quality module)
 
+The CLI can consume a standalone ReviewTask, or reuse a frozen FixTask plus `--candidate-patch`.
+The latter derives the review contract locally and, for controlled repair, inherits the original
+writable paths and Patch limits instead of asking the user to duplicate them.
+
 ```text
 Issue + repository + base commit + candidate patch
   -> deterministic verification

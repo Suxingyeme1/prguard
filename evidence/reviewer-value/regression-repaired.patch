@@ -1,0 +1,9 @@
+diff --git a/service.py b/service.py
+index e299702..f7f4b20 100644
+--- a/service.py
++++ b/service.py
+@@ -1,2 +1,4 @@
+ def normalize(value: str) -> str:
++    if value is None:
++        return ""
+     return value.strip().lower()

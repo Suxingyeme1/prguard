@@ -11,6 +11,8 @@ versions.
   same-origin cached checkout, and frozen FixTask preparation;
 - direct `prguard fix https://github.com/.../issues/...` composition that retains preparation
   artifacts and continues into the normal verified Fix workflow;
+- `prguard review FIX_TASK --candidate-patch PATCH` so review and optional repair reuse the frozen
+  repository/Issue/policy contract instead of requiring duplicated ReviewTask JSON;
 - strict `.prguard.toml` support plus conservative pytest/Ruff and source/test-scope discovery;
 - Issue-symbol-to-public-test targeting and a recorded runtime-only adapter for missing Hatch VCS
   version files;
@@ -29,6 +31,9 @@ versions.
   structured edits, 78 targeted tests, and Ruff;
 - the accepted Patch then passed a separate wider gate with 702 passed and 74 optional benchmark
   skips, and both recursive Manifests verified.
+- a narrow-gate regression case produced one manually confirmed independent finding, one exact
+  controlled repair, and passing fail-to-pass/pass-to-pass checks; a clean Humanize Patch incurred
+  no false block but 221.875 seconds of Reviewer latency.
 
 ### Security and correctness
 

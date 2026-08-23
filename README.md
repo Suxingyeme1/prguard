@@ -43,7 +43,7 @@ PRGuard currently exposes two product entries:
 
 ```text
 prguard fix     repository + base commit + Issue -> tested patch
-prguard review  repository + Issue + candidate patch -> findings + optional repair
+prguard review  frozen FixTask + candidate patch -> findings + optional repair
 ```
 
 Planner remains an internal Implementer step. The test runner is deliberately a deterministic tool,
@@ -104,6 +104,17 @@ must explicitly select `--trust-host` or a digest-pinned `--container-image`; th
 that trust decision. See the [GitHub onboarding guide](docs/github-onboarding.md), including the
 optional reviewed `.prguard.toml` contract.
 
+The same frozen Task can go directly into independent review without copying its repository,
+commit, Issue, or command fields:
+
+```bash
+uv run prguard review work/humanize-366/artifacts/task.json \
+  --candidate-patch path/to/final.patch \
+  --provider deepseek
+```
+
+Add `--repair` to permit one controlled repair under the FixTask's original writable/size policy.
+
 Run the complete quality gate:
 
 ```bash
@@ -155,6 +166,11 @@ The private frozen run set intentionally retains failures too: a provider timeou
 patches, a tool-budget exhaustion, and the successful Humanize repair cycle. The public repository
 contains a path-free [case report](evidence/real-repositories/README.md), selected patches, and a
 machine-verifiable [evidence manifest](evidence/real-repositories/manifest.json).
+
+A separate two-case [Reviewer value check](evidence/reviewer-value/README.md) records one regression
+that passed a narrow base gate but was caught and repaired by independent review, plus one accepted
+Humanize Patch that was not false-blocked but incurred substantial review latency. It supports
+selective review, not a general accuracy claim.
 
 ## Live model run
 
@@ -213,10 +229,11 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 Version 0.8.0 adds public GitHub Issue onboarding, conservative project adaptation, bounded Python
 AST/call navigation, and structured edits that are converted into Git-authored Patches. A fresh
 Humanize #366 run completed this path in one Implementer attempt, then passed 702 wider regression
-tests; see the [v0.8 phase report](docs/v0.8.0-phase-report.md). The next priority is a small frozen
-comparison that asks whether independent review produces net benefit, plus additional repositories
-that pressure-test project adaptation. Large benchmark infrastructure and extra Agent roles remain
-intentionally deferred.
+tests; see the [v0.8 phase report](docs/v0.8.0-phase-report.md). A first frozen pair shows both a
+true-positive Reviewer repair and the high cost of reviewing a clean real-repository Patch; see the
+[net-benefit note](docs/reviewer-net-benefit.md). The next priority is selective routing and more
+repositories that pressure-test project adaptation. Large benchmark infrastructure and extra Agent
+roles remain intentionally deferred.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”
