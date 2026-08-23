@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from prguard.harness.artifacts import ArtifactStore
 from prguard.harness.commands import CommandExecutor
-from prguard.harness.errors import CommandPolicyError, HarnessError
+from prguard.harness.errors import CommandPolicyError, HarnessError, PreflightError
 from prguard.harness.git import (
     GitRepository,
     apply_patch,
@@ -33,6 +33,47 @@ from prguard.schemas import (
     Task,
     TraceEvent,
 )
+
+
+def _materialize_runtime_files(worktree: Path, task: Task) -> dict[str, str]:
+    root = worktree.resolve()
+    fingerprints: dict[str, str] = {}
+    for spec in task.runtime_files:
+        candidate = worktree / spec.path
+        try:
+            candidate.resolve(strict=False).relative_to(root)
+        except ValueError as exc:
+            raise PreflightError("runtime file resolves outside the worktree") from exc
+        if candidate.exists() or candidate.is_symlink():
+            raise PreflightError(f"runtime file path already exists at Base Commit: {spec.path}")
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        payload = spec.content.encode("utf-8")
+        candidate.write_bytes(payload)
+        fingerprints[spec.path] = hashlib.sha256(payload).hexdigest()
+    return fingerprints
+
+
+def _runtime_file_violations(
+    worktree: Path, fingerprints: dict[str, str]
+) -> list[PolicyViolation]:
+    modified: list[str] = []
+    for relative, expected in fingerprints.items():
+        candidate = worktree / relative
+        if (
+            candidate.is_symlink()
+            or not candidate.is_file()
+            or hashlib.sha256(candidate.read_bytes()).hexdigest() != expected
+        ):
+            modified.append(relative)
+    if not modified:
+        return []
+    return [
+        PolicyViolation(
+            code="runtime_scaffold_modified",
+            message="verification modified a Harness-owned runtime scaffold",
+            paths=sorted(modified),
+        )
+    ]
 
 
 class VerificationHarness:
@@ -62,6 +103,9 @@ class VerificationHarness:
         source_before: dict = {}
         audit_before: dict = {}
         worktree_registered = False
+        runtime_fingerprints: dict[str, str] = {}
+        runtime_paths = {spec.path for spec in task.runtime_files}
+        effective_protected = [*task.protected_paths, *sorted(runtime_paths)]
 
         def trace(kind: str, message: str, **data: object) -> None:
             traces.append(
@@ -101,12 +145,19 @@ class VerificationHarness:
             if patch_result.applied:
                 changed = changed_files(worktree)
                 violations.extend(
-                    protected_path_violations(worktree, changed, task.protected_paths)
+                    protected_path_violations(worktree, changed, effective_protected)
                 )
                 if violations:
                     outcome = RunOutcome.POLICY_BLOCKED
                     trace("policy.blocked", "pre-command policy check failed")
                 else:
+                    runtime_fingerprints = _materialize_runtime_files(worktree, task)
+                    if runtime_fingerprints:
+                        trace(
+                            "runtime.prepared",
+                            "deterministic runtime scaffolds created",
+                            paths=sorted(runtime_fingerprints),
+                        )
                     audit_before = snapshot_tree(
                         run_directory, excluded_names={"worktree", "runtime"}
                     )
@@ -140,9 +191,14 @@ class VerificationHarness:
                             if result.infrastructure_error:
                                 outcome = RunOutcome.PREFLIGHT_FAILED
                                 break
-                    changed = changed_files(worktree)
+                    changed = [
+                        path for path in changed_files(worktree) if path not in runtime_paths
+                    ]
                     violations.extend(
-                        protected_path_violations(worktree, changed, task.protected_paths)
+                        protected_path_violations(worktree, changed, effective_protected)
+                    )
+                    violations.extend(
+                        _runtime_file_violations(worktree, runtime_fingerprints)
                     )
                     audit_after = snapshot_tree(
                         run_directory, excluded_names={"worktree", "runtime"}
@@ -175,7 +231,12 @@ class VerificationHarness:
                             if all(result.passed for result in results)
                             else RunOutcome.FAILED_VERIFICATION
                         )
-                final_patch = final_diff(worktree, resolved_commit)
+                final_patch = final_diff(
+                    worktree,
+                    resolved_commit,
+                    deadline=deadline,
+                    excluded_paths=sorted(runtime_paths),
+                )
         except (HarnessError, OSError, ValueError) as exc:
             trace("harness.error", str(exc), error_type=type(exc).__name__)
             if time.monotonic() >= deadline:

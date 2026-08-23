@@ -98,6 +98,19 @@ compatible default. The reference image has online and hash-locked offline build
 Desktop passed the full boundary probe; a snap Docker incompatibility with `no-new-privileges`
 failed closed and left no container rather than triggering a weaker retry.
 
+The fourth increment removes most manual Task authoring for public Python repositories. A
+`prepare-github` entry freezes the Issue and exact commit, materializes a safe checkout, accepts a
+reviewed `.prguard.toml` or discovers a conservative pytest/Ruff profile, and emits a preparation
+report plus verifiable Manifest. The Agent now has bounded Python AST symbol/import/re-export,
+incoming/outgoing call, reference, and related-test tools. Live providers prefer exact structured
+text edits; PRGuard applies them in an isolated worktree and Git produces the auditable Patch.
+Issue symbols can narrow pytest to related public tests, declared Hatch VCS version files receive a
+recorded runtime-only scaffold, and pytest collection readiness now fails before any provider call.
+The post-adapter Humanize #366 live run was accepted in one Implementer attempt with two structured
+edits, passed 78 targeted checks plus Ruff, and then passed a wider 702-test regression gate with 74
+optional benchmark skips. Both recursive Manifests verified. The earlier environment failure is
+retained and documented in the [v0.8 phase report](v0.8.0-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

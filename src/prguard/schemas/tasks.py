@@ -11,6 +11,7 @@ from prguard.schemas.common import (
     SCHEMA_VERSION,
     CommandSpec,
     ContainerExecutionSpec,
+    RuntimeFileSpec,
     StrictModel,
     TaskMode,
     TokenUsage,
@@ -34,6 +35,7 @@ class Task(StrictModel):
     task_timeout_seconds: float = Field(default=600, gt=0, le=7200)
     max_output_bytes: int = Field(default=200_000, ge=1024, le=10_000_000)
     container: ContainerExecutionSpec | None = None
+    runtime_files: list[RuntimeFileSpec] = Field(default_factory=list, max_length=16)
 
     @field_validator("protected_paths")
     @classmethod

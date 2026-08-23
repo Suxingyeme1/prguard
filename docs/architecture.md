@@ -21,7 +21,8 @@ The same inputs can be replayed by checking out the same commit and applying the
 
 ```text
 Issue + repository + base commit
-  -> Implementer: search/read -> internal plan -> restricted edits
+  -> Implementer: text/AST navigation -> internal plan -> structured edits
+  -> isolated edit worktree -> Git-authored Patch
   -> deterministic verification
   -> at most one evidence-guided repair
   -> final gate -> Review-ready Patch + artifacts
@@ -48,27 +49,44 @@ a deterministic tool, never a Test Runner Agent.
 ## Components
 
 - **Schemas** are Pydantic v2 contracts with `extra="forbid"` and a schema version.
-- **Repository tools** expose only bounded file listing, case-insensitive text search, and line-range
-  reads. Credential-like paths, traversal, escaping symlinks, binary files, and context-budget
-  overruns fail closed.
+- **GitHub onboarding** validates one canonical public Issue URL, fetches only Issue title/body plus
+  repository/commit metadata, rejects Pull Requests and private repositories, freezes a full commit
+  SHA, and materializes it without running hooks. A same-origin local clone may be an object cache.
+- **Project profile discovery** accepts a strict reviewed `.prguard.toml` or conservatively detects
+  pytest, Ruff, and Python source/test write scopes. It never installs dependencies or invents
+  service setup, and repository configuration cannot weaken the built-in command grammar or fixed
+  protected paths.
+- **Repository tools** expose bounded file listing, case-insensitive text search, line-range reads,
+  and a lazy Python AST index for symbols, imports/re-exports, lexical references, incoming/outgoing
+  calls, and related-test ranking. Credential-like paths, traversal, escaping symlinks, binary
+  files, file/index caps, and context-budget overruns fail closed. The call graph is explicitly a
+  static approximation; runtime dispatch and reflection are unresolved.
 - **Implementer provider** is a replaceable semantic component. DeepSeek uses bounded Chat
   Completions function calls, OpenAI uses direct Responses function calls, and the offline adapter
   makes workflow tests reproducible. None receives a shell or direct write primitive.
-- **Patch policy** requires a standard unified diff against Base Commit and enforces writable
-  globs, protected globs, patch bytes, changed-file count, and consistent file headers.
-- **Fix runner** creates a read-only discovery worktree, requests a proposal, delegates execution
-  to a fresh Verification Harness worktree, and permits at most one complete replacement patch
-  using structured failure evidence.
+- **Structured edit engine** accepts exact single-match `replace_text` and bounded `create_file`
+  operations. It validates paths and payloads, applies them in a separate detached worktree, and
+  asks Git to generate the Base-Commit-relative Patch. Raw unified diffs remain a compatibility
+  fallback.
+- **Patch policy** validates every generated or fallback diff against writable/protected globs,
+  patch bytes, changed-file count, and consistent file headers.
+- **Fix runner** creates a read-only discovery worktree, requests a proposal, materializes
+  structured edits in a second short-lived worktree, delegates execution to a fresh Verification
+  Harness worktree, and permits at most one repair using structured failure evidence. Before any
+  model call it runs declared pytest targets in `--collect-only` mode: failing assertions remain
+  valid Fix inputs, while missing imports/plugins/generated modules fail as environment readiness
+  instead of consuming a repair round.
 - **Review runner** verifies the candidate first, creates a separate patched worktree, gives an
   independently scoped Reviewer only the Issue, candidate diff, deterministic evidence, and
   bounded read tools, then computes the verdict deterministically. P0-P2 findings block; P3 is
   non-blocking; failed verification blocks even when the Reviewer misses a finding. A model result
   returned after the logical stage deadline is retained as evidence but cannot produce an accepting
   verdict.
-- **Review-repair runner** preserves the initial review, shows the Implementer only the original
-  candidate plus structured public findings and verification evidence, accepts one complete
-  replacement diff against the same Base Commit, then invokes a fresh Harness final gate. It never
-  incrementally edits the Reviewer worktree or lets either model determine acceptance.
+- **Review-repair runner** preserves the initial review and shows the Implementer only the original
+  candidate plus structured public findings and verification evidence. Exact edits may be applied
+  to an isolated patched worktree and folded by Git into one complete replacement Patch against the
+  same Base Commit; a raw fallback must already be a complete replacement. A fresh Harness owns the
+  final gate.
 - **Issue-to-PR runner** assigns a bounded Fix-stage budget inside one outer deadline, then composes
   the accepted Fix artifact into review-repair. It copies only the final accepted Patch to the
   delivery root and recursively hashes both nested workflows.
@@ -94,10 +112,10 @@ a deterministic tool, never a Test Runner Agent.
 
 ## Agent boundary
 
-Implementer context contains `FixTask` fields and only source bytes explicitly returned by bounded
-read tools. It proposes a patch but cannot directly write the source checkout or verification
-worktree. On repair it receives its prior patch, terminal outcome, policy findings, and failed
-command output—not evaluator labels or hidden tests.
+Implementer context contains `FixTask` fields and only source bytes or static anchors explicitly
+returned by bounded tools. It submits declarative edits or a fallback Patch; Harness-owned code is
+the only component that writes edit/verification worktrees. On repair it receives its prior Patch,
+terminal outcome, policy findings, and failed command output—not evaluator labels or hidden tests.
 
 Provider credentials are process-environment inputs, never task or CLI fields. Live envelopes
 retain provider/model, response ID, token counts, endpoint class, reasoning effort, and available
@@ -108,10 +126,11 @@ Implementer reasoning. Reviewer is read-only. Gold patches, hidden tests, and de
 to an evaluator-only record that is deliberately absent from the `Task` schema.
 
 When controlled repair is enabled, the Implementer reads the patched candidate in a separate
-worktree but must submit a complete Base-Commit-relative replacement diff. Its feedback contains
-only the original candidate, validated findings, review summary, Harness outcome, policy findings,
-and failed public command output. The outer manifest recursively hashes the initial review,
-proposal, final verification, and delivered patch.
+worktree. Structured edits are folded into a complete Base-Commit-relative replacement diff; a raw
+fallback must already have that form. Feedback contains only the original candidate, validated
+findings, review summary, Harness outcome, policy findings, and failed public command output. The
+outer manifest recursively hashes the initial review, proposal, final verification, and delivered
+patch.
 
 ## Terminal outcomes
 

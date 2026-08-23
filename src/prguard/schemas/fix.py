@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -12,6 +13,7 @@ from prguard.schemas.common import (
     SCHEMA_VERSION,
     CommandSpec,
     ContainerExecutionSpec,
+    RuntimeFileSpec,
     StrictModel,
     TokenUsage,
 )
@@ -32,8 +34,8 @@ class FixTask(StrictModel):
     repository: Path
     base_commit: str = Field(min_length=7, max_length=64, pattern=r"^[0-9a-fA-F]+$")
     issue: str = Field(min_length=1, max_length=50_000)
-    commands: list[CommandSpec] = Field(default_factory=list, max_length=32)
-    allowed_commands: list[list[str]] = Field(default_factory=list, max_length=32)
+    commands: list[CommandSpec] = Field(min_length=1, max_length=32)
+    allowed_commands: list[list[str]] = Field(min_length=1, max_length=32)
     writable_paths: list[str] = Field(min_length=1, max_length=128)
     protected_paths: list[str] = Field(default_factory=list, max_length=128)
     command_timeout_seconds: float = Field(default=120, gt=0, le=3600)
@@ -46,6 +48,7 @@ class FixTask(StrictModel):
     max_changed_files: int = Field(default=12, ge=1, le=100)
     max_repair_attempts: int = Field(default=1, ge=0, le=1)
     container: ContainerExecutionSpec | None = None
+    runtime_files: list[RuntimeFileSpec] = Field(default_factory=list, max_length=16)
 
     @field_validator("writable_paths", "protected_paths")
     @classmethod
@@ -64,11 +67,58 @@ class FixTask(StrictModel):
         return self
 
 
+class ReplaceTextEdit(StrictModel):
+    operation: Literal["replace_text"]
+    path: str = Field(min_length=1, max_length=1000)
+    old_text: str = Field(min_length=1, max_length=200_000)
+    new_text: str = Field(max_length=200_000)
+
+    @field_validator("path")
+    @classmethod
+    def relative_path(cls, value: str) -> str:
+        path = Path(value)
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or any(char in value for char in "\r\n\x00")
+        ):
+            raise ValueError("edit path must be safe and repository-relative")
+        return value
+
+
+class CreateFileEdit(StrictModel):
+    operation: Literal["create_file"]
+    path: str = Field(min_length=1, max_length=1000)
+    content: str = Field(max_length=200_000)
+
+    @field_validator("path")
+    @classmethod
+    def relative_path(cls, value: str) -> str:
+        path = Path(value)
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or any(char in value for char in "\r\n\x00")
+        ):
+            raise ValueError("edit path must be safe and repository-relative")
+        return value
+
+
+TextEdit = Annotated[ReplaceTextEdit | CreateFileEdit, Field(discriminator="operation")]
+
+
 class ImplementerProposal(StrictModel):
     plan: list[str] = Field(min_length=1, max_length=12)
     summary: str = Field(min_length=1, max_length=4000)
-    patch: str = Field(min_length=1)
+    patch: str | None = Field(default=None, min_length=1)
+    edits: list[TextEdit] = Field(default_factory=list, max_length=32)
     tests_changed: bool
+
+    @model_validator(mode="after")
+    def exactly_one_edit_format(self) -> ImplementerProposal:
+        if (self.patch is not None) == bool(self.edits):
+            raise ValueError("proposal must contain exactly one of patch or structured edits")
+        return self
 
 
 class AgentToolCall(StrictModel):

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from prguard.harness import VerificationHarness, verify_manifest
-from prguard.schemas import CommandSpec, RunOutcome, Task
+from prguard.schemas import CommandSpec, RunOutcome, RuntimeFileSpec, Task
 
 
 @pytest.mark.security
@@ -123,3 +123,42 @@ def test_unallowlisted_command_fails_closed(make_repo, tmp_path: Path) -> None:
     report = VerificationHarness(tmp_path / "artifacts").run(task)
     assert report.outcome is RunOutcome.POLICY_BLOCKED
     assert report.policy_violations[0].code == "command_not_allowed"
+
+
+@pytest.mark.security
+@pytest.mark.integration
+def test_verification_cannot_tamper_with_runtime_scaffold(make_repo, tmp_path: Path) -> None:
+    repo, commit = make_repo(
+        {
+            "tests/test_tamper.py": (
+                "from pathlib import Path\n\n"
+                "def test_tamper():\n"
+                "    Path('src/pkg/_version.py').write_text('owned')\n"
+            ),
+            "src/pkg/__init__.py": "",
+        }
+    )
+    command = ["pytest", "-q", "tests/test_tamper.py"]
+    task = Task(
+        case_id="runtime-scaffold-tamper",
+        repository=repo,
+        base_commit=commit,
+        issue="Detect runtime scaffold tampering.",
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+        runtime_files=[
+            RuntimeFileSpec(
+                path="src/pkg/_version.py",
+                content='__version__ = "0+prguard"\n',
+                reason="hatch_vcs_version_file",
+            )
+        ],
+    )
+
+    report = VerificationHarness(tmp_path / "runtime-tamper-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.POLICY_BLOCKED
+    assert any(
+        violation.code == "runtime_scaffold_modified"
+        for violation in report.policy_violations
+    )

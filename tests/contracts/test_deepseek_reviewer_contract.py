@@ -113,3 +113,11 @@ def test_deepseek_reviewer_has_independent_bounded_context(tmp_path: Path) -> No
     assert "gold_patch" not in serialized.casefold()
     assert "hidden" not in serialized.casefold()
     assert "tool_choice" not in completions.requests[0]
+    tool_names = [
+        item["function"]["name"] for item in completions.requests[0]["tools"]
+    ]
+    assert "find_symbols" in tool_names
+    assert "find_callers" in tool_names
+    assert "submit_review" in tool_names
+    assert "submit_edits" not in tool_names
+    assert "submit_patch" not in tool_names

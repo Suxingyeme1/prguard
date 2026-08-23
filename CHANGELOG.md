@@ -3,6 +3,45 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.8.0 — 2026-08-23
+
+### Added
+
+- `prepare-github` for public GitHub Issue title/body, repository metadata, exact Base Commit,
+  same-origin cached checkout, and frozen FixTask preparation;
+- strict `.prguard.toml` support plus conservative pytest/Ruff and source/test-scope discovery;
+- Issue-symbol-to-public-test targeting and a recorded runtime-only adapter for missing Hatch VCS
+  version files;
+- bounded Python AST symbol, import/re-export, reference, incoming/outgoing call, and related-test
+  navigation for Implementer and Independent Reviewer contexts;
+- exact `replace_text` and `create_file` proposals, applied in an isolated worktree and converted
+  by Git into the final unified diff;
+- a preparation report and standard SHA-256 RunManifest accepted by `verify-manifest`.
+
+### Evidence
+
+- a frozen Humanize #366 run exposed a missing generated-version module before the adapter existed;
+- after readiness and runtime adaptation, a fresh live run was accepted in one attempt with two
+  structured edits, 78 targeted tests, and Ruff;
+- the accepted Patch then passed a separate wider gate with 702 passed and 74 optional benchmark
+  skips, and both recursive Manifests verified.
+
+### Security and correctness
+
+- public onboarding rejects non-canonical URLs, redirects, Pull Requests, private repositories,
+  oversized API responses, unresolvable commits, and implicit execution trust;
+- repository-owned configuration cannot expand the fixed pytest/Ruff argv grammar or remove fixed
+  protected paths;
+- AST indexing inherits file, symlink, credential-name, index-size, and shared context-byte limits,
+  and labels call relationships as static approximations;
+- structured replacements require one exact match and remain subject to writable/protected path,
+  changed-file, file-byte, Patch-byte, and final Harness gates;
+- declared pytest targets must collect on the frozen Base Commit before any provider call, so
+  missing imports/plugins/generated modules do not consume a repair attempt;
+- runtime scaffolds are automatically protected, hash-checked after execution, and excluded from
+  changed files and the delivered Patch;
+- Fix tasks now require at least one declared and allowlisted verification command.
+
 ## 0.7.0 — 2026-08-20
 
 ### Added

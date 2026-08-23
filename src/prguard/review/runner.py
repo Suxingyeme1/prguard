@@ -66,6 +66,7 @@ class ReviewRunner:
                 task_timeout_seconds=max(0.1, deadline - time.monotonic()),
                 max_output_bytes=task.max_output_bytes,
                 container=task.container,
+                runtime_files=task.runtime_files,
             )
             verification = VerificationHarness(run_directory / "verification").run(
                 verification_task

@@ -10,7 +10,8 @@ from uuid import uuid4
 
 from prguard.harness import VerificationHarness
 from prguard.harness.errors import HarnessError
-from prguard.harness.git import GitRepository, apply_patch
+from prguard.harness.git import GitRepository, apply_patch, final_diff
+from prguard.implementer.edits import apply_structured_edits
 from prguard.implementer.errors import ImplementerError, PatchPolicyError
 from prguard.implementer.providers import ImplementerProvider, ProviderRequest
 from prguard.implementer.tools import RepositoryTools, validate_proposed_patch
@@ -47,9 +48,10 @@ def _repair_feedback(task: ReviewRepairTask, report_patch: str, report: ReviewRe
     verification = initial.verification
     payload = {
         "instruction": (
-            "Submit one complete replacement patch against the same base commit. "
-            "The replacement must include the intended candidate behavior and correct all "
-            "evidence-backed defects; do not submit an incremental patch against patched files."
+            "Correct all evidence-backed defects while preserving the intended candidate "
+            "behavior. Prefer structured edits against the patched files you inspect; PRGuard "
+            "will combine them into one replacement Patch against the same Base Commit. A raw "
+            "Patch fallback must itself be a complete replacement against that Base Commit."
         ),
         "original_candidate_patch": report_patch,
         "review_summary": review.submission.summary if review else None,
@@ -116,6 +118,7 @@ def _as_fix_task(task: ReviewRepairTask, resolved_commit: str) -> FixTask:
         max_changed_files=task.max_changed_files,
         max_repair_attempts=0,
         container=task.container,
+        runtime_files=task.runtime_files,
     )
 
 
@@ -203,8 +206,19 @@ class ReviewRepairRunner:
                     RepositoryTools(repair_worktree, task),
                 )
                 _add_usage(token_usage, repair_proposal.token_usage)
+                if repair_proposal.proposal.patch is None:
+                    apply_structured_edits(
+                        repair_worktree, fix_task, repair_proposal.proposal.edits
+                    )
+                    generated_patch = final_diff(
+                        repair_worktree, resolved_commit, deadline=deadline
+                    )
+                    if not generated_patch.strip():
+                        raise PatchPolicyError("structured repair generated an empty Patch")
+                else:
+                    generated_patch = repair_proposal.proposal.patch
                 repair_path = run_directory / "repair.patch"
-                repair_path.write_text(repair_proposal.proposal.patch, encoding="utf-8")
+                repair_path.write_text(generated_patch, encoding="utf-8")
                 (run_directory / "repair-proposal.json").write_bytes(
                     json.dumps(
                         repair_proposal.model_dump(mode="json"),
@@ -216,7 +230,7 @@ class ReviewRepairRunner:
                 )
                 if time.monotonic() >= deadline:
                     raise ImplementerError("task deadline expired during controlled repair")
-                validate_proposed_patch(fix_task, repair_proposal.proposal.patch)
+                validate_proposed_patch(fix_task, generated_patch)
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise ImplementerError("task deadline expired before final verification")
@@ -234,13 +248,14 @@ class ReviewRepairRunner:
                     task_timeout_seconds=remaining,
                     max_output_bytes=task.max_output_bytes,
                     container=task.container,
+                    runtime_files=task.runtime_files,
                 )
                 final_verification = VerificationHarness(run_directory / "final-verification").run(
                     verification_task
                 )
                 if final_verification.outcome is RunOutcome.PASSED:
                     final_patch = run_directory / "final.patch"
-                    final_patch.write_text(repair_proposal.proposal.patch, encoding="utf-8")
+                    final_patch.write_text(generated_patch, encoding="utf-8")
                     outcome = ReviewRepairOutcome.ACCEPTED_AFTER_REPAIR
                     verdict = Verdict.ACCEPT
                 elif final_verification.outcome is RunOutcome.POLICY_BLOCKED:

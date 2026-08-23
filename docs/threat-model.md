@@ -22,8 +22,10 @@ occurs in a detached worktree.
 | Artifact tampering | SHA-256 per file and manifest payload hash | no signing/remote attestation |
 | Secret benchmark leakage | public Task excludes gold/labels/hidden-test fields | authoring discipline still required |
 | Repository secret disclosure | denied credential names/suffixes, symlink containment, byte-bounded reads | secrets in ordinary source files remain in scope |
-| Malicious Issue/prompt injection | fixed Implementer instructions and three read-only tools | model can still propose a malicious patch |
-| Overbroad model edit | complete diff is policy-checked, then applied only in a fresh Harness worktree | configured writable globs may be too broad |
+| Malicious Issue/prompt injection | fixed instructions plus bounded text/AST tools and declarative edits | model can still propose a malicious semantic change |
+| AST/call-graph overclaim | results label bounded static analysis and each resolution type | dynamic dispatch, reflection, and generated code remain unresolved |
+| Overbroad model edit | exact replacements are checked and Git-authored diffs are policy-gated in isolated worktrees | configured writable globs may be too broad |
+| Ambiguous text replacement | `old_text` must occur exactly once; create targets must not exist | a unique match can still be semantically wrong |
 | Patch parser smuggling | standard file headers must agree; rename/copy/binary patches rejected | Git parser differentials remain a review target |
 | Unbounded repair loop | at most one replacement patch | one repair can still consume substantial tokens |
 | Provider data exposure | only tool-returned repository bytes are sent | external provider receives those selected bytes |
@@ -35,6 +37,10 @@ occurs in a detached worktree.
 | Incremental-patch ambiguity | repair must be a complete diff against the immutable Base Commit and is applied in a fresh Harness worktree | semantic omission can still pass incomplete public tests |
 | Reviewer-triggered token loop | exactly one repair proposal and one final gate | one live repair can still be expensive |
 | Composed workflow budget exhaustion | one outer deadline plus smaller Fix and Reviewer budgets | up to three Implementer proposals remain possible across both stages |
+| GitHub URL/metadata spoofing | canonical HTTPS Issue URLs, fixed API host, redirect denial, PR/private rejection, full commit SHA | GitHub/API availability and account compromise |
+| Repository config command injection | `.prguard.toml` commands pass the built-in pytest/Ruff argv grammar | approved pytest/Ruff code still executes repository code |
+| Environment failure misdiagnosed as Patch failure | Base pytest targets must collect before any model call | collection can pass while later runtime dependencies still fail |
+| Runtime scaffold leaking into delivery | declared path is protected, hash-checked, and excluded from Git final diff | the narrow scaffold may not emulate every build backend API |
 
 ## Explicit non-guarantees
 

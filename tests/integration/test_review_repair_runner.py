@@ -157,6 +157,40 @@ def test_failed_replacement_remains_request_changes(make_repo, tmp_path: Path) -
 
 
 @pytest.mark.integration
+def test_blocking_review_can_be_repaired_with_structured_edit(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit, candidate, reviewer = _regression_case(make_repo, tmp_path)
+    proposal = ImplementerProposal.model_validate(
+        {
+            "plan": ["Restore lowercase normalization in the patched function"],
+            "summary": "Preserve the None fix and restore lower().",
+            "edits": [
+                {
+                    "operation": "replace_text",
+                    "path": "service.py",
+                    "old_text": "    return value.strip()\n",
+                    "new_text": "    return value.strip().lower()\n",
+                }
+            ],
+            "tests_changed": False,
+        }
+    )
+
+    report = ReviewRepairRunner(
+        tmp_path / "structured-artifacts",
+        reviewer,
+        ScriptedProvider([proposal]),
+    ).run(_task(repo, commit, candidate, "review-repair-structured"))
+
+    assert report.outcome is ReviewRepairOutcome.ACCEPTED_AFTER_REPAIR
+    assert report.final_patch is not None
+    final_patch = report.final_patch.read_text()
+    assert "if value is None:" in final_patch
+    assert "return value.strip().lower()" in final_patch
+
+
+@pytest.mark.integration
 def test_accepted_review_does_not_invoke_implementer(make_repo, tmp_path: Path) -> None:
     repo, commit = make_repo(
         {
