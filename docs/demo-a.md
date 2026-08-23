@@ -30,7 +30,21 @@ unset DEEPSEEK_API_KEY
 `--progress` prints stage changes and a 15-second heartbeat to stderr. The versioned JSON report
 remains the only stdout payload, so automation can parse it unchanged.
 
-## Frozen observed run
+## Current frozen observed run
+
+On 2026-08-23, `prepare-github` froze the Issue at
+`ce4147b6c8f8a132f772be0929d58305eb22c5d9`, selected a related public test, and recorded a
+runtime-only Hatch VCS version scaffold. A fresh DeepSeek run used 14 repository tool calls and
+submitted two exact replacements. PRGuard converted those edits into a Git-authored Patch changing
+only `src/humanize/filesize.py` and `tests/test_filesize.py`.
+
+The run was accepted in one attempt after 78 tests and Ruff passed. A separate wider gate passed
+702 tests, skipped 74 optional benchmarks, and passed Ruff. The Patch SHA-256 is
+`76ad64057e591fa6d9a622c3892fbfd55427772206d73cb5da37330e9ad9fa33` and both recursive
+Manifests verified. See the [v0.8 phase report](v0.8.0-phase-report.md) for the retained failed run,
+environment diagnosis, token counts, and static-analysis boundary.
+
+## Historical bounded-repair run
 
 On 2026-08-20, run `e86edeeb-2a34-4ada-ae6e-9ee2880c4147` exercised the complete bounded repair
 path:

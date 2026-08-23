@@ -91,7 +91,7 @@ class ScriptedProvider:
         )
 
 
-_TOOLS: list[dict[str, object]] = [
+_READ_TOOLS: list[dict[str, object]] = [
     {
         "type": "function",
         "name": "list_files",
@@ -141,6 +141,113 @@ _TOOLS: list[dict[str, object]] = [
     },
     {
         "type": "function",
+        "name": "find_symbols",
+        "description": (
+            "Find Python modules, classes, functions, and methods using the bounded local AST "
+            "index; returns qualified names and source line ranges."
+        ),
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
+            },
+            "required": ["query", "max_results"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "list_imports",
+        "description": "List statically parsed Python imports for one readable source file.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
+            },
+            "required": ["path", "max_results"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "find_callers",
+        "description": (
+            "Find direct lexical Python call sites for a symbol. Results are static "
+            "approximations, not a runtime-complete call graph."
+        ),
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string"},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
+            },
+            "required": ["symbol", "max_results"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "find_callees",
+        "description": (
+            "List direct lexical calls made by a Python function or method, forming the "
+            "bounded outgoing side of the static call graph."
+        ),
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string"},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
+            },
+            "required": ["symbol", "max_results"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "find_references",
+        "description": (
+            "Find lexical Python references to a symbol with file, line, scope, and "
+            "resolution evidence."
+        ),
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string"},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
+            },
+            "required": ["symbol", "max_results"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "find_related_tests",
+        "description": (
+            "Rank Python test files related to a source path or symbol using deterministic "
+            "filename, import, and reference evidence."
+        ),
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "target": {"type": "string"},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
+            },
+            "required": ["target", "max_results"],
+            "additionalProperties": False,
+        },
+    },
+]
+
+_SUBMIT_PATCH: dict[str, object] = {
+        "type": "function",
         "name": "submit_patch",
         "description": (
             "Submit the complete standard Git unified diff against the base commit and an "
@@ -165,16 +272,76 @@ _TOOLS: list[dict[str, object]] = [
             "required": ["plan", "summary", "patch", "tests_changed"],
             "additionalProperties": False,
         },
+}
+
+_SUBMIT_EDITS: dict[str, object] = {
+    "type": "function",
+    "name": "submit_edits",
+    "description": (
+        "Submit exact structured text replacements or new files. PRGuard applies them in an "
+        "isolated worktree and asks Git to generate the final Patch. Prefer this over manually "
+        "constructing a unified diff. Each replace_text old_text must match exactly once."
+    ),
+    "strict": True,
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "plan": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1,
+                "maxItems": 12,
+            },
+            "summary": {"type": "string"},
+            "edits": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "items": {
+                    "anyOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {"type": "string", "enum": ["replace_text"]},
+                                "path": {"type": "string"},
+                                "old_text": {"type": "string"},
+                                "new_text": {"type": "string"},
+                            },
+                            "required": ["operation", "path", "old_text", "new_text"],
+                            "additionalProperties": False,
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {"type": "string", "enum": ["create_file"]},
+                                "path": {"type": "string"},
+                                "content": {"type": "string"},
+                            },
+                            "required": ["operation", "path", "content"],
+                            "additionalProperties": False,
+                        },
+                    ]
+                },
+            },
+            "tests_changed": {"type": "boolean"},
+        },
+        "required": ["plan", "summary", "edits", "tests_changed"],
+        "additionalProperties": False,
     },
-]
+}
+
+_TOOLS: list[dict[str, object]] = [*_READ_TOOLS, _SUBMIT_EDITS, _SUBMIT_PATCH]
 
 _INSTRUCTIONS = """You are PRGuard's single Implementer for a real local repository.
-Inspect the repository using only list_files, search_text, and read_file. Form an internal plan,
-then call submit_patch with one minimal complete unified diff against the supplied base commit.
+Inspect the repository using the bounded text and Python AST navigation tools. Use AST symbol,
+import, caller/reference, and related-test results as static evidence, then read the relevant lines.
+Form an internal plan, then prefer submit_edits with exact old/new text operations. PRGuard will
+apply those edits locally and ask Git to generate the Patch. submit_patch remains a compatibility
+fallback when the required change cannot be represented safely as exact text edits.
 Do not modify protected paths, do not invent source you have not read, and do not request or emit
 shell commands. Preserve existing behavior and add or modify public tests only when necessary.
-If verification feedback is present, replace the prior patch with a corrected complete patch
-against the same base commit. The patch string must start with `diff --git a/<path> b/<path>` and
+If verification feedback is present, return a corrected complete proposal against the same base
+commit. A fallback patch string must start with `diff --git a/<path> b/<path>` and
 contain `--- a/<path>`, `+++ b/<path>`, and an `@@` hunk header. Never include Markdown fences or
 `*** Begin Patch` / `*** End Patch` markers around the patch.
 """
@@ -226,6 +393,18 @@ def _call_read_tool(
         return tools.search_text(**arguments)  # type: ignore[arg-type]
     if name == "read_file":
         return tools.read_file(**arguments)  # type: ignore[arg-type]
+    if name == "find_symbols":
+        return tools.find_symbols(**arguments)  # type: ignore[arg-type]
+    if name == "list_imports":
+        return tools.list_imports(**arguments)  # type: ignore[arg-type]
+    if name == "find_callers":
+        return tools.find_callers(**arguments)  # type: ignore[arg-type]
+    if name == "find_callees":
+        return tools.find_callees(**arguments)  # type: ignore[arg-type]
+    if name == "find_references":
+        return tools.find_references(**arguments)  # type: ignore[arg-type]
+    if name == "find_related_tests":
+        return tools.find_related_tests(**arguments)  # type: ignore[arg-type]
     raise ProviderError(f"unknown Implementer tool: {name}")
 
 
@@ -297,20 +476,25 @@ class OpenAIResponsesProvider:
             input_messages.extend(response.output)
             function_calls = [item for item in response.output if item.type == "function_call"]
             if not function_calls:
-                raise ProviderError("model ended without submitting a patch")
+                raise ProviderError("model ended without submitting a proposal")
             outputs: list[dict[str, object]] = []
             for item in function_calls:
                 if len(calls) >= request.task.max_tool_calls:
                     raise ProviderError("Implementer tool-call budget exhausted")
                 try:
                     arguments = json.loads(item.arguments)
-                    if item.name == "submit_patch":
+                    if item.name in {"submit_edits", "submit_patch"}:
                         proposal = ImplementerProposal.model_validate(arguments)
+                        summary = (
+                            {"patch_bytes": len(proposal.patch.encode())}
+                            if proposal.patch is not None
+                            else {"edit_count": len(proposal.edits)}
+                        )
                         calls.append(
                             AgentToolCall(
                                 sequence=len(calls),
                                 name=item.name,
-                                arguments={"patch_bytes": len(proposal.patch.encode())},
+                                arguments=summary,
                                 succeeded=True,
                                 output_bytes=0,
                             )
@@ -463,20 +647,25 @@ class DeepSeekChatProvider:
             messages.append(message)
             function_calls = getattr(message, "tool_calls", None) or []
             if not function_calls:
-                raise ProviderError("model ended without submitting a patch")
+                raise ProviderError("model ended without submitting a proposal")
             for item in function_calls:
                 if len(calls) >= request.task.max_tool_calls:
                     raise ProviderError("Implementer tool-call budget exhausted")
                 name = item.function.name
                 try:
                     arguments = json.loads(item.function.arguments)
-                    if name == "submit_patch":
+                    if name in {"submit_edits", "submit_patch"}:
                         proposal = ImplementerProposal.model_validate(arguments)
+                        summary = (
+                            {"patch_bytes": len(proposal.patch.encode())}
+                            if proposal.patch is not None
+                            else {"edit_count": len(proposal.edits)}
+                        )
                         calls.append(
                             AgentToolCall(
                                 sequence=len(calls),
                                 name=name,
-                                arguments={"patch_bytes": len(proposal.patch.encode())},
+                                arguments=summary,
                                 succeeded=True,
                                 output_bytes=0,
                             )

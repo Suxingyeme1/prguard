@@ -3,12 +3,13 @@ from types import SimpleNamespace
 
 from prguard.implementer.providers import OpenAIResponsesProvider, ProviderRequest
 from prguard.implementer.tools import RepositoryTools
-from prguard.schemas import FixTask
+from prguard.schemas import CommandSpec, FixTask
 
 
 class FakeResponses:
-    def __init__(self, patch: str) -> None:
+    def __init__(self, patch: str, *, structured: bool = False) -> None:
         self.patch = patch
+        self.structured = structured
         self.requests: list[dict[str, object]] = []
 
     def create(self, **kwargs: object) -> SimpleNamespace:
@@ -23,18 +24,35 @@ class FakeResponses:
                 )
             ]
         else:
-            arguments = {
-                "plan": ["Inspect source", "Apply minimal fix"],
-                "summary": "Use the inspected contract.",
-                "patch": self.patch,
-                "tests_changed": False,
-            }
+            if self.structured:
+                name = "submit_edits"
+                arguments = {
+                    "plan": ["Inspect source", "Apply exact replacement"],
+                    "summary": "Use a deterministic text edit.",
+                    "edits": [
+                        {
+                            "operation": "replace_text",
+                            "path": "app.py",
+                            "old_text": "VALUE = 1",
+                            "new_text": "VALUE = 2",
+                        }
+                    ],
+                    "tests_changed": False,
+                }
+            else:
+                name = "submit_patch"
+                arguments = {
+                    "plan": ["Inspect source", "Apply minimal fix"],
+                    "summary": "Use the inspected contract.",
+                    "patch": self.patch,
+                    "tests_changed": False,
+                }
             import json
 
             output = [
                 SimpleNamespace(
                     type="function_call",
-                    name="submit_patch",
+                    name=name,
                     arguments=json.dumps(arguments),
                     call_id="call-submit",
                 )
@@ -60,6 +78,8 @@ def test_openai_adapter_runs_bounded_read_tool_loop(tmp_path: Path) -> None:
         repository=tmp_path,
         base_commit="a" * 40,
         issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
         writable_paths=["*.py"],
     )
     provider = OpenAIResponsesProvider(client=client, model="test-model")
@@ -71,3 +91,30 @@ def test_openai_adapter_runs_bounded_read_tool_loop(tmp_path: Path) -> None:
     assert envelope.token_usage.input_tokens == 20
     assert responses.requests[0]["store"] is False
     assert responses.requests[0]["tools"]
+
+
+def test_openai_adapter_accepts_structured_edit_submission(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    responses = FakeResponses("", structured=True)
+    client = SimpleNamespace(responses=responses)
+    task = FixTask(
+        case_id="provider-structured-contract",
+        repository=tmp_path,
+        base_commit="a" * 40,
+        issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
+        writable_paths=["*.py"],
+    )
+
+    envelope = OpenAIResponsesProvider(client=client, model="test-model").propose(
+        ProviderRequest(task=task, attempt=0), RepositoryTools(tmp_path, task)
+    )
+
+    assert envelope.proposal.patch is None
+    assert envelope.proposal.edits[0].path == "app.py"
+    assert envelope.tool_calls[-1].name == "submit_edits"
+    names = [tool["name"] for tool in responses.requests[0]["tools"]]
+    assert "find_symbols" in names
+    assert "find_callees" in names
+    assert "submit_edits" in names

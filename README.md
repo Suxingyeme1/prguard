@@ -15,8 +15,8 @@ unified diff, command evidence, structured decisions, and a SHA-256 manifest.
 
 ```mermaid
 flowchart LR
-    I["Issue + repository + base commit"] --> A["Implementer<br/>search · read · plan · patch"]
-    A --> P["Unified diff"]
+    I["GitHub/local Issue + repository + base commit"] --> A["Implementer<br/>text + AST navigation · plan · structured edits"]
+    A --> P["Git-authored unified diff"]
     P --> H["Deterministic harness<br/>policy · pytest · ruff · timeout"]
     H -->|"failure evidence; once"| A
     H -->|"verified"| R["Independent Reviewer<br/>fresh read-only context"]
@@ -29,7 +29,9 @@ flowchart LR
 Coding agents are useful when they can change a real repository, but their claims should not decide
 whether their own work is correct. PRGuard separates proposal from judgment:
 
-- the model searches bounded repository content and proposes a complete Git patch;
+- the model navigates bounded repository content with text and Python AST tools, then proposes
+  exact text edits (or a compatibility Patch fallback);
+- PRGuard applies structured edits in an isolated worktree and asks Git to produce the diff;
 - the harness applies that patch in an isolated worktree and runs only declared argv commands;
 - one failed verification can return structured evidence for a bounded replacement patch;
 - review uses an independent context and produces source-linked findings;
@@ -60,8 +62,34 @@ returns the pytest failure to a scripted Implementer, applies one replacement pa
 the resulting recursive manifest. It prints the final patch and artifact directory.
 
 For the online real-repository walkthrough, use
-[Demo A: Humanize #366](docs/demo-a.md). It builds a frozen public Base Commit, runs DeepSeek with
-visible stages and heartbeats, and retains the failed first Patch alongside the accepted repair.
+[Demo A: Humanize #366](docs/demo-a.md). It freezes the public Issue and Base Commit, discovers a
+conservative verification profile, runs DeepSeek with visible progress, and retains the complete
+failure/success evidence chain.
+
+## Start from a public GitHub Issue
+
+`prepare-github` removes the need to hand-author the normal FixTask JSON. It fetches only the public
+Issue title/body and repository metadata, freezes an exact commit, checks out the repository, and
+discovers a conservative Python verification profile:
+
+```bash
+uv run prguard prepare-github \
+  https://github.com/python-humanize/humanize/issues/366 \
+  --output work/humanize-366 \
+  --base-commit ce4147b6c8f8a132f772be0929d58305eb22c5d9 \
+  --trust-host
+
+uv run prguard verify-manifest \
+  work/humanize-366/artifacts/preparation-manifest.json
+
+uv run prguard fix work/humanize-366/artifacts/task.json \
+  --provider openai --progress
+```
+
+Omit `--base-commit` to freeze the default-branch tip at preparation time. Unknown repositories
+must explicitly select `--trust-host` or a digest-pinned `--container-image`; the model never makes
+that trust decision. See the [GitHub onboarding guide](docs/github-onboarding.md), including the
+optional reviewed `.prguard.toml` contract.
 
 Run the complete quality gate:
 
@@ -73,18 +101,25 @@ uv run pytest -q
 
 ## What is implemented
 
-- bounded `list_files`, `search_text`, and `read_file` repository tools;
-- complete unified-diff proposals with writable/protected path, file-count, and byte limits;
+- public GitHub Issue onboarding, exact commit resolution, safe checkout, and replayable preparation
+  artifacts;
+- reviewed `.prguard.toml` profiles plus fail-closed pytest/Ruff, Issue-related public-test, source
+  scope, and declared Hatch VCS runtime-file discovery;
+- bounded text tools plus Python AST symbol/import/reference, incoming/outgoing call, and related-test
+  navigation;
+- exact `replace_text`/`create_file` submissions applied locally, with Git-authored Patch output;
+- compatibility unified-diff proposals with writable/protected path, file-count, and byte limits;
 - detached Git worktree execution at an exact base commit;
 - strict `pytest` and `ruff` argv grammars with `shell=False`;
 - per-command, per-stage, and total-run deadlines with bounded captured output;
+- zero-token pytest collection readiness checks before Implementer calls;
 - optional digest-pinned container verification with no network, read-only mounts, and resource
   limits;
 - structured pytest/ruff results, policy decisions, review findings, and trace events;
 - one evidence-guided implementation repair and one review-triggered controlled repair;
 - provider-neutral scripted, DeepSeek Chat Completions, and OpenAI Responses adapters;
 - recursive JSON/Markdown artifacts, final diff, and SHA-256 manifest verification;
-- `fix`, `review`, `run`, `replay`, and `verify-manifest` CLI workflows.
+- `prepare-github`, `fix`, `review`, `run`, `replay`, and `verify-manifest` CLI workflows.
 
 ## Evidence on real repositories
 
@@ -93,7 +128,7 @@ These are engineering case studies, not a claim of broad benchmark generalizatio
 
 | Repository | Issue | Selected patch | Wider regression check |
 | --- | --- | --- | --- |
-| Humanize | [#366](https://github.com/python-humanize/humanize/issues/366) | accepted after one evidence-guided replacement; pytest + ruff | 701 passed, 74 skipped* |
+| Humanize | [#366](https://github.com/python-humanize/humanize/issues/366) | accepted with two structured edits; pytest + ruff | 702 passed, 74 skipped* |
 | PrettyTable | [#474](https://github.com/prettytable/prettytable/issues/474) | accepted | 338 passed** |
 | Inflect | [#242](https://github.com/jaraco/inflect/issues/242) | accepted | 208 passed, 16 xfailed |
 
@@ -142,7 +177,8 @@ source code.
 
 | Path | Purpose |
 | --- | --- |
-| `src/prguard/implementer` | bounded repository tools, patch policy, provider adapters |
+| `src/prguard/onboarding` | GitHub Issue freezing, safe checkout, project-policy discovery |
+| `src/prguard/implementer` | text/AST navigation, structured edits, patch policy, providers |
 | `src/prguard/fix` | Issue-to-Patch orchestration and artifacts |
 | `src/prguard/reviewer` | independent read-only Reviewer providers |
 | `src/prguard/review` | review and controlled-repair orchestration |
@@ -158,10 +194,13 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.7.0 proves the local Issue-to-PR mechanism, records three real-repository cases, and adds
-opt-in container-backed verification. The next priorities are GitHub integration and a small frozen
-comparison that answers whether independent review produces net benefit. Large benchmark
-infrastructure and extra Agent roles remain intentionally deferred.
+Version 0.8.0 adds public GitHub Issue onboarding, conservative project adaptation, bounded Python
+AST/call navigation, and structured edits that are converted into Git-authored Patches. A fresh
+Humanize #366 run completed this path in one Implementer attempt, then passed 702 wider regression
+tests; see the [v0.8 phase report](docs/v0.8.0-phase-report.md). The next priority is a small frozen
+comparison that asks whether independent review produces net benefit, plus additional repositories
+that pressure-test project adaptation. Large benchmark infrastructure and extra Agent roles remain
+intentionally deferred.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

@@ -5,7 +5,7 @@ import pytest
 
 from prguard.implementer.providers import DeepSeekChatProvider, ProviderRequest
 from prguard.implementer.tools import RepositoryTools
-from prguard.schemas import FixTask
+from prguard.schemas import CommandSpec, FixTask
 
 httpx = pytest.importorskip("httpx")
 openai = pytest.importorskip("openai")
@@ -82,6 +82,8 @@ def test_deepseek_contract_round_trips_through_openai_sdk(tmp_path: Path) -> Non
         repository=tmp_path,
         base_commit="a" * 40,
         issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
         writable_paths=["*.py"],
     )
     try:

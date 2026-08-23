@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -12,11 +13,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 SCHEMA_VERSION = "1.0.0"
 HARNESS_VERSION = "0.1.0"
 POLICY_VERSION = "argv-v1"
-FIX_WORKFLOW_VERSION = "fix-v1"
-ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v1"
-PATCH_POLICY_VERSION = "patch-v1"
+FIX_WORKFLOW_VERSION = "fix-v2"
+ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v2"
+PATCH_POLICY_VERSION = "patch-v2"
 REVIEW_WORKFLOW_VERSION = "review-v1"
-REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v1"
+REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v2"
 
 
 def utc_now() -> datetime:
@@ -92,6 +93,27 @@ class ContainerExecutionSpec(StrictModel):
         uid, gid = (int(part) for part in value.split(":"))
         if uid == 0 or gid == 0 or uid > 4_294_967_294 or gid > 4_294_967_294:
             raise ValueError("container user and group must be valid non-root numeric IDs")
+        return value
+
+
+class RuntimeFileSpec(StrictModel):
+    """Deterministic, non-deliverable file required only by the test runtime."""
+
+    path: str = Field(min_length=1, max_length=1000)
+    content: str = Field(max_length=100_000)
+    reason: Literal["hatch_vcs_version_file"]
+
+    @field_validator("path")
+    @classmethod
+    def repository_relative_path(cls, value: str) -> str:
+        path = Path(value)
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or not path.parts
+            or any(character in value for character in "\r\n\x00")
+        ):
+            raise ValueError("runtime file path must be safe and repository-relative")
         return value
 
 

@@ -33,6 +33,8 @@ class _ProgressReporter:
         "run.started": "run created",
         "preflight.started": "validating repository and base commit",
         "preflight.completed": "isolated worktree ready",
+        "readiness.started": "checking base test collection",
+        "readiness.completed": "base test collection checked",
         "attempt.started": "Implementer working",
         "proposal.completed": "candidate Patch received",
         "verification.started": "deterministic verification running",
@@ -167,6 +169,28 @@ def build_parser() -> argparse.ArgumentParser:
     replay.add_argument("manifest", type=Path)
     replay.add_argument("--repository", type=Path)
     replay.add_argument("--artifacts", type=Path, default=Path("artifacts"))
+    prepare = subparsers.add_parser(
+        "prepare-github",
+        help="freeze a public GitHub Issue and repository into a validated FixTask",
+    )
+    prepare.add_argument("issue_url")
+    prepare.add_argument("--output", type=Path, required=True)
+    prepare.add_argument("--base-commit")
+    prepare.add_argument(
+        "--source-repository",
+        type=Path,
+        help="same-origin local Git repository to use as a download cache",
+    )
+    execution = prepare.add_mutually_exclusive_group(required=True)
+    execution.add_argument(
+        "--trust-host",
+        action="store_true",
+        help="explicitly allow unsandboxed host verification for this repository",
+    )
+    execution.add_argument(
+        "--container-image",
+        help="immutable sha256 image ID/digest for container verification",
+    )
     fix = subparsers.add_parser("fix", help="generate and verify a patch from an Issue")
     fix.add_argument("task", type=Path)
     fix.add_argument("--artifacts", type=Path, default=Path("artifacts/fix"))
@@ -223,6 +247,24 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "prepare-github":
+        from prguard.onboarding import prepare_github_issue
+        from prguard.onboarding.errors import OnboardingError
+
+        try:
+            report = prepare_github_issue(
+                args.issue_url,
+                args.output,
+                base_commit=args.base_commit,
+                trust_host=args.trust_host,
+                container_image=args.container_image,
+                source_repository=args.source_repository,
+            )
+        except (OnboardingError, ValueError) as exc:
+            print(f"GitHub task preparation failed: {exc}", file=sys.stderr)
+            return 2
+        print(report.model_dump_json(indent=2))
+        return 0
     if args.command == "run":
         task = load_task(args.case)
         report = VerificationHarness(args.artifacts).run(task)

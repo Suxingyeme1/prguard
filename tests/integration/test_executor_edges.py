@@ -5,7 +5,13 @@ from pathlib import Path
 import pytest
 
 from prguard.harness import VerificationHarness
-from prguard.schemas import CommandSpec, ContainerExecutionSpec, RunOutcome, Task
+from prguard.schemas import (
+    CommandSpec,
+    ContainerExecutionSpec,
+    RunOutcome,
+    RuntimeFileSpec,
+    Task,
+)
 
 
 @pytest.mark.integration
@@ -73,6 +79,45 @@ def test_pytest_imports_repository_src_layout(make_repo, tmp_path: Path) -> None
     report = VerificationHarness(tmp_path / "artifacts").run(task)
     assert report.outcome is RunOutcome.PASSED
     assert report.commands[0].passed is True
+
+
+@pytest.mark.integration
+def test_runtime_scaffold_is_available_but_excluded_from_delivered_diff(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo(
+        {
+            "src/example_pkg/__init__.py": "from ._version import __version__\n",
+            "tests/test_version.py": (
+                "from example_pkg import __version__\n\n"
+                "def test_version():\n    assert __version__ == '0+prguard'\n"
+            ),
+        }
+    )
+    command = ["pytest", "-q", "tests/test_version.py"]
+    task = Task(
+        case_id="runtime-scaffold",
+        repository=repo,
+        base_commit=commit,
+        issue="Verify generated version import.",
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+        runtime_files=[
+            RuntimeFileSpec(
+                path="src/example_pkg/_version.py",
+                content='__version__ = "0+prguard"\n',
+                reason="hatch_vcs_version_file",
+            )
+        ],
+    )
+
+    report = VerificationHarness(tmp_path / "runtime-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.PASSED
+    assert report.changed_files == []
+    root = Path(report.artifact_directory)
+    assert "_version.py" not in (root / "final.diff").read_text()
+    assert not (repo / "src/example_pkg/_version.py").exists()
 
 
 @pytest.mark.integration

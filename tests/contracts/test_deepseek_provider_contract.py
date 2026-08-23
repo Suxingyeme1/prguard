@@ -7,12 +7,13 @@ import pytest
 from prguard.implementer.errors import ProviderError
 from prguard.implementer.providers import DeepSeekChatProvider, ProviderRequest
 from prguard.implementer.tools import RepositoryTools
-from prguard.schemas import FixTask
+from prguard.schemas import CommandSpec, FixTask
 
 
 class FakeChatCompletions:
-    def __init__(self, patch: str) -> None:
+    def __init__(self, patch: str, *, structured: bool = False) -> None:
         self.patch = patch
+        self.structured = structured
         self.requests: list[dict[str, object]] = []
 
     def create(self, **kwargs: object) -> SimpleNamespace:
@@ -30,17 +31,34 @@ class FakeChatCompletions:
                 )
             ]
         else:
-            arguments = {
-                "plan": ["Inspect source", "Apply minimal fix"],
-                "summary": "Use the inspected contract.",
-                "patch": self.patch,
-                "tests_changed": False,
-            }
+            if self.structured:
+                name = "submit_edits"
+                arguments = {
+                    "plan": ["Inspect source", "Apply exact replacement"],
+                    "summary": "Use a deterministic edit.",
+                    "edits": [
+                        {
+                            "operation": "replace_text",
+                            "path": "app.py",
+                            "old_text": "VALUE = 1",
+                            "new_text": "VALUE = 2",
+                        }
+                    ],
+                    "tests_changed": False,
+                }
+            else:
+                name = "submit_patch"
+                arguments = {
+                    "plan": ["Inspect source", "Apply minimal fix"],
+                    "summary": "Use the inspected contract.",
+                    "patch": self.patch,
+                    "tests_changed": False,
+                }
             calls = [
                 SimpleNamespace(
                     id="call-submit",
                     function=SimpleNamespace(
-                        name="submit_patch", arguments=json.dumps(arguments)
+                        name=name, arguments=json.dumps(arguments)
                     ),
                 )
             ]
@@ -76,6 +94,8 @@ def test_deepseek_adapter_runs_bounded_chat_tool_loop(tmp_path: Path) -> None:
         repository=tmp_path,
         base_commit="a" * 40,
         issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
         writable_paths=["*.py"],
     )
     provider = DeepSeekChatProvider(client=client, model="test-model")
@@ -106,6 +126,29 @@ def test_deepseek_adapter_requires_environment_key(monkeypatch: pytest.MonkeyPat
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     with pytest.raises(ProviderError, match="DEEPSEEK_API_KEY"):
         DeepSeekChatProvider()
+
+
+def test_deepseek_adapter_accepts_structured_edit_submission(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    completions = FakeChatCompletions("", structured=True)
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    task = FixTask(
+        case_id="deepseek-structured-contract",
+        repository=tmp_path,
+        base_commit="a" * 40,
+        issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
+        writable_paths=["*.py"],
+    )
+
+    envelope = DeepSeekChatProvider(client=client, model="test-model").propose(
+        ProviderRequest(task=task, attempt=0), RepositoryTools(tmp_path, task)
+    )
+
+    assert envelope.proposal.patch is None
+    assert envelope.proposal.edits[0].operation == "replace_text"
+    assert envelope.tool_calls[-1].name == "submit_edits"
 
 
 def test_deepseek_adapter_rejects_unsupported_reasoning_effort() -> None:

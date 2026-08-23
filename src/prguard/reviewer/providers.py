@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from prguard.implementer.errors import ProviderError
 from prguard.implementer.providers import (
-    _TOOLS,
+    _READ_TOOLS,
     _call_read_tool,
     _chat_tools,
     _safe_error,
@@ -135,12 +135,12 @@ _SUBMIT_REVIEW = {
     },
 }
 
-_REVIEW_TOOLS = [*_TOOLS[:3], _SUBMIT_REVIEW]
+_REVIEW_TOOLS = [*_READ_TOOLS, _SUBMIT_REVIEW]
 
 _REVIEW_INSTRUCTIONS = """You are PRGuard's Independent Reviewer in a fresh context.
 Review the candidate patch against the Issue, patched source, public tests, and deterministic
-verification evidence. You do not know or infer Implementer reasoning. Use only list_files,
-search_text, and read_file; you have no shell or write tool. Report only actionable defects caused
+verification evidence. You do not know or infer Implementer reasoning. Use the bounded text and
+Python AST navigation tools; you have no shell or write tool. Report only actionable defects caused
 or exposed by the patch. Every finding must name a repository-relative file, the tightest known
 line/symbol, concrete evidence, and a reproducible verification condition. Use P0 for catastrophic,
 P1 for high-impact, P2 for ordinary blocking correctness/security/regression defects, and P3 for

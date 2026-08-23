@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import fnmatch
+import io
 import os
 import re
+import tokenize
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 
+from prguard.implementer.ast_index import PythonAstIndex, PythonSource
 from prguard.implementer.errors import PatchPolicyError, RepositoryAccessError
 from prguard.schemas import FixTask
 
@@ -31,6 +34,8 @@ _DENIED_NAMES = {
     "id_ed25519",
 }
 _SECRET_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
+_MAX_AST_FILES = 2_000
+_MAX_AST_SOURCE_BYTES = 20_000_000
 
 
 class RepositoryReadLimits(Protocol):
@@ -69,6 +74,7 @@ class RepositoryTools:
         self.root = root.resolve()
         self.max_file_bytes = task.max_file_bytes
         self.remaining_context_bytes = task.max_context_bytes
+        self._python_ast_index: PythonAstIndex | None = None
 
     def _resolve(self, relative: str) -> Path:
         safe = _safe_relative(relative)
@@ -161,6 +167,98 @@ class RepositoryTools:
                 "truncated": end_line < len(lines),
             }
         )  # type: ignore[return-value]
+
+    def _build_python_ast_index(self) -> PythonAstIndex:
+        if self._python_ast_index is not None:
+            return self._python_ast_index
+        sources: list[PythonSource] = []
+        total_bytes = 0
+        skipped_large_files = 0
+        truncated = False
+        for current, dirs, files in os.walk(self.root, topdown=True, followlinks=False):
+            dirs[:] = sorted(name for name in dirs if name not in _DENIED_PARTS)
+            for name in sorted(files):
+                if not name.endswith(".py"):
+                    continue
+                path = Path(current) / name
+                relative = path.relative_to(self.root).as_posix()
+                try:
+                    _safe_relative(relative)
+                except RepositoryAccessError:
+                    continue
+                if path.is_symlink() or not path.is_file():
+                    continue
+                size = path.stat().st_size
+                if size > self.max_file_bytes:
+                    skipped_large_files += 1
+                    continue
+                if len(sources) >= _MAX_AST_FILES or total_bytes + size > _MAX_AST_SOURCE_BYTES:
+                    truncated = True
+                    continue
+                data = path.read_bytes()
+                if _is_probably_binary(data):
+                    continue
+                try:
+                    encoding, _ = tokenize.detect_encoding(io.BytesIO(data).readline)
+                    content = data.decode(encoding)
+                except (SyntaxError, UnicodeDecodeError, LookupError):
+                    content = data.decode("utf-8", errors="replace")
+                sources.append(PythonSource(path=relative, content=content))
+                total_bytes += size
+        self._python_ast_index = PythonAstIndex(
+            sources,
+            truncated=truncated,
+            skipped_large_files=skipped_large_files,
+        )
+        return self._python_ast_index
+
+    @staticmethod
+    def _validate_ast_query(value: str, max_results: int) -> None:
+        if not value.strip() or len(value) > 500 or any(char in value for char in "\r\n\x00"):
+            raise RepositoryAccessError("AST query must contain 1 to 500 safe characters")
+        if max_results < 1 or max_results > 200:
+            raise RepositoryAccessError("max_results must be between 1 and 200")
+
+    def find_symbols(self, query: str, max_results: int = 50) -> dict[str, object]:
+        self._validate_ast_query(query, max_results)
+        return self._charge(  # type: ignore[return-value]
+            self._build_python_ast_index().find_symbols(query, max_results)
+        )
+
+    def list_imports(self, path: str, max_results: int = 100) -> dict[str, object]:
+        self._validate_ast_query(path, max_results)
+        safe = _safe_relative(path).as_posix()
+        if not safe.endswith(".py"):
+            raise RepositoryAccessError("import analysis requires a Python file")
+        return self._charge(  # type: ignore[return-value]
+            self._build_python_ast_index().list_imports(safe, max_results)
+        )
+
+    def find_callers(self, symbol: str, max_results: int = 100) -> dict[str, object]:
+        self._validate_ast_query(symbol, max_results)
+        return self._charge(  # type: ignore[return-value]
+            self._build_python_ast_index().find_callers(symbol, max_results)
+        )
+
+    def find_callees(self, symbol: str, max_results: int = 100) -> dict[str, object]:
+        self._validate_ast_query(symbol, max_results)
+        return self._charge(  # type: ignore[return-value]
+            self._build_python_ast_index().find_callees(symbol, max_results)
+        )
+
+    def find_references(self, symbol: str, max_results: int = 100) -> dict[str, object]:
+        self._validate_ast_query(symbol, max_results)
+        return self._charge(  # type: ignore[return-value]
+            self._build_python_ast_index().find_references(symbol, max_results)
+        )
+
+    def find_related_tests(self, target: str, max_results: int = 50) -> dict[str, object]:
+        self._validate_ast_query(target, max_results)
+        if target.endswith(".py") or "/" in target or "\\" in target:
+            target = _safe_relative(target).as_posix()
+        return self._charge(  # type: ignore[return-value]
+            self._build_python_ast_index().find_related_tests(target, max_results)
+        )
 
 
 _DIFF_HEADER = re.compile(r"^diff --git a/(.+) b/(.+)$")

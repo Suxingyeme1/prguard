@@ -8,7 +8,7 @@ from prguard.fix import FixRunner
 from prguard.harness import verify_manifest
 from prguard.implementer.providers import ProviderRequest, ScriptedProvider
 from prguard.implementer.tools import RepositoryTools
-from prguard.schemas import FixOutcome, ImplementerProposal, RunOutcome
+from prguard.schemas import CommandSpec, FixOutcome, FixTask, ImplementerProposal, RunOutcome
 from tests.conftest import run_git
 
 
@@ -74,6 +74,45 @@ def test_protected_proposal_is_blocked_before_verification(
     assert (artifact_directory / "attempt-0.patch").read_text(encoding="utf-8") == proposal.patch
     assert (artifact_directory / "attempt-0-proposal.json").is_file()
     assert not (artifact_directory / "verification").exists()
+
+
+@pytest.mark.integration
+def test_fix_runner_materializes_structured_edits_as_git_patch(
+    materialized_fix_cases: dict[str, Path], tmp_path: Path
+) -> None:
+    case_path = materialized_fix_cases["direct-success"]
+    task = load_fix_task(case_path)
+    proposal = ImplementerProposal.model_validate(
+        {
+            "plan": ["Replace only the whitespace normalization expression"],
+            "summary": "Collapse arbitrary whitespace with split and join.",
+            "edits": [
+                {
+                    "operation": "replace_text",
+                    "path": "slug.py",
+                    "old_text": '    return value.strip().lower().replace(" ", "-")\n',
+                    "new_text": '    return "-".join(value.strip().lower().split())\n',
+                }
+            ],
+            "tests_changed": False,
+        }
+    )
+
+    report = FixRunner(
+        tmp_path / "structured-artifacts", ScriptedProvider([proposal])
+    ).run(task)
+
+    assert report.outcome is FixOutcome.ACCEPTED
+    assert report.final_patch is not None
+    patch = report.final_patch.read_text()
+    assert patch.startswith("diff --git a/slug.py b/slug.py")
+    assert 'return "-".join(value.strip().lower().split())' in patch
+    assert run_git(task.repository, "status", "--porcelain") == ""
+    proposal_artifact = json.loads(
+        (Path(report.artifact_directory) / "attempt-0-proposal.json").read_text()
+    )
+    assert proposal_artifact["proposal"]["patch"] is None
+    assert proposal_artifact["proposal"]["edits"][0]["operation"] == "replace_text"
 
 
 class RecordingProvider:
@@ -183,3 +222,46 @@ def test_fix_runner_structures_repository_preflight_failure(
     assert report.outcome is FixOutcome.PREFLIGHT_FAILED
     assert report.attempts[0].error is not None
     assert "repository does not exist" in report.attempts[0].error
+
+
+@pytest.mark.integration
+def test_fix_runner_blocks_uncollectable_base_before_provider_call(
+    make_repo, tmp_path: Path
+) -> None:
+    repository, commit = make_repo(
+        {
+            "app.py": "VALUE = 1\n",
+            "tests/test_app.py": "import missing_build_generated_module\n",
+        }
+    )
+    task = FixTask(
+        case_id="uncollectable-base",
+        repository=repository,
+        base_commit=commit,
+        issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
+        writable_paths=["*.py", "tests/**"],
+    )
+    proposal = ImplementerProposal(
+        plan=["Change the value"],
+        summary="Set VALUE to two.",
+        patch=(
+            "diff --git a/app.py b/app.py\n--- a/app.py\n+++ b/app.py\n"
+            "@@ -1 +1 @@\n-VALUE = 1\n+VALUE = 2\n"
+        ),
+        tests_changed=False,
+    )
+
+    report = FixRunner(
+        tmp_path / "readiness-artifacts", ScriptedProvider([proposal])
+    ).run(task)
+
+    assert report.outcome is FixOutcome.PREFLIGHT_FAILED
+    assert report.attempts[0].proposal is None
+    assert "base pytest collection is not ready" in report.attempts[0].error
+    readiness_manifests = list(
+        Path(report.artifact_directory).glob("readiness/*/manifest.json")
+    )
+    assert len(readiness_manifests) == 1
+    assert verify_manifest(readiness_manifests[0]).case_id.endswith("-readiness")

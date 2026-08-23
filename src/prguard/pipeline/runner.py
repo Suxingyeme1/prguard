@@ -65,6 +65,7 @@ def _as_review_repair_task(
         max_changed_files=task.max_changed_files,
         review_timeout_seconds=review_timeout_seconds,
         container=task.container,
+        runtime_files=task.runtime_files,
     )
 
 

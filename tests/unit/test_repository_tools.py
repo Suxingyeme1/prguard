@@ -4,7 +4,7 @@ import pytest
 
 from prguard.implementer.errors import PatchPolicyError, RepositoryAccessError
 from prguard.implementer.tools import RepositoryTools, validate_proposed_patch
-from prguard.schemas import FixTask
+from prguard.schemas import CommandSpec, FixTask
 
 
 def fix_task(repository: Path, **overrides: object) -> FixTask:
@@ -13,6 +13,8 @@ def fix_task(repository: Path, **overrides: object) -> FixTask:
         "repository": repository,
         "base_commit": "a" * 40,
         "issue": "Fix it.",
+        "commands": [CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        "allowed_commands": [["pytest", "-q"]],
         "writable_paths": ["src/**", "tests/**"],
         "protected_paths": ["tests/hidden/**"],
     }

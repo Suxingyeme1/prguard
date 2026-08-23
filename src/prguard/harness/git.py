@@ -144,12 +144,36 @@ def changed_files(worktree: Path) -> list[str]:
     return sorted(paths)
 
 
-def final_diff(worktree: Path, base_commit: str) -> str:
+def final_diff(
+    worktree: Path,
+    base_commit: str,
+    *,
+    deadline: float | None = None,
+    excluded_paths: list[str] | None = None,
+) -> str:
     # Intent-to-add makes untracked files visible to git diff without staging their contents.
-    intent = run_git(worktree, "add", "--intent-to-add", "--", ".")
+    intent = run_git(
+        worktree,
+        "add",
+        "--intent-to-add",
+        "--",
+        ".",
+        timeout=GitRepository._timeout(deadline),
+    )
     if intent.returncode != 0:
         raise PreflightError(f"unable to prepare final diff: {intent.stderr.strip()}")
-    result = run_git(worktree, "diff", "--binary", "--no-ext-diff", base_commit, "--")
+    pathspecs = ["."]
+    pathspecs.extend(f":(exclude,literal){path}" for path in excluded_paths or [])
+    result = run_git(
+        worktree,
+        "diff",
+        "--binary",
+        "--no-ext-diff",
+        base_commit,
+        "--",
+        *pathspecs,
+        timeout=GitRepository._timeout(deadline),
+    )
     if result.returncode != 0:
         raise PreflightError(f"unable to capture final diff: {result.stderr.strip()}")
     return result.stdout
