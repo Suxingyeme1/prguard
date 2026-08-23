@@ -12,16 +12,17 @@ dependencies would execute a much broader capability and make runs less reproduc
 
 ## Decision
 
-Before any Implementer call, run the declared pytest targets in `--collect-only` mode through the
-normal deterministic Harness. Failing assertions do not block a Fix task; import, plugin, syntax,
-and collection failures do.
+Before any Implementer call, run the declared pytest targets in `--collect-only` mode and declared
+non-pytest gates against the Base Commit through the normal deterministic Harness. Failing pytest
+assertions do not block a Fix task; import, plugin, syntax, collection, and baseline quality-gate
+failures do.
 
 During GitHub onboarding, use explicit Issue symbol anchors and the bounded Python index to select
 the strongest related public test file when one exists. Keep `.prguard.toml` as the reviewed source
 of truth when a repository needs a wider or different gate.
 
 Support one narrow build adapter: when `pyproject.toml` explicitly declares a missing Hatch VCS
-`version-file`, record a fixed runtime-file specification in the Task. The Harness creates it only
+`version-file`, record a `0.0.0` runtime-file specification in the Task. The Harness creates it only
 inside detached execution worktrees, protects the path from candidate edits, verifies its hash
 after commands, and excludes it from changed files and the Base-relative final diff.
 

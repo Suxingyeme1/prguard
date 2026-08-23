@@ -127,6 +127,17 @@ remains available for human or CI approval. A key-free Humanize #366 composition
 both Manifests and the clean source checkout; it is orchestration evidence, not a second live-model
 success claim.
 
+The sixth increment uses PrettyTable #474 to harden repository navigation and project adaptation.
+Expected provider failures now retain partial tool/Token evidence; 250 KB Python modules remain
+inside the bounded AST/text index; Issue-aware test ranking preserves qualified symbols; the model
+receives a remaining read budget plus a terminal-only submission slot; and declared non-pytest
+gates must prove Base-Commit readiness. Ruff is explicit `check --no-fix`, while any verification
+command that changes the Candidate diff is policy-blocked. A fresh live run submitted structured
+source/test edits in one attempt, passed 22 targeted tests, then passed all 339 tests in a separate
+wider gate. The public Issue disclosed the root cause, so the
+[v0.8.1 evidence](../evidence/navigation-hardening/README.md) supports navigation/orchestration
+hardening rather than blind semantic-resolution accuracy.
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

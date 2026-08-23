@@ -14,16 +14,17 @@ from prguard.fix.artifacts import finalize_fix_artifacts
 from prguard.harness import VerificationHarness
 from prguard.harness.errors import HarnessError
 from prguard.harness.git import GitRepository
+from prguard.harness.readiness import readiness_commands, readiness_failure_boundary
 from prguard.implementer.edits import materialize_proposal_patch
-from prguard.implementer.errors import ImplementerError, PatchPolicyError
+from prguard.implementer.errors import ImplementerError, PatchPolicyError, ProviderError
 from prguard.implementer.providers import ImplementerProvider, ProviderRequest
 from prguard.implementer.tools import RepositoryTools
 from prguard.schemas import (
-    CommandSpec,
     FixAttempt,
     FixOutcome,
     FixReport,
     FixTask,
+    ProviderFailureEvidence,
     RunOutcome,
     Task,
     TaskMode,
@@ -31,22 +32,6 @@ from prguard.schemas import (
 )
 
 FixProgressCallback = Callable[[str, dict[str, object]], None]
-
-
-def _pytest_collection_commands(task: FixTask) -> list[CommandSpec]:
-    commands: list[CommandSpec] = []
-    for command in task.commands:
-        argv = list(command.argv)
-        if argv[0] == "pytest":
-            insertion = 1
-        elif len(argv) >= 3 and argv[1:3] == ["-m", "pytest"]:
-            insertion = 3
-        else:
-            continue
-        if "--collect-only" not in argv and "--co" not in argv:
-            argv.insert(insertion, "--collect-only")
-        commands.append(CommandSpec(argv=argv, kind="pytest_collection"))
-    return commands
 
 
 def _verification_feedback(attempt: FixAttempt, previous_patch: str) -> str:
@@ -112,20 +97,20 @@ class FixRunner:
             deadline = started + task.task_timeout_seconds
             self._emit("preflight.started", base_commit=task.base_commit)
             resolved_commit = repository.preflight(task.base_commit, deadline=deadline)
-            collection_commands = _pytest_collection_commands(task)
-            if collection_commands:
+            base_commands = readiness_commands(task.commands)
+            if base_commands:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise ImplementerError("task deadline expired before test collection")
-                self._emit("readiness.started", command_count=len(collection_commands))
+                self._emit("readiness.started", command_count=len(base_commands))
                 readiness_task = Task(
                     case_id=f"{task.case_id}-readiness",
                     mode=TaskMode.ISSUE_TO_PR,
                     repository=task.repository,
                     base_commit=resolved_commit,
                     issue=task.issue,
-                    commands=collection_commands,
-                    allowed_commands=[command.argv for command in collection_commands],
+                    commands=base_commands,
+                    allowed_commands=[command.argv for command in base_commands],
                     protected_paths=task.protected_paths,
                     command_timeout_seconds=task.command_timeout_seconds,
                     task_timeout_seconds=remaining,
@@ -138,8 +123,9 @@ class FixRunner:
                 )
                 self._emit("readiness.completed", outcome=readiness.outcome.value)
                 if readiness.outcome is not RunOutcome.PASSED:
+                    boundary = readiness_failure_boundary(readiness)
                     raise ImplementerError(
-                        "base pytest collection is not ready; inspect readiness artifacts "
+                        f"{boundary} is not ready; inspect readiness artifacts "
                         f"({readiness.outcome.value})"
                     )
             repository.add_worktree(agent_worktree, resolved_commit, deadline=deadline)
@@ -256,6 +242,16 @@ class FixRunner:
                         )
                 except ImplementerError as exc:
                     attempt.error = str(exc)
+                    if (
+                        isinstance(exc, ProviderError)
+                        and isinstance(exc.evidence, ProviderFailureEvidence)
+                    ):
+                        attempt.provider_failure = exc.evidence
+                        failure_usage = exc.evidence.token_usage
+                        token_usage.input_tokens += failure_usage.input_tokens
+                        token_usage.output_tokens += failure_usage.output_tokens
+                        token_usage.cached_tokens += failure_usage.cached_tokens
+                        token_usage.estimated_cost_usd += failure_usage.estimated_cost_usd
                     self._emit(
                         "attempt.failed",
                         attempt=attempt_index,

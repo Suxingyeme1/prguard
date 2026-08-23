@@ -10,7 +10,7 @@ Use Python 3.12, Git, and uv:
 
 ```bash
 uv sync --extra dev --extra agent --no-editable --reinstall-package prguard
-uv run ruff check src tests scripts
+uv run ruff check --no-fix src tests scripts
 uv run pytest -q
 ```
 

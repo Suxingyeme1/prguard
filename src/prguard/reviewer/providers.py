@@ -16,7 +16,9 @@ from prguard.implementer.providers import (
     _READ_TOOLS,
     _call_read_tool,
     _chat_tools,
+    _failure_error,
     _safe_error,
+    _serialize_tool_result,
     _validated_base_url,
 )
 from prguard.implementer.tools import RepositoryTools
@@ -230,7 +232,15 @@ class DeepSeekReviewerProvider:
                 )
             except Exception as exc:
                 raise _safe_error(
-                    "DeepSeek Reviewer request failed", exc, secret=self._api_key
+                    "DeepSeek Reviewer request failed",
+                    exc,
+                    secret=self._api_key,
+                    provider=self.name,
+                    model=self.model,
+                    calls=calls,
+                    usage=usage,
+                    response_id=last_response_id,
+                    provider_metadata=metadata,
                 ) from exc
             last_response_id = getattr(response, "id", None)
             fingerprint = getattr(response, "system_fingerprint", None)
@@ -244,19 +254,43 @@ class DeepSeekReviewerProvider:
                 usage.cached_tokens += int(getattr(details, "cached_tokens", 0) or 0)
             choices = getattr(response, "choices", None) or []
             if not choices:
-                raise ProviderError("DeepSeek Reviewer returned no choices")
+                raise _failure_error(
+                    "DeepSeek Reviewer returned no choices",
+                    provider=self.name,
+                    model=self.model,
+                    calls=calls,
+                    usage=usage,
+                    response_id=last_response_id,
+                    provider_metadata=metadata,
+                )
             choice = choices[0]
             message = choice.message
             metadata["finish_reason"] = str(getattr(choice, "finish_reason", "unknown"))
             messages.append(message)
             tool_calls = getattr(message, "tool_calls", None) or []
             if not tool_calls:
-                raise ProviderError("Reviewer ended without submitting a review")
+                raise _failure_error(
+                    "Reviewer ended without submitting a review",
+                    provider=self.name,
+                    model=self.model,
+                    calls=calls,
+                    usage=usage,
+                    response_id=last_response_id,
+                    provider_metadata=metadata,
+                )
             for item in tool_calls:
-                if len(calls) >= request.task.max_tool_calls:
-                    raise ProviderError("Reviewer tool-call budget exhausted")
                 name = item.function.name
                 try:
+                    if name != "submit_review" and len(calls) >= request.task.max_tool_calls:
+                        raise _failure_error(
+                            "Reviewer read-tool budget exhausted; expected terminal submission",
+                            provider=self.name,
+                            model=self.model,
+                            calls=calls,
+                            usage=usage,
+                            response_id=last_response_id,
+                            provider_metadata=metadata,
+                        )
                     arguments = json.loads(item.function.arguments)
                     if name == "submit_review":
                         submission = ReviewerSubmission.model_validate(arguments)
@@ -279,14 +313,33 @@ class DeepSeekReviewerProvider:
                             tool_calls=calls,
                         )
                     result = _call_read_tool(name, arguments, tools)
-                    serialized = json.dumps(result, ensure_ascii=False)
                     calls.append(
                         AgentToolCall(
                             sequence=len(calls),
                             name=name,
                             arguments=arguments,
                             succeeded=True,
+                            output_bytes=0,
+                        )
+                    )
+                    serialized = _serialize_tool_result(
+                        result,
+                        used=len(calls),
+                        budget=request.task.max_tool_calls,
+                    )
+                    calls[-1].output_bytes = len(serialized.encode())
+                except ProviderError as exc:
+                    if exc.evidence is not None:
+                        raise
+                    serialized = json.dumps({"error": str(exc)}, ensure_ascii=False)
+                    calls.append(
+                        AgentToolCall(
+                            sequence=len(calls),
+                            name=name,
+                            arguments={},
+                            succeeded=False,
                             output_bytes=len(serialized.encode()),
+                            error=str(exc),
                         )
                     )
                 except Exception as exc:
@@ -304,4 +357,12 @@ class DeepSeekReviewerProvider:
                 messages.append(
                     {"role": "tool", "tool_call_id": item.id, "content": serialized}
                 )
-        raise ProviderError("Reviewer response-turn budget exhausted")
+        raise _failure_error(
+            "Reviewer response-turn budget exhausted",
+            provider=self.name,
+            model=self.model,
+            calls=calls,
+            usage=usage,
+            response_id=last_response_id,
+            provider_metadata=metadata,
+        )

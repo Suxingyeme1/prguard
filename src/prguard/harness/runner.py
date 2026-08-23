@@ -217,6 +217,12 @@ class VerificationHarness:
                             "deterministic runtime scaffolds created",
                             paths=sorted(runtime_fingerprints),
                         )
+                    candidate_diff_before_commands = final_diff(
+                        worktree,
+                        resolved_commit,
+                        deadline=deadline,
+                        excluded_paths=sorted(runtime_paths),
+                    )
                     audit_before = snapshot_tree(
                         run_directory, excluded_names={"worktree", "runtime"}
                     )
@@ -262,6 +268,27 @@ class VerificationHarness:
                             if result.infrastructure_error:
                                 outcome = RunOutcome.PREFLIGHT_FAILED
                                 break
+                    candidate_diff_after_commands = final_diff(
+                        worktree,
+                        resolved_commit,
+                        deadline=deadline,
+                        excluded_paths=sorted(runtime_paths),
+                    )
+                    if candidate_diff_after_commands != candidate_diff_before_commands:
+                        violations.append(
+                            PolicyViolation(
+                                code="verification_modified_worktree",
+                                message=(
+                                    "verification commands modified the candidate worktree; "
+                                    "verification must be non-mutating"
+                                ),
+                                paths=[
+                                    path
+                                    for path in changed_files(worktree)
+                                    if path not in runtime_paths
+                                ],
+                            )
+                        )
                     changed = [
                         path for path in changed_files(worktree) if path not in runtime_paths
                     ]

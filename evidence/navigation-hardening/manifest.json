@@ -1,0 +1,21 @@
+{
+  "schema_version": "prguard-public-artifacts-1",
+  "frozen_at": "2026-08-23",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "7933ad453048c827584d94edaa110ac546097f9e278666a3187b828d65027e00",
+      "size_bytes": 2290
+    },
+    {
+      "path": "prettytable-474-v081.patch",
+      "sha256": "b676c41b5832a9750774904653551b03b8f607570ed7f307d269df3fdee8dc56",
+      "size_bytes": 1266
+    },
+    {
+      "path": "run-summary.json",
+      "sha256": "2b07cc7c0ac8cc0d529057b99316babc3309c84adcb6d2cc76b7aecb252c448d",
+      "size_bytes": 2717
+    }
+  ]
+}

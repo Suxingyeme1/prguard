@@ -19,7 +19,7 @@ from prguard.schemas.common import (
     Verdict,
 )
 from prguard.schemas.findings import ReviewFinding
-from prguard.schemas.fix import AgentToolCall, ProposalEnvelope
+from prguard.schemas.fix import AgentToolCall, ProposalEnvelope, ProviderFailureEvidence
 from prguard.schemas.results import HarnessReport
 
 
@@ -45,7 +45,7 @@ class ReviewTask(StrictModel):
     task_timeout_seconds: float = Field(default=900, gt=0, le=7200)
     max_output_bytes: int = Field(default=200_000, ge=1024, le=10_000_000)
     max_tool_calls: int = Field(default=24, ge=1, le=100)
-    max_file_bytes: int = Field(default=100_000, ge=1024, le=1_000_000)
+    max_file_bytes: int = Field(default=250_000, ge=1024, le=1_000_000)
     max_context_bytes: int = Field(default=500_000, ge=4096, le=5_000_000)
     container: ContainerExecutionSpec | None = None
     runtime_files: list[RuntimeFileSpec] = Field(default_factory=list, max_length=16)
@@ -114,8 +114,10 @@ class ReviewReport(StrictModel):
     resolved_base_commit: str | None = None
     outcome: ReviewOutcome
     verdict: Verdict
+    readiness: HarnessReport | None = None
     verification: HarnessReport | None = None
     review: ReviewEnvelope | None = None
+    provider_failure: ProviderFailureEvidence | None = None
     error: str | None = None
     token_usage: TokenUsage = Field(default_factory=TokenUsage)
     duration_seconds: float = Field(ge=0)
@@ -141,6 +143,7 @@ class ReviewRepairReport(StrictModel):
     verdict: Verdict
     initial_review: ReviewReport | None = None
     repair_proposal: ProposalEnvelope | None = None
+    repair_provider_failure: ProviderFailureEvidence | None = None
     final_verification: HarnessReport | None = None
     final_patch: Path | None = None
     error: str | None = None

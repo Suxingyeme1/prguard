@@ -28,9 +28,12 @@ similarity to a gold patch is never sufficient.
 
 Before freezing commands, evaluators must run each proposed lint/type/test command on the unpatched
 base and distinguish product failures from missing generated files or optional test dependencies.
-Any repository check that passes on the base and fails only after the candidate belongs in the
-deterministic gate. Broader post-run checks may be reported separately, but they cannot retroactively
-turn an incomplete configured gate into evidence that the original run was review-ready.
+PRGuard performs pytest collection plus declared non-pytest Base-gate readiness before a model
+call; evaluators remain responsible for interpreting pre-existing pytest assertion failures. Any
+repository check that passes on the base and fails only after the candidate belongs in the
+deterministic gate. Broader post-run checks may be reported separately, but they cannot
+retroactively turn an incomplete configured gate into evidence that the original run was
+review-ready.
 
 If a candidate adds or modifies a conventionally named Python test module, that exact file must be
 executed even when the frozen base command targets a narrower existing file. Such a command is

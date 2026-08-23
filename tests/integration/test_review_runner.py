@@ -6,16 +6,20 @@ import pytest
 
 from prguard.cli import main
 from prguard.harness import verify_manifest
+from prguard.implementer.errors import ProviderError
 from prguard.review import ReviewRunner
 from prguard.reviewer import ScriptedReviewerProvider
 from prguard.schemas import (
+    AgentToolCall,
     CommandSpec,
     FindingCategory,
     FixTask,
+    ProviderFailureEvidence,
     ReviewerSubmission,
     ReviewFinding,
     ReviewTask,
     Severity,
+    TokenUsage,
     Verdict,
 )
 from tests.conftest import run_git
@@ -30,6 +34,43 @@ class SlowReviewerProvider:
         return ScriptedReviewerProvider(
             ReviewerSubmission(summary="No defects found.", findings=[])
         ).review(request, tools)
+
+
+class EvidenceFailureReviewer:
+    name = "evidence-failure-reviewer"
+    model = "deterministic-fixture"
+
+    def review(self, request, tools):
+        raise ProviderError(
+            "Reviewer tool-call budget exhausted",
+            evidence=ProviderFailureEvidence(
+                provider=self.name,
+                model=self.model,
+                response_id="partial-review",
+                token_usage=TokenUsage(input_tokens=77, output_tokens=9, cached_tokens=20),
+                tool_calls=[
+                    AgentToolCall(
+                        sequence=0,
+                        name="read_file",
+                        arguments={"path": "calc.py", "start_line": 1, "end_line": 20},
+                        succeeded=True,
+                        output_bytes=64,
+                    )
+                ],
+            ),
+        )
+
+
+class NeverCalledReviewer:
+    name = "never-called-reviewer"
+    model = "deterministic-fixture"
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def review(self, request, tools):
+        self.calls += 1
+        raise AssertionError("Reviewer must not run when the Base Commit gate is unhealthy")
 
 
 def write_patch(path: Path, value: str) -> Path:
@@ -125,6 +166,70 @@ def test_clean_patch_and_empty_review_accept(make_repo, tmp_path: Path) -> None:
     assert report.verdict is Verdict.ACCEPT
     assert report.verification.commands[0].passed is True
     assert report.review.submission.findings == []
+
+
+@pytest.mark.integration
+def test_review_provider_failure_artifact_preserves_partial_evidence(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo({"calc.py": "VALUE = 1\n"})
+    patch = write_patch(
+        tmp_path / "candidate.patch",
+        "diff --git a/calc.py b/calc.py\n--- a/calc.py\n+++ b/calc.py\n"
+        "@@ -1 +1 @@\n-VALUE = 1\n+VALUE = 2\n",
+    )
+    task = ReviewTask(
+        case_id="review-partial-evidence",
+        repository=repo,
+        base_commit=commit,
+        issue="Set VALUE to two.",
+        candidate_patch=patch,
+        commands=[],
+        allowed_commands=[],
+    )
+    report = ReviewRunner(
+        tmp_path / "review-artifacts", EvidenceFailureReviewer()
+    ).run(task)
+
+    assert report.outcome.value == "reviewer_failed"
+    assert report.token_usage.input_tokens == 77
+    assert report.provider_failure is not None
+    artifact_root = Path(report.artifact_directory)
+    artifact = artifact_root / "provider-failure.json"
+    assert json.loads(artifact.read_text())["response_id"] == "partial-review"
+    manifest = verify_manifest(artifact_root / "review-manifest.json")
+    assert artifact.name in {entry.path for entry in manifest.artifacts}
+
+
+@pytest.mark.integration
+def test_review_blocks_before_provider_when_base_non_pytest_gate_fails(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo({"bad.py": "import os\n"})
+    patch = write_patch(
+        tmp_path / "candidate.patch",
+        "diff --git a/bad.py b/bad.py\n--- a/bad.py\n+++ b/bad.py\n"
+        "@@ -1 +1,2 @@\n import os\n+VALUE = 1\n",
+    )
+    command = ["ruff", "check", "--no-fix", "."]
+    task = ReviewTask(
+        case_id="review-unhealthy-base-lint",
+        repository=repo,
+        base_commit=commit,
+        issue="Add VALUE.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command, kind="ruff")],
+        allowed_commands=[command],
+    )
+    provider = NeverCalledReviewer()
+
+    report = ReviewRunner(tmp_path / "review-artifacts", provider).run(task)
+
+    assert report.outcome.value == "preflight_failed"
+    assert provider.calls == 0
+    assert report.readiness is not None
+    assert report.verification is None
+    assert "non-pytest gate is not ready" in report.error
 
 
 @pytest.mark.integration

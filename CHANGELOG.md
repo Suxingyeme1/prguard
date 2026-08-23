@@ -3,6 +3,39 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.8.1 — 2026-08-23
+
+### Added
+
+- non-secret partial provider-failure evidence with response metadata, accumulated Token usage,
+  bounded tool-call records, dedicated JSON artifacts, Markdown summaries, and recursive hashes;
+- deterministic read-budget feedback on every model tool result plus one terminal-only submission
+  slot for Implementer and Reviewer providers;
+- Base-Commit readiness execution for every declared non-pytest gate before model tokens are spent;
+- policy detection for verification commands that modify the candidate worktree.
+
+### Changed
+
+- default bounded source-file analysis increased from 100 KB to 250 KB so realistic single-file
+  Python modules remain searchable and AST-indexed without weakening the 1 MB schema maximum,
+  20 MB total index cap, or shared context budget;
+- Issue-aware test selection now passes the qualified symbol to related-test ranking rather than
+  collapsing it to a source-module path;
+- generic GitHub onboarding no longer treats Ruff configuration presence as repository policy;
+  repositories opt in through reviewed `.prguard.toml`, and Ruff is limited to
+  `check --no-fix`;
+- the Hatch VCS runtime scaffold now uses the conservative PEP 440 version `0.0.0`.
+
+### Evidence
+
+- a fresh PrettyTable #474 live run at exact upstream commit
+  `3c80d392d32f48b0ab1e368793ddb751dbe41807` was accepted in one attempt with 21 read calls plus
+  one structured-edit submission;
+- the targeted HTML gate passed 22 tests and a separate wider gate passed all 339 tests with no
+  policy violations; both recursive Manifests verified;
+- the Issue itself disclosed the root cause, so this is navigation/project-adaptation evidence,
+  not a blind semantic benchmark.
+
 ## 0.8.0 — 2026-08-23
 
 ### Added

@@ -19,6 +19,7 @@ from prguard.schemas import (
     FixTask,
     ImplementerProposal,
     ProposalEnvelope,
+    ProviderFailureEvidence,
     TokenUsage,
 )
 
@@ -363,11 +364,56 @@ def _chat_tools(tools: list[dict[str, object]] | None = None) -> list[dict[str, 
     ]
 
 
-def _safe_error(prefix: str, exc: Exception, *, secret: str | None = None) -> ProviderError:
+def _failure_error(
+    message: str,
+    *,
+    provider: str,
+    model: str,
+    calls: list[AgentToolCall],
+    usage: TokenUsage,
+    response_id: str | None,
+    provider_metadata: dict[str, str] | None = None,
+) -> ProviderError:
+    return ProviderError(
+        message,
+        evidence=ProviderFailureEvidence(
+            provider=provider,
+            model=model,
+            response_id=response_id,
+            provider_metadata=provider_metadata or {},
+            token_usage=usage,
+            tool_calls=calls,
+        ),
+    )
+
+
+def _safe_error(
+    prefix: str,
+    exc: Exception,
+    *,
+    secret: str | None = None,
+    provider: str | None = None,
+    model: str | None = None,
+    calls: list[AgentToolCall] | None = None,
+    usage: TokenUsage | None = None,
+    response_id: str | None = None,
+    provider_metadata: dict[str, str] | None = None,
+) -> ProviderError:
     detail = str(exc)
     if secret:
         detail = detail.replace(secret, "[REDACTED]")
-    return ProviderError(f"{prefix}: {type(exc).__name__}: {detail}")
+    message = f"{prefix}: {type(exc).__name__}: {detail}"
+    if provider is None or model is None or calls is None or usage is None:
+        return ProviderError(message)
+    return _failure_error(
+        message,
+        provider=provider,
+        model=model,
+        calls=calls,
+        usage=usage,
+        response_id=response_id,
+        provider_metadata=provider_metadata,
+    )
 
 
 def _validated_base_url(value: str) -> str:
@@ -406,6 +452,27 @@ def _call_read_tool(
     if name == "find_related_tests":
         return tools.find_related_tests(**arguments)  # type: ignore[arg-type]
     raise ProviderError(f"unknown Implementer tool: {name}")
+
+
+def _serialize_tool_result(
+    result: dict[str, object], *, used: int, budget: int
+) -> str:
+    """Attach deterministic convergence feedback without exposing extra repository data."""
+
+    remaining = max(0, budget - used)
+    payload = dict(result)
+    payload["_prguard_budget"] = {
+        "read_tool_calls_used": used,
+        "read_tool_calls_remaining": remaining,
+        "instruction": (
+            "Submit the terminal result now; no read-tool calls remain."
+            if remaining == 0
+            else "Converge and submit the terminal result soon."
+            if remaining <= 3
+            else "Continue only with evidence-relevant navigation."
+        ),
+    }
+    return json.dumps(payload, ensure_ascii=False)
 
 
 class OpenAIResponsesProvider:
@@ -450,6 +517,10 @@ class OpenAIResponsesProvider:
         calls: list[AgentToolCall] = []
         usage = TokenUsage()
         last_response_id: str | None = None
+        provider_metadata = {
+            "api": "responses",
+            "reasoning_effort": self.reasoning_effort,
+        }
         for _turn in range(request.task.max_tool_calls + 1):
             try:
                 timeout = None
@@ -465,7 +536,16 @@ class OpenAIResponsesProvider:
                     timeout=timeout,
                 )
             except Exception as exc:
-                raise ProviderError(f"OpenAI Responses request failed: {exc}") from exc
+                raise _safe_error(
+                    "OpenAI Responses request failed",
+                    exc,
+                    provider=self.name,
+                    model=self.model,
+                    calls=calls,
+                    usage=usage,
+                    response_id=last_response_id,
+                    provider_metadata=provider_metadata,
+                ) from exc
             last_response_id = getattr(response, "id", None)
             api_usage = getattr(response, "usage", None)
             if api_usage is not None:
@@ -476,12 +556,31 @@ class OpenAIResponsesProvider:
             input_messages.extend(response.output)
             function_calls = [item for item in response.output if item.type == "function_call"]
             if not function_calls:
-                raise ProviderError("model ended without submitting a proposal")
+                raise _failure_error(
+                    "model ended without submitting a proposal",
+                    provider=self.name,
+                    model=self.model,
+                    calls=calls,
+                    usage=usage,
+                    response_id=last_response_id,
+                    provider_metadata=provider_metadata,
+                )
             outputs: list[dict[str, object]] = []
             for item in function_calls:
-                if len(calls) >= request.task.max_tool_calls:
-                    raise ProviderError("Implementer tool-call budget exhausted")
                 try:
+                    if (
+                        item.name not in {"submit_edits", "submit_patch"}
+                        and len(calls) >= request.task.max_tool_calls
+                    ):
+                        raise _failure_error(
+                            "Implementer read-tool budget exhausted; expected terminal submission",
+                            provider=self.name,
+                            model=self.model,
+                            calls=calls,
+                            usage=usage,
+                            response_id=last_response_id,
+                            provider_metadata=provider_metadata,
+                        )
                     arguments = json.loads(item.arguments)
                     if item.name in {"submit_edits", "submit_patch"}:
                         proposal = ImplementerProposal.model_validate(arguments)
@@ -504,18 +603,38 @@ class OpenAIResponsesProvider:
                             provider=self.name,
                             model=self.model,
                             response_id=last_response_id,
+                            provider_metadata=provider_metadata,
                             token_usage=usage,
                             tool_calls=calls,
                         )
                     result = _call_read_tool(item.name, arguments, tools)
-                    serialized = json.dumps(result, ensure_ascii=False)
                     calls.append(
                         AgentToolCall(
                             sequence=len(calls),
                             name=item.name,
                             arguments=arguments,
                             succeeded=True,
+                            output_bytes=0,
+                        )
+                    )
+                    serialized = _serialize_tool_result(
+                        result,
+                        used=len(calls),
+                        budget=request.task.max_tool_calls,
+                    )
+                    calls[-1].output_bytes = len(serialized.encode())
+                except ProviderError as exc:
+                    if exc.evidence is not None:
+                        raise
+                    serialized = json.dumps({"error": str(exc)}, ensure_ascii=False)
+                    calls.append(
+                        AgentToolCall(
+                            sequence=len(calls),
+                            name=item.name,
+                            arguments={},
+                            succeeded=False,
                             output_bytes=len(serialized.encode()),
+                            error=str(exc),
                         )
                     )
                 except Exception as exc:
@@ -538,7 +657,15 @@ class OpenAIResponsesProvider:
                     }
                 )
             input_messages.extend(outputs)
-        raise ProviderError("Implementer response-turn budget exhausted")
+        raise _failure_error(
+            "Implementer response-turn budget exhausted",
+            provider=self.name,
+            model=self.model,
+            calls=calls,
+            usage=usage,
+            response_id=last_response_id,
+            provider_metadata=provider_metadata,
+        )
 
 
 
@@ -624,7 +751,15 @@ class DeepSeekChatProvider:
                 )
             except Exception as exc:
                 raise _safe_error(
-                    "DeepSeek Chat request failed", exc, secret=self._api_key
+                    "DeepSeek Chat request failed",
+                    exc,
+                    secret=self._api_key,
+                    provider=self.name,
+                    model=self.model,
+                    calls=calls,
+                    usage=usage,
+                    response_id=last_response_id,
+                    provider_metadata=provider_metadata,
                 ) from exc
             last_response_id = getattr(response, "id", None)
             fingerprint = getattr(response, "system_fingerprint", None)
@@ -638,7 +773,15 @@ class DeepSeekChatProvider:
                 usage.cached_tokens += int(getattr(details, "cached_tokens", 0) or 0)
             choices = getattr(response, "choices", None) or []
             if not choices:
-                raise ProviderError("DeepSeek returned no completion choices")
+                raise _failure_error(
+                    "DeepSeek returned no completion choices",
+                    provider=self.name,
+                    model=self.model,
+                    calls=calls,
+                    usage=usage,
+                    response_id=last_response_id,
+                    provider_metadata=provider_metadata,
+                )
             choice = choices[0]
             message = choice.message
             finish_reason = getattr(choice, "finish_reason", None)
@@ -647,12 +790,31 @@ class DeepSeekChatProvider:
             messages.append(message)
             function_calls = getattr(message, "tool_calls", None) or []
             if not function_calls:
-                raise ProviderError("model ended without submitting a proposal")
+                raise _failure_error(
+                    "model ended without submitting a proposal",
+                    provider=self.name,
+                    model=self.model,
+                    calls=calls,
+                    usage=usage,
+                    response_id=last_response_id,
+                    provider_metadata=provider_metadata,
+                )
             for item in function_calls:
-                if len(calls) >= request.task.max_tool_calls:
-                    raise ProviderError("Implementer tool-call budget exhausted")
                 name = item.function.name
                 try:
+                    if (
+                        name not in {"submit_edits", "submit_patch"}
+                        and len(calls) >= request.task.max_tool_calls
+                    ):
+                        raise _failure_error(
+                            "Implementer read-tool budget exhausted; expected terminal submission",
+                            provider=self.name,
+                            model=self.model,
+                            calls=calls,
+                            usage=usage,
+                            response_id=last_response_id,
+                            provider_metadata=provider_metadata,
+                        )
                     arguments = json.loads(item.function.arguments)
                     if name in {"submit_edits", "submit_patch"}:
                         proposal = ImplementerProposal.model_validate(arguments)
@@ -680,14 +842,33 @@ class DeepSeekChatProvider:
                             tool_calls=calls,
                         )
                     result = _call_read_tool(name, arguments, tools)
-                    serialized = json.dumps(result, ensure_ascii=False)
                     calls.append(
                         AgentToolCall(
                             sequence=len(calls),
                             name=name,
                             arguments=arguments,
                             succeeded=True,
+                            output_bytes=0,
+                        )
+                    )
+                    serialized = _serialize_tool_result(
+                        result,
+                        used=len(calls),
+                        budget=request.task.max_tool_calls,
+                    )
+                    calls[-1].output_bytes = len(serialized.encode())
+                except ProviderError as exc:
+                    if exc.evidence is not None:
+                        raise
+                    serialized = json.dumps({"error": str(exc)}, ensure_ascii=False)
+                    calls.append(
+                        AgentToolCall(
+                            sequence=len(calls),
+                            name=name,
+                            arguments={},
+                            succeeded=False,
                             output_bytes=len(serialized.encode()),
+                            error=str(exc),
                         )
                     )
                 except Exception as exc:
@@ -705,4 +886,12 @@ class DeepSeekChatProvider:
                 messages.append(
                     {"role": "tool", "tool_call_id": item.id, "content": serialized}
                 )
-        raise ProviderError("Implementer response-turn budget exhausted")
+        raise _failure_error(
+            "Implementer response-turn budget exhausted",
+            provider=self.name,
+            model=self.model,
+            calls=calls,
+            usage=usage,
+            response_id=last_response_id,
+            provider_metadata=provider_metadata,
+        )

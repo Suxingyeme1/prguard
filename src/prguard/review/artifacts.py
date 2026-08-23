@@ -17,6 +17,7 @@ def render_review_markdown(report: ReviewReport) -> str:
         f"- Outcome: **{report.outcome.value}**",
         f"- Verdict: **{report.verdict.value}**",
         f"- Base commit: `{report.resolved_base_commit or 'unresolved'}`",
+        f"- Base readiness: `{report.readiness.outcome.value if report.readiness else 'not_run'}`",
         f"- Duration: {report.duration_seconds:.3f}s",
         "",
         "## Findings",
@@ -30,6 +31,18 @@ def render_review_markdown(report: ReviewReport) -> str:
         lines.append(f"  - Verify: {finding.verification}")
     if not findings:
         lines.append("- None")
+    if report.provider_failure:
+        usage = report.provider_failure.token_usage
+        lines.extend(
+            [
+                "",
+                "## Partial provider evidence",
+                "",
+                f"- Provider: `{report.provider_failure.provider}`",
+                f"- Tool calls: {len(report.provider_failure.tool_calls)}",
+                f"- Tokens: {usage.input_tokens} input / {usage.output_tokens} output",
+            ]
+        )
     if report.error:
         lines.extend(["", "## Error", "", report.error])
     lines.append("")
@@ -50,6 +63,10 @@ def finalize_review_artifacts(
     if report.review:
         (run_directory / "review-envelope.json").write_bytes(
             canonical_json(report.review.model_dump(mode="json"))
+        )
+    if report.provider_failure:
+        (run_directory / "provider-failure.json").write_bytes(
+            canonical_json(report.provider_failure.model_dump(mode="json"))
         )
     entries: list[ArtifactEntry] = []
     for path in sorted(run_directory.rglob("*")):

@@ -66,7 +66,6 @@ def test_prepare_github_issue_materializes_valid_minimal_fix_task(
     assert task.issue.startswith("GitHub Issue #9: Correct addition")
     assert [command.argv for command in task.commands] == [
         ["pytest", "-q"],
-        ["ruff", "check", "."],
     ]
     assert task.container is None
     manifest_path = output / "artifacts" / "preparation-manifest.json"

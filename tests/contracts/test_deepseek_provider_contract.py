@@ -11,16 +11,19 @@ from prguard.schemas import CommandSpec, FixTask
 
 
 class FakeChatCompletions:
-    def __init__(self, patch: str, *, structured: bool = False) -> None:
+    def __init__(
+        self, patch: str, *, structured: bool = False, never_submit: bool = False
+    ) -> None:
         self.patch = patch
         self.structured = structured
+        self.never_submit = never_submit
         self.requests: list[dict[str, object]] = []
 
     def create(self, **kwargs: object) -> SimpleNamespace:
         captured = dict(kwargs)
         captured["messages"] = list(kwargs["messages"])  # type: ignore[arg-type]
         self.requests.append(captured)
-        if len(self.requests) == 1:
+        if len(self.requests) == 1 or self.never_submit:
             calls = [
                 SimpleNamespace(
                     id="call-list",
@@ -120,6 +123,8 @@ def test_deepseek_adapter_runs_bounded_chat_tool_loop(tmp_path: Path) -> None:
     second_messages = completions.requests[1]["messages"]
     assert second_messages[2].reasoning_content == "bounded reasoning"  # type: ignore[index,union-attr]
     assert second_messages[3]["role"] == "tool"  # type: ignore[index]
+    budget = json.loads(second_messages[3]["content"])["_prguard_budget"]  # type: ignore[index]
+    assert budget["read_tool_calls_remaining"] == 23
 
 
 def test_deepseek_adapter_requires_environment_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -149,6 +154,35 @@ def test_deepseek_adapter_accepts_structured_edit_submission(tmp_path: Path) -> 
     assert envelope.proposal.patch is None
     assert envelope.proposal.edits[0].operation == "replace_text"
     assert envelope.tool_calls[-1].name == "submit_edits"
+
+
+def test_deepseek_budget_failure_preserves_partial_evidence(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    completions = FakeChatCompletions("unused", never_submit=True)
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    task = FixTask(
+        case_id="deepseek-partial-evidence",
+        repository=tmp_path,
+        base_commit="a" * 40,
+        issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
+        writable_paths=["*.py"],
+        max_tool_calls=1,
+    )
+
+    with pytest.raises(ProviderError, match="read-tool budget") as captured:
+        DeepSeekChatProvider(client=client, model="test-model").propose(
+            ProviderRequest(task=task, attempt=0), RepositoryTools(tmp_path, task)
+        )
+
+    evidence = captured.value.evidence
+    assert evidence.provider == "deepseek"
+    assert evidence.response_id == "chat-2"
+    assert [call.name for call in evidence.tool_calls] == ["list_files"]
+    assert evidence.token_usage.input_tokens == 22
+    assert evidence.token_usage.output_tokens == 14
+    assert evidence.provider_metadata["finish_reason"] == "tool_calls"
 
 
 def test_deepseek_adapter_rejects_unsupported_reasoning_effort() -> None:

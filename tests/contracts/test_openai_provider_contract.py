@@ -1,20 +1,26 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
+from prguard.implementer.errors import ProviderError
 from prguard.implementer.providers import OpenAIResponsesProvider, ProviderRequest
 from prguard.implementer.tools import RepositoryTools
 from prguard.schemas import CommandSpec, FixTask
 
 
 class FakeResponses:
-    def __init__(self, patch: str, *, structured: bool = False) -> None:
+    def __init__(
+        self, patch: str, *, structured: bool = False, never_submit: bool = False
+    ) -> None:
         self.patch = patch
         self.structured = structured
+        self.never_submit = never_submit
         self.requests: list[dict[str, object]] = []
 
     def create(self, **kwargs: object) -> SimpleNamespace:
         self.requests.append(kwargs)
-        if len(self.requests) == 1:
+        if len(self.requests) == 1 or self.never_submit:
             output = [
                 SimpleNamespace(
                     type="function_call",
@@ -91,6 +97,13 @@ def test_openai_adapter_runs_bounded_read_tool_loop(tmp_path: Path) -> None:
     assert envelope.token_usage.input_tokens == 20
     assert responses.requests[0]["store"] is False
     assert responses.requests[0]["tools"]
+    tool_output = next(
+        item
+        for item in responses.requests[1]["input"]
+        if isinstance(item, dict) and item.get("type") == "function_call_output"
+    )
+    budget = __import__("json").loads(tool_output["output"])["_prguard_budget"]
+    assert budget["read_tool_calls_remaining"] == 23
 
 
 def test_openai_adapter_accepts_structured_edit_submission(tmp_path: Path) -> None:
@@ -118,3 +131,31 @@ def test_openai_adapter_accepts_structured_edit_submission(tmp_path: Path) -> No
     assert "find_symbols" in names
     assert "find_callees" in names
     assert "submit_edits" in names
+
+
+def test_openai_budget_failure_preserves_partial_evidence(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    responses = FakeResponses("unused", never_submit=True)
+    client = SimpleNamespace(responses=responses)
+    task = FixTask(
+        case_id="openai-partial-evidence",
+        repository=tmp_path,
+        base_commit="a" * 40,
+        issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
+        writable_paths=["*.py"],
+        max_tool_calls=1,
+    )
+
+    with pytest.raises(ProviderError, match="read-tool budget") as captured:
+        OpenAIResponsesProvider(client=client, model="test-model").propose(
+            ProviderRequest(task=task, attempt=0), RepositoryTools(tmp_path, task)
+        )
+
+    evidence = captured.value.evidence
+    assert evidence.provider == "openai"
+    assert evidence.response_id == "response-2"
+    assert [call.name for call in evidence.tool_calls] == ["list_files"]
+    assert evidence.token_usage.input_tokens == 20
+    assert evidence.token_usage.output_tokens == 10

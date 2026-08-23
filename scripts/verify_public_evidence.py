@@ -10,27 +10,59 @@ from pathlib import Path
 def verify_evidence(evidence_root: Path) -> int:
     manifest_path = evidence_root / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    cases = manifest.get("cases")
-    if manifest.get("schema_version") != "prguard-public-evidence-1" or not isinstance(cases, list):
+    version = manifest.get("schema_version")
+    if version == "prguard-public-evidence-1":
+        cases = manifest.get("cases")
+        if not isinstance(cases, list):
+            raise ValueError("unsupported or malformed public evidence manifest")
+        artifacts = [
+            {
+                "label": case["case_id"],
+                "path": case["patch"],
+                "sha256": case["patch_sha256"],
+            }
+            for case in cases
+        ]
+    elif version == "prguard-public-artifacts-1":
+        values = manifest.get("artifacts")
+        if not isinstance(values, list):
+            raise ValueError("unsupported or malformed public evidence manifest")
+        artifacts = [
+            {
+                "label": artifact["path"],
+                "path": artifact["path"],
+                "sha256": artifact["sha256"],
+                "size_bytes": artifact["size_bytes"],
+            }
+            for artifact in values
+        ]
+    else:
         raise ValueError("unsupported or malformed public evidence manifest")
 
     verified = 0
-    for case in cases:
-        relative = Path(case["patch"])
+    for artifact in artifacts:
+        relative = Path(artifact["path"])
         if relative.is_absolute() or ".." in relative.parts or len(relative.parts) != 1:
             raise ValueError(f"unsafe evidence path: {relative}")
         payload = (evidence_root / relative).read_bytes()
         actual = hashlib.sha256(payload).hexdigest()
-        if actual != case["patch_sha256"]:
+        if actual != artifact["sha256"]:
             raise ValueError(f"hash mismatch: {relative}")
+        expected_size = artifact.get("size_bytes")
+        if expected_size is not None and len(payload) != expected_size:
+            raise ValueError(f"size mismatch: {relative}")
         verified += 1
-        print(f"verified {case['case_id']}: {actual}")
+        print(f"verified {artifact['label']}: {actual}")
     return verified
 
 
 def main() -> int:
     evidence = Path(__file__).resolve().parents[1] / "evidence"
-    roots = [evidence / "real-repositories", evidence / "reviewer-value"]
+    roots = [
+        evidence / "real-repositories",
+        evidence / "reviewer-value",
+        evidence / "navigation-hardening",
+    ]
     count = sum(verify_evidence(root) for root in roots)
     print(f"public evidence verified: {count} cases")
     return 0

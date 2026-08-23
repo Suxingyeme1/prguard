@@ -3,6 +3,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
+from prguard.implementer.errors import ProviderError
 from prguard.implementer.tools import RepositoryTools
 from prguard.reviewer.providers import DeepSeekReviewerProvider, ReviewProviderRequest
 from prguard.schemas import (
@@ -14,14 +17,15 @@ from prguard.schemas import (
 
 
 class FakeReviewerCompletions:
-    def __init__(self) -> None:
+    def __init__(self, *, never_submit: bool = False) -> None:
+        self.never_submit = never_submit
         self.requests: list[dict[str, object]] = []
 
     def create(self, **kwargs: object) -> SimpleNamespace:
         captured = dict(kwargs)
         captured["messages"] = list(kwargs["messages"])  # type: ignore[arg-type]
         self.requests.append(captured)
-        if len(self.requests) == 1:
+        if len(self.requests) == 1 or self.never_submit:
             name = "read_file"
             arguments = '{"path":"service.py","start_line":1,"end_line":100}'
         else:
@@ -121,3 +125,48 @@ def test_deepseek_reviewer_has_independent_bounded_context(tmp_path: Path) -> No
     assert "submit_review" in tool_names
     assert "submit_edits" not in tool_names
     assert "submit_patch" not in tool_names
+    budget = json.loads(completions.requests[1]["messages"][-1]["content"])[
+        "_prguard_budget"
+    ]
+    assert budget["read_tool_calls_remaining"] == 23
+
+
+def test_reviewer_budget_failure_preserves_partial_evidence(tmp_path: Path) -> None:
+    (tmp_path / "service.py").write_text("VALUE = 1\n", encoding="utf-8")
+    task = ReviewTask(
+        case_id="reviewer-partial-evidence",
+        repository=tmp_path,
+        base_commit="a" * 40,
+        issue="Review the candidate.",
+        candidate_patch=tmp_path / "candidate.patch",
+        max_tool_calls=1,
+    )
+    now = datetime.now(UTC)
+    verification = HarnessReport(
+        run_id="verification",
+        case_id=task.case_id,
+        resolved_base_commit=task.base_commit,
+        outcome=RunOutcome.PASSED,
+        started_at=now,
+        finished_at=now,
+        duration_seconds=0,
+        patch=PatchApplicationResult(attempted=True, applied=True),
+    )
+    completions = FakeReviewerCompletions(never_submit=True)
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+
+    with pytest.raises(ProviderError, match="read-tool budget") as captured:
+        DeepSeekReviewerProvider(client=client, model="test-model").review(
+            ReviewProviderRequest(
+                task=task,
+                candidate_patch="candidate",
+                verification=verification,
+            ),
+            RepositoryTools(tmp_path, task),
+        )
+
+    evidence = captured.value.evidence
+    assert evidence.provider == "deepseek-reviewer"
+    assert [call.name for call in evidence.tool_calls] == ["read_file"]
+    assert evidence.token_usage.input_tokens == 20
+    assert evidence.provider_metadata["context_scope"] == "independent-review-v1"

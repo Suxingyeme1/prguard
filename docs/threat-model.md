@@ -41,7 +41,10 @@ occurs in a detached worktree.
 | GitHub URL/metadata spoofing | canonical HTTPS Issue URLs, fixed API host, redirect denial, PR/private rejection, full commit SHA | GitHub/API availability and account compromise |
 | Repository config command injection | `.prguard.toml` commands pass the built-in pytest/Ruff argv grammar | approved pytest/Ruff code still executes repository code |
 | Environment failure misdiagnosed as Patch failure | Base pytest targets must collect before any model call | collection can pass while later runtime dependencies still fail |
+| Unhealthy quality gate blamed on Candidate | declared non-pytest gates must pass at Base Commit before any model call | pytest assertion baselines still need evaluator interpretation |
+| Linter/test mutates Candidate during verification | Ruff requires `check --no-fix`; before/after Candidate diffs must match | hostile code can still write outside a host worktree before audit detects it |
 | Runtime scaffold leaking into delivery | declared path is protected, hash-checked, and excluded from Git final diff | the narrow scaffold may not emulate every build backend API |
+| Provider failure hides prior work/cost | partial response metadata, tool calls, and Token usage are artifacted and hashed | provider accounting can be absent or inaccurate |
 
 ## Explicit non-guarantees
 

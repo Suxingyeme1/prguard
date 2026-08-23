@@ -15,6 +15,11 @@ def test_public_reviewer_value_evidence_hashes() -> None:
     assert verify_evidence(root) == 2
 
 
+def test_public_navigation_hardening_artifacts_hashes() -> None:
+    root = Path(__file__).resolve().parents[2] / "evidence" / "navigation-hardening"
+    assert verify_evidence(root) == 3
+
+
 def test_public_evidence_rejects_hash_mismatch(tmp_path: Path) -> None:
     (tmp_path / "sample.patch").write_text("diff", encoding="utf-8")
     (tmp_path / "manifest.json").write_text(

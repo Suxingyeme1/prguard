@@ -48,6 +48,11 @@ def render_review_repair_markdown(report: ReviewRepairReport) -> str:
     if report.repair_proposal:
         lines.append(f"- Provider: `{report.repair_proposal.provider}`")
         lines.append(f"- Summary: {report.repair_proposal.proposal.summary}")
+    elif report.repair_provider_failure:
+        usage = report.repair_provider_failure.token_usage
+        lines.append(f"- Provider failed: `{report.repair_provider_failure.provider}`")
+        lines.append(f"- Partial tool calls: {len(report.repair_provider_failure.tool_calls)}")
+        lines.append(f"- Partial tokens: {usage.input_tokens} input / {usage.output_tokens} output")
     else:
         lines.append("- Not attempted")
     lines.append(
@@ -77,6 +82,10 @@ def finalize_review_repair_artifacts(
         render_review_repair_markdown(report), encoding="utf-8"
     )
     (run_directory / "original-candidate.patch").write_bytes(candidate_patch)
+    if report.repair_provider_failure:
+        (run_directory / "repair-provider-failure.json").write_bytes(
+            canonical_json(report.repair_provider_failure.model_dump(mode="json"))
+        )
     entries: list[ArtifactEntry] = []
     for path in sorted(run_directory.rglob("*")):
         if not path.is_file() or path.name == "review-repair-manifest.json":
