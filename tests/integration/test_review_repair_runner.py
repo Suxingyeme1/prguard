@@ -5,20 +5,24 @@ import pytest
 
 from prguard.cli import main
 from prguard.harness import verify_manifest
+from prguard.implementer.errors import ProviderError
 from prguard.implementer.providers import ProviderRequest, ScriptedProvider
 from prguard.implementer.tools import RepositoryTools
 from prguard.review import ReviewRepairRunner
 from prguard.reviewer import ScriptedReviewerProvider
 from prguard.schemas import (
+    AgentToolCall,
     CommandSpec,
     FindingCategory,
     ImplementerProposal,
+    ProviderFailureEvidence,
     ReviewerSubmission,
     ReviewFinding,
     ReviewRepairOutcome,
     ReviewRepairTask,
     RunOutcome,
     Severity,
+    TokenUsage,
     Verdict,
 )
 from tests.conftest import run_git
@@ -114,6 +118,31 @@ class RecordingProvider:
         return self.inner.propose(request, tools)
 
 
+class EvidenceFailureImplementer:
+    name = "evidence-failure-repair"
+    model = "deterministic-fixture"
+
+    def propose(self, request: ProviderRequest, tools: RepositoryTools):
+        raise ProviderError(
+            "Implementer read-tool budget exhausted; expected terminal submission",
+            evidence=ProviderFailureEvidence(
+                provider=self.name,
+                model=self.model,
+                response_id="partial-repair",
+                token_usage=TokenUsage(input_tokens=55, output_tokens=8, cached_tokens=13),
+                tool_calls=[
+                    AgentToolCall(
+                        sequence=0,
+                        name="read_file",
+                        arguments={"path": "service.py", "start_line": 1, "end_line": 20},
+                        succeeded=True,
+                        output_bytes=64,
+                    )
+                ],
+            ),
+        )
+
+
 @pytest.mark.integration
 def test_blocking_review_is_repaired_and_reverified(make_repo, tmp_path: Path) -> None:
     repo, commit, candidate, reviewer = _regression_case(make_repo, tmp_path)
@@ -154,6 +183,25 @@ def test_failed_replacement_remains_request_changes(make_repo, tmp_path: Path) -
     assert report.verdict is Verdict.REQUEST_CHANGES
     assert report.final_verification.outcome is RunOutcome.FAILED_VERIFICATION
     assert report.final_patch is None
+
+
+@pytest.mark.integration
+def test_controlled_repair_provider_failure_preserves_partial_evidence(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit, candidate, reviewer = _regression_case(make_repo, tmp_path)
+    report = ReviewRepairRunner(
+        tmp_path / "artifacts", reviewer, EvidenceFailureImplementer()
+    ).run(_task(repo, commit, candidate, "review-repair-provider-failure"))
+
+    assert report.outcome is ReviewRepairOutcome.REPAIR_FAILED
+    assert report.repair_provider_failure is not None
+    assert report.token_usage.input_tokens == 55
+    root = Path(report.artifact_directory)
+    artifact = root / "repair-provider-failure.json"
+    assert json.loads(artifact.read_text())["response_id"] == "partial-repair"
+    manifest = verify_manifest(root / "review-repair-manifest.json")
+    assert artifact.name in {entry.path for entry in manifest.artifacts}
 
 
 @pytest.mark.integration

@@ -42,7 +42,7 @@ class FixTask(StrictModel):
     task_timeout_seconds: float = Field(default=900, gt=0, le=7200)
     max_output_bytes: int = Field(default=200_000, ge=1024, le=10_000_000)
     max_tool_calls: int = Field(default=24, ge=1, le=100)
-    max_file_bytes: int = Field(default=100_000, ge=1024, le=1_000_000)
+    max_file_bytes: int = Field(default=250_000, ge=1024, le=1_000_000)
     max_context_bytes: int = Field(default=500_000, ge=4096, le=5_000_000)
     max_patch_bytes: int = Field(default=200_000, ge=128, le=2_000_000)
     max_changed_files: int = Field(default=12, ge=1, le=100)
@@ -140,9 +140,21 @@ class ProposalEnvelope(StrictModel):
     tool_calls: list[AgentToolCall] = Field(default_factory=list)
 
 
+class ProviderFailureEvidence(StrictModel):
+    """Non-secret provider work completed before a proposal or review failed."""
+
+    provider: str
+    model: str
+    response_id: str | None = None
+    provider_metadata: dict[str, str] = Field(default_factory=dict)
+    token_usage: TokenUsage = Field(default_factory=TokenUsage)
+    tool_calls: list[AgentToolCall] = Field(default_factory=list, max_length=101)
+
+
 class FixAttempt(StrictModel):
     attempt: int = Field(ge=0, le=1)
     proposal: ProposalEnvelope | None = None
+    provider_failure: ProviderFailureEvidence | None = None
     verification: HarnessReport | None = None
     error: str | None = None
 

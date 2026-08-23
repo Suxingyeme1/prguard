@@ -32,10 +32,23 @@ def render_fix_markdown(report: FixReport) -> str:
     for attempt in report.attempts:
         verification = attempt.verification
         outcome = verification.outcome.value if verification else "not_run"
-        provider = attempt.proposal.provider if attempt.proposal else "none"
+        provider = (
+            attempt.proposal.provider
+            if attempt.proposal
+            else attempt.provider_failure.provider
+            if attempt.provider_failure
+            else "none"
+        )
         lines.append(
             f"- Attempt {attempt.attempt}: provider `{provider}`, verification `{outcome}`"
         )
+        if attempt.provider_failure:
+            usage = attempt.provider_failure.token_usage
+            lines.append(
+                "  - Partial evidence: "
+                f"{len(attempt.provider_failure.tool_calls)} tool calls, "
+                f"{usage.input_tokens} input / {usage.output_tokens} output tokens"
+            )
         if attempt.error:
             lines.append(f"  - Error: {attempt.error}")
     lines.extend(["", "## Final patch", ""])
@@ -48,6 +61,11 @@ def finalize_fix_artifacts(run_directory: Path, task: FixTask, report: FixReport
     (run_directory / "fix-task.json").write_bytes(canonical_json(task.model_dump(mode="json")))
     (run_directory / "fix-report.json").write_bytes(canonical_json(report.model_dump(mode="json")))
     (run_directory / "fix-report.md").write_text(render_fix_markdown(report), encoding="utf-8")
+    for attempt in report.attempts:
+        if attempt.provider_failure:
+            (run_directory / f"attempt-{attempt.attempt}-provider-failure.json").write_bytes(
+                canonical_json(attempt.provider_failure.model_dump(mode="json"))
+            )
     entries: list[ArtifactEntry] = []
     for path in sorted(run_directory.rglob("*")):
         if not path.is_file() or path.name == "fix-manifest.json":

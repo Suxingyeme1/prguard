@@ -11,8 +11,8 @@ from prguard.harness.policy import CommandPolicy
     [
         ["pytest", "-q", "tests"],
         ["python", "-m", "pytest", "-q"],
-        ["ruff", "check", "."],
-        ["python3.12", "-m", "ruff", "check", "src"],
+        ["ruff", "check", "--no-fix", "."],
+        ["python3.12", "-m", "ruff", "check", "--no-fix", "src"],
     ],
 )
 def test_authorizes_supported_exact_argv(argv: list[str]) -> None:
@@ -29,6 +29,10 @@ def test_authorizes_supported_exact_argv(argv: list[str]) -> None:
         ["pytest", "-q;touch", "owned"],
         ["/usr/bin/pytest", "-q"],
         ["python", "-m", "http.server"],
+        ["ruff", "check", "."],
+        ["ruff", "check", "--fix", "."],
+        ["ruff", "check", "--no-fix", "--fix", "."],
+        ["ruff", "format", "--check", "."],
     ],
 )
 def test_rejects_shell_and_escaping_forms(argv: list[str]) -> None:

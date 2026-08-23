@@ -119,7 +119,7 @@ Run the complete quality gate:
 
 ```bash
 uv sync --extra dev --extra agent --no-editable --reinstall-package prguard
-uv run ruff check src tests scripts
+uv run ruff check --no-fix src tests scripts
 uv run pytest -q
 ```
 
@@ -127,16 +127,16 @@ uv run pytest -q
 
 - public GitHub Issue onboarding, exact commit resolution, safe checkout, and replayable preparation
   artifacts;
-- reviewed `.prguard.toml` profiles plus fail-closed pytest/Ruff, Issue-related public-test, source
-  scope, and declared Hatch VCS runtime-file discovery;
+- reviewed `.prguard.toml` profiles plus conservative pytest, Issue-related public-test, source
+  scope, and declared Hatch VCS runtime-file discovery; lint gates are explicit policy;
 - bounded text tools plus Python AST symbol/import/reference, incoming/outgoing call, and related-test
   navigation;
 - exact `replace_text`/`create_file` submissions applied locally, with Git-authored Patch output;
 - compatibility unified-diff proposals with writable/protected path, file-count, and byte limits;
 - detached Git worktree execution at an exact base commit;
-- strict `pytest` and `ruff` argv grammars with `shell=False`;
+- strict `pytest` and non-mutating `ruff check --no-fix` argv grammars with `shell=False`;
 - per-command, per-stage, and total-run deadlines with bounded captured output;
-- zero-token pytest collection readiness checks before Implementer calls;
+- zero-token pytest collection and non-pytest Base-gate readiness checks before Implementer calls;
 - Harness-derived `pytest -q <changed-test-files...>` execution after Patch application; changing
   tests without a declared pytest capability is policy-blocked;
 - optional digest-pinned container verification with no network, read-only mounts, and resource
@@ -144,6 +144,8 @@ uv run pytest -q
 - structured pytest/ruff results, policy decisions, review findings, and trace events;
 - one evidence-guided implementation repair and one review-triggered controlled repair;
 - provider-neutral scripted, DeepSeek Chat Completions, and OpenAI Responses adapters;
+- provider failures retain non-secret partial tool/Token evidence, and terminal submission has a
+  reserved slot outside the bounded read-tool budget;
 - recursive JSON/Markdown artifacts, final diff, and SHA-256 manifest verification;
 - one-command GitHub-URL `fix`, inspectable `prepare-github`, `review`, `run`, `replay`, and
   `verify-manifest` CLI workflows.
@@ -156,16 +158,20 @@ These are engineering case studies, not a claim of broad benchmark generalizatio
 | Repository | Issue | Selected patch | Wider regression check |
 | --- | --- | --- | --- |
 | Humanize | [#366](https://github.com/python-humanize/humanize/issues/366) | accepted with two structured edits; pytest + ruff | 702 passed, 74 skipped* |
-| PrettyTable | [#474](https://github.com/prettytable/prettytable/issues/474) | accepted | 338 passed** |
+| PrettyTable | [#474](https://github.com/prettytable/prettytable/issues/474) | accepted with source + regression-test edits | 339 passed |
 | Inflect | [#242](https://github.com/jaraco/inflect/issues/242) | accepted | 208 passed, 16 xfailed |
 
-\* Optional benchmark tests were excluded because their plugin was unavailable.<br>
-\** One evaluator-specific version-stub assertion was deselected and recorded.
+\* Optional benchmark tests were excluded because their plugin was unavailable.
 
 The private frozen run set intentionally retains failures too: a provider timeout, malformed
 patches, a tool-budget exhaustion, and the successful Humanize repair cycle. The public repository
 contains a path-free [case report](evidence/real-repositories/README.md), selected patches, and a
 machine-verifiable [evidence manifest](evidence/real-repositories/manifest.json).
+
+The v0.8.1 [navigation-hardening case](evidence/navigation-hardening/README.md) retains the
+PrettyTable failure-to-design chain, accepted live Patch, 22-test targeted gate, 339-test wider
+gate, path-free run summary, and hashes. The public Issue disclosed the root cause, so this evidence
+tests repository navigation, adaptation, and orchestration—not blind semantic diagnosis.
 
 A separate two-case [Reviewer value check](evidence/reviewer-value/README.md) records one regression
 that passed a narrow base gate but was caught and repaired by independent review, plus one accepted
@@ -226,10 +232,11 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.8.0 adds public GitHub Issue onboarding, conservative project adaptation, bounded Python
-AST/call navigation, and structured edits that are converted into Git-authored Patches. A fresh
-Humanize #366 run completed this path in one Implementer attempt, then passed 702 wider regression
-tests; see the [v0.8 phase report](docs/v0.8.0-phase-report.md). A first frozen pair shows both a
+Version 0.8.1 hardens public GitHub Issue execution using retained real failures: partial provider
+evidence, realistic large-module navigation, qualified-symbol test targeting, terminal submission
+budgeting, explicit non-mutating lint policy, Base-gate readiness, and verification-write blocking.
+A fresh PrettyTable #474 run passed 22 targeted and 339 wider tests; see the
+[v0.8.1 phase report](docs/v0.8.1-phase-report.md). A first frozen pair shows both a
 true-positive Reviewer repair and the high cost of reviewing a clean real-repository Patch; see the
 [net-benefit note](docs/reviewer-net-benefit.md). The next priority is selective routing and more
 repositories that pressure-test project adaptation. Large benchmark infrastructure and extra Agent

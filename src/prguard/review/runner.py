@@ -10,11 +10,13 @@ from uuid import uuid4
 from prguard.harness import VerificationHarness
 from prguard.harness.errors import HarnessError
 from prguard.harness.git import GitRepository, apply_patch
-from prguard.implementer.errors import ImplementerError
+from prguard.harness.readiness import readiness_commands, readiness_failure_boundary
+from prguard.implementer.errors import ImplementerError, ProviderError
 from prguard.implementer.tools import RepositoryTools
 from prguard.review.artifacts import finalize_review_artifacts
 from prguard.reviewer.providers import ReviewerProvider, ReviewProviderRequest
 from prguard.schemas import (
+    ProviderFailureEvidence,
     ReviewOutcome,
     ReviewReport,
     ReviewTask,
@@ -42,8 +44,10 @@ class ReviewRunner:
         started = time.monotonic()
         deadline = started + task.task_timeout_seconds
         patch_bytes = b""
+        readiness = None
         verification = None
         envelope = None
+        provider_failure = None
         resolved_commit = None
         error = None
         outcome = ReviewOutcome.PREFLIGHT_FAILED
@@ -52,27 +56,57 @@ class ReviewRunner:
         registered = False
         try:
             patch_bytes = task.candidate_patch.expanduser().resolve().read_bytes()
-            verification_task = Task(
-                case_id=f"{task.case_id}-verification",
-                mode=TaskMode.REVIEW,
-                repository=task.repository,
-                base_commit=task.base_commit,
-                issue=task.issue,
-                candidate_patch=task.candidate_patch,
-                commands=task.commands,
-                allowed_commands=task.allowed_commands,
-                protected_paths=task.protected_paths,
-                command_timeout_seconds=task.command_timeout_seconds,
-                task_timeout_seconds=max(0.1, deadline - time.monotonic()),
-                max_output_bytes=task.max_output_bytes,
-                container=task.container,
-                runtime_files=task.runtime_files,
-            )
-            verification = VerificationHarness(run_directory / "verification").run(
-                verification_task
-            )
-            resolved_commit = verification.resolved_base_commit
-            if verification.outcome == RunOutcome.PATCH_FAILED:
+            base_commands = readiness_commands(task.commands)
+            if base_commands:
+                readiness_task = Task(
+                    case_id=f"{task.case_id}-readiness",
+                    mode=TaskMode.REVIEW,
+                    repository=task.repository,
+                    base_commit=task.base_commit,
+                    issue=task.issue,
+                    commands=base_commands,
+                    allowed_commands=[command.argv for command in base_commands],
+                    protected_paths=task.protected_paths,
+                    command_timeout_seconds=task.command_timeout_seconds,
+                    task_timeout_seconds=max(0.1, deadline - time.monotonic()),
+                    max_output_bytes=task.max_output_bytes,
+                    container=task.container,
+                    runtime_files=task.runtime_files,
+                )
+                readiness = VerificationHarness(run_directory / "readiness").run(
+                    readiness_task
+                )
+                resolved_commit = readiness.resolved_base_commit
+                if readiness.outcome is not RunOutcome.PASSED:
+                    boundary = readiness_failure_boundary(readiness)
+                    error = (
+                        f"{boundary} is not ready; inspect readiness artifacts "
+                        f"({readiness.outcome.value})"
+                    )
+            if readiness is None or readiness.outcome is RunOutcome.PASSED:
+                verification_task = Task(
+                    case_id=f"{task.case_id}-verification",
+                    mode=TaskMode.REVIEW,
+                    repository=task.repository,
+                    base_commit=task.base_commit,
+                    issue=task.issue,
+                    candidate_patch=task.candidate_patch,
+                    commands=task.commands,
+                    allowed_commands=task.allowed_commands,
+                    protected_paths=task.protected_paths,
+                    command_timeout_seconds=task.command_timeout_seconds,
+                    task_timeout_seconds=max(0.1, deadline - time.monotonic()),
+                    max_output_bytes=task.max_output_bytes,
+                    container=task.container,
+                    runtime_files=task.runtime_files,
+                )
+                verification = VerificationHarness(run_directory / "verification").run(
+                    verification_task
+                )
+                resolved_commit = verification.resolved_base_commit
+            if verification is None:
+                outcome = ReviewOutcome.PREFLIGHT_FAILED
+            elif verification.outcome == RunOutcome.PATCH_FAILED:
                 outcome = ReviewOutcome.PATCH_FAILED
             elif verification.outcome == RunOutcome.POLICY_BLOCKED:
                 outcome = ReviewOutcome.POLICY_BLOCKED
@@ -113,6 +147,11 @@ class ReviewRunner:
                 outcome = ReviewOutcome.REVIEWED
         except (OSError, ValueError, ImplementerError, HarnessError) as exc:
             error = str(exc)
+            if (
+                isinstance(exc, ProviderError)
+                and isinstance(exc.evidence, ProviderFailureEvidence)
+            ):
+                provider_failure = exc.evidence
             if verification and verification.outcome not in {
                 RunOutcome.PATCH_FAILED,
                 RunOutcome.POLICY_BLOCKED,
@@ -135,10 +174,18 @@ class ReviewRunner:
             resolved_base_commit=resolved_commit,
             outcome=outcome,
             verdict=verdict,
+            readiness=readiness,
             verification=verification,
             review=envelope,
+            provider_failure=provider_failure,
             error=error,
-            token_usage=envelope.token_usage if envelope else TokenUsage(),
+            token_usage=(
+                envelope.token_usage
+                if envelope
+                else provider_failure.token_usage
+                if provider_failure
+                else TokenUsage()
+            ),
             duration_seconds=time.monotonic() - started,
             artifact_directory=run_directory,
         )

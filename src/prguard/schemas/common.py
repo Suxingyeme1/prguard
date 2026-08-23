@@ -12,12 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SCHEMA_VERSION = "1.0.0"
 HARNESS_VERSION = "0.1.0"
-POLICY_VERSION = "argv-v2"
-FIX_WORKFLOW_VERSION = "fix-v2"
-ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v2"
+POLICY_VERSION = "argv-v3"
+FIX_WORKFLOW_VERSION = "fix-v3"
+ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v3"
 PATCH_POLICY_VERSION = "patch-v2"
-REVIEW_WORKFLOW_VERSION = "review-v1"
-REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v2"
+REVIEW_WORKFLOW_VERSION = "review-v2"
+REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v3"
 
 
 def utc_now() -> datetime:

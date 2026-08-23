@@ -24,6 +24,6 @@ jobs:
       - name: Install development environment
         run: uv sync --frozen --extra dev --extra agent --no-editable --reinstall-package prguard
       - name: Lint
-        run: uv run ruff check src tests scripts
+        run: uv run ruff check --no-fix src tests scripts
       - name: Test
         run: uv run pytest -q

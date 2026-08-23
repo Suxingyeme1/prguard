@@ -62,6 +62,13 @@ class CommandPolicy:
             raise CommandPolicyError("only pytest and ruff command forms are supported")
         if module == "ruff" and len(argv) < (2 if tool == "ruff" else 4):
             raise CommandPolicyError("ruff requires an explicit subcommand")
+        if module == "ruff":
+            arguments = argv[1:] if tool == "ruff" else argv[3:]
+            mutating = {"--fix", "--fix-only"} & set(arguments)
+            if arguments[0] != "check" or "--no-fix" not in arguments or mutating:
+                raise CommandPolicyError(
+                    "ruff capability is limited to non-mutating `check --no-fix`"
+                )
         for token in argv[1:]:
             if "\x00" in token or any(marker in token for marker in _SHELL_TOKENS):
                 raise CommandPolicyError("shell syntax is not accepted in argv")

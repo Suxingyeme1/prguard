@@ -18,11 +18,11 @@ def test_deterministic_python_policy_discovers_pytest_ruff_and_scopes(tmp_path: 
 
     assert [command.argv for command in policy.commands] == [
         ["pytest", "-q"],
-        ["ruff", "check", "."],
     ]
     assert policy.writable_paths == ["src/**", "tests/**"]
     assert ".github/**" in policy.protected_paths
     assert policy.source == "deterministic_discovery"
+    assert any("Ruff configuration" in warning for warning in policy.warnings)
 
 
 def test_project_config_cannot_remove_fixed_protected_paths(tmp_path: Path) -> None:
@@ -92,5 +92,34 @@ def test_issue_aware_discovery_targets_related_test_and_hatch_vcs_scaffold(
         ["pytest", "-q", "tests/test_filesize.py"]
     ]
     assert policy.runtime_files[0].path == "src/humanize/_version.py"
+    assert '__version__ = "0.0.0"' in policy.runtime_files[0].content
     assert "src/humanize/_version.py" in policy.protected_paths
     assert any("Issue-related" in warning for warning in policy.warnings)
+
+
+def test_issue_discovery_indexes_realistic_large_python_module(tmp_path: Path) -> None:
+    source = tmp_path / "src" / "package"
+    source.mkdir(parents=True)
+    (source / "__init__.py").write_text("from .large import target\n")
+    (source / "large.py").write_text(
+        ("# module implementation padding\n" * 4_500)
+        + "\ndef target():\n    return 'fixed'\n"
+    )
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_large.py").write_text(
+        "import package.large\n\ndef test_module():\n    assert package.large\n"
+    )
+    (tests / "test_target.py").write_text(
+        "from package.large import target\n\ndef test_target():\n    assert target()\n"
+    )
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\ntestpaths = ['tests']\n"
+    )
+
+    policy = discover_project_policy(tmp_path, issue="`target()` should return fixed.")
+
+    assert (source / "large.py").stat().st_size > 100_000
+    assert [command.argv for command in policy.commands] == [
+        ["pytest", "-q", "tests/test_target.py"]
+    ]

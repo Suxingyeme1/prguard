@@ -40,7 +40,7 @@ def test_output_is_truncated_but_command_result_remains_structured(
 @pytest.mark.integration
 def test_ruff_result_is_structured(make_repo, tmp_path: Path) -> None:
     repo, commit = make_repo({"clean.py": "VALUE = 1\n"})
-    command = ["ruff", "check", "."]
+    command = ["ruff", "check", "--no-fix", "."]
     task = Task(
         case_id="ruff-check",
         repository=repo,
@@ -53,6 +53,47 @@ def test_ruff_result_is_structured(make_repo, tmp_path: Path) -> None:
     assert report.outcome is RunOutcome.PASSED
     assert report.commands[0].kind == "ruff"
     assert report.commands[0].exit_code == 0
+
+
+@pytest.mark.integration
+def test_verification_command_cannot_modify_candidate_worktree(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo(
+        {
+            "value.py": "VALUE = 1\n",
+            "tests/test_mutation.py": (
+                "from pathlib import Path\n\n"
+                "def test_mutation():\n"
+                "    Path(__file__).parents[1].joinpath('value.py').write_text('VALUE = 3\\n')\n"
+            ),
+        }
+    )
+    patch = tmp_path / "candidate.patch"
+    patch.write_text(
+        "diff --git a/value.py b/value.py\n--- a/value.py\n+++ b/value.py\n"
+        "@@ -1 +1 @@\n-VALUE = 1\n+VALUE = 2\n"
+    )
+    command = ["pytest", "-q", "tests/test_mutation.py"]
+    task = Task(
+        case_id="verification-mutates-worktree",
+        repository=repo,
+        base_commit=commit,
+        issue="Verification must be read-only with respect to the candidate.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+    )
+
+    report = VerificationHarness(tmp_path / "mutation-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.POLICY_BLOCKED
+    violation = next(
+        item
+        for item in report.policy_violations
+        if item.code == "verification_modified_worktree"
+    )
+    assert violation.paths == ["value.py"]
 
 
 @pytest.mark.integration
@@ -181,7 +222,7 @@ def test_changed_python_tests_require_declared_pytest_capability(
         "+    assert True\n",
         encoding="utf-8",
     )
-    command = ["ruff", "check", "."]
+    command = ["ruff", "check", "--no-fix", "."]
     task = Task(
         case_id="changed-test-without-pytest",
         repository=repo,

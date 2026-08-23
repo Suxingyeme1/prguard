@@ -62,11 +62,12 @@ uv run prguard fix work/issue/artifacts/task.json --provider openai --progress
 
 Absent configuration, PRGuard conservatively enables `pytest -q` when it sees public test/pytest
 configuration, maps explicit Issue symbols to the strongest related public test file when possible,
-enables `ruff check .` only when Ruff is configured, and limits edits to discovered Python
-source/test roots. Before any model call, the selected pytest targets must collect successfully;
-failing assertions are allowed, while missing imports/plugins are classified as environment
-readiness failures. It fails closed when it cannot find both a verification command and a source
-scope. Dependency installation and external service setup are never inferred.
+does not infer lint as a gate from configuration presence alone, and limits edits to discovered
+Python source/test roots. Before any model call, the selected pytest targets must collect
+successfully and every declared non-pytest gate must pass at the Base Commit; failing pytest
+assertions are allowed, while missing imports/plugins and unhealthy quality gates are classified as
+environment readiness failures. It fails closed when it cannot find both a verification command
+and a source scope. Dependency installation and external service setup are never inferred.
 
 For a missing Python file explicitly declared by Hatch VCS as `version-file`, PRGuard can create a
 fixed runtime-only version scaffold inside each detached verification worktree. The Task records
@@ -80,7 +81,7 @@ A repository can publish a reviewed `.prguard.toml`:
 version = 1
 verification_commands = [
   ["pytest", "-q"],
-  ["ruff", "check", "."],
+  ["ruff", "check", "--no-fix", "."],
 ]
 writable_paths = ["src/**", "tests/**"]
 protected_paths = ["release/**"]

@@ -83,12 +83,15 @@ def materialize(output: Path, source: str = UPSTREAM_URL) -> Path:
         "commands": [
             {"argv": ["pytest", "-q", "tests/test_prguard_issue_366.py"], "kind": "pytest"},
             {"argv": ["pytest", "-q", "tests/test_filesize.py"], "kind": "pytest"},
-            {"argv": ["ruff", "check", "src/humanize/filesize.py"], "kind": "lint"},
+            {
+                "argv": ["ruff", "check", "--no-fix", "src/humanize/filesize.py"],
+                "kind": "lint",
+            },
         ],
         "allowed_commands": [
             ["pytest", "-q", "tests/test_prguard_issue_366.py"],
             ["pytest", "-q", "tests/test_filesize.py"],
-            ["ruff", "check", "src/humanize/filesize.py"],
+            ["ruff", "check", "--no-fix", "src/humanize/filesize.py"],
         ],
         "writable_paths": ["src/humanize/filesize.py"],
         "protected_paths": ["tests/**", ".github/**", "pyproject.toml", "uv.lock", "LICENSE*"],

@@ -1,0 +1,33 @@
+diff --git a/src/prettytable/prettytable.py b/src/prettytable/prettytable.py
+index d3cdf99..365d496 100644
+--- a/src/prettytable/prettytable.py
++++ b/src/prettytable/prettytable.py
+@@ -3200,8 +3200,8 @@ def _make_table_handler():
+             for row in self.rows:
+                 if len(row[0]) < self.max_row_width:
+                     appends = self.max_row_width - len(row[0])
+-                    for i in range(1, appends):
+-                        row[0].append("-")
++                    for _ in range(appends):
++                        row[0].append("")
+ 
+                 if row[1]:
+                     self.make_fields_unique(row[0])
+diff --git a/tests/test_html.py b/tests/test_html.py
+index acfd31c..c036200 100644
+--- a/tests/test_html.py
++++ b/tests/test_html.py
+@@ -22,6 +22,13 @@ class TestHtmlConstructor:
+         with pytest.raises(ValueError):
+             from_html_one(html_string)
+ 
++    def test_html_pads_short_rows(self) -> None:
++        table = from_html(
++            "<table><tr><th>a</th><th>b</th></tr><tr><td>1</td></tr></table>"
++        )[0]
++        assert table.field_names == ["a", "b"]
++        assert table.rows == [["1", ""]]
++
+ 
+ class TestHtmlOutput:
+     def test_html_output(self, helper_table: PrettyTable) -> None:

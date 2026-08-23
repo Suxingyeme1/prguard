@@ -12,7 +12,7 @@ from prguard.harness import VerificationHarness
 from prguard.harness.errors import HarnessError
 from prguard.harness.git import GitRepository, apply_patch, final_diff
 from prguard.implementer.edits import apply_structured_edits
-from prguard.implementer.errors import ImplementerError, PatchPolicyError
+from prguard.implementer.errors import ImplementerError, PatchPolicyError, ProviderError
 from prguard.implementer.providers import ImplementerProvider, ProviderRequest
 from prguard.implementer.tools import RepositoryTools, validate_proposed_patch
 from prguard.review.repair_artifacts import finalize_review_repair_artifacts
@@ -20,6 +20,7 @@ from prguard.review.runner import ReviewRunner
 from prguard.reviewer.providers import ReviewerProvider
 from prguard.schemas import (
     FixTask,
+    ProviderFailureEvidence,
     ReviewOutcome,
     ReviewRepairOutcome,
     ReviewRepairReport,
@@ -146,6 +147,7 @@ class ReviewRepairRunner:
         candidate_bytes = b""
         initial_review = None
         repair_proposal = None
+        repair_provider_failure = None
         final_verification = None
         final_patch = None
         resolved_commit = None
@@ -267,6 +269,12 @@ class ReviewRepairRunner:
                 outcome = ReviewRepairOutcome.REVIEW_FAILED
         except (OSError, ValueError, ImplementerError, HarnessError) as exc:
             error = str(exc)
+            if (
+                isinstance(exc, ProviderError)
+                and isinstance(exc.evidence, ProviderFailureEvidence)
+            ):
+                repair_provider_failure = exc.evidence
+                _add_usage(token_usage, exc.evidence.token_usage)
             if isinstance(exc, PatchPolicyError):
                 outcome = ReviewRepairOutcome.POLICY_BLOCKED
             elif initial_review is not None:
@@ -291,6 +299,7 @@ class ReviewRepairRunner:
             verdict=verdict,
             initial_review=initial_review,
             repair_proposal=repair_proposal,
+            repair_provider_failure=repair_provider_failure,
             final_verification=final_verification,
             final_patch=final_patch,
             error=error,

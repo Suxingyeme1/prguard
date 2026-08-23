@@ -7,14 +7,61 @@ import pytest
 from prguard.cli import load_fix_task, load_issue_to_pr_task, main
 from prguard.fix import FixRunner
 from prguard.harness import verify_manifest
+from prguard.implementer.errors import ProviderError
 from prguard.implementer.providers import ProviderRequest, ScriptedProvider
 from prguard.implementer.tools import RepositoryTools
-from prguard.schemas import CommandSpec, FixOutcome, FixTask, ImplementerProposal, RunOutcome
+from prguard.schemas import (
+    AgentToolCall,
+    CommandSpec,
+    FixOutcome,
+    FixTask,
+    ImplementerProposal,
+    ProviderFailureEvidence,
+    RunOutcome,
+    TokenUsage,
+)
 from tests.conftest import run_git
 
 
 def load_provider(case_path: Path) -> ScriptedProvider:
     return ScriptedProvider.from_file(case_path.parent / "proposals.json")
+
+
+class EvidenceFailureProvider:
+    name = "evidence-failure"
+    model = "deterministic-fixture"
+
+    def propose(self, request: ProviderRequest, tools: RepositoryTools):
+        raise ProviderError(
+            "Implementer tool-call budget exhausted",
+            evidence=ProviderFailureEvidence(
+                provider=self.name,
+                model=self.model,
+                response_id="partial-response",
+                token_usage=TokenUsage(input_tokens=101, output_tokens=17, cached_tokens=40),
+                tool_calls=[
+                    AgentToolCall(
+                        sequence=0,
+                        name="find_symbols",
+                        arguments={"query": "normalize", "max_results": 20},
+                        succeeded=True,
+                        output_bytes=128,
+                    )
+                ],
+            ),
+        )
+
+
+class NeverCalledProvider:
+    name = "never-called"
+    model = "deterministic-fixture"
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def propose(self, request: ProviderRequest, tools: RepositoryTools):
+        self.calls += 1
+        raise AssertionError("provider must not run when the Base Commit gate is unhealthy")
 
 
 @pytest.mark.integration
@@ -49,6 +96,55 @@ def test_fix_without_repair_budget_preserves_failure(
     assert report.outcome is FixOutcome.FAILED_VERIFICATION
     assert len(report.attempts) == 1
     assert report.final_patch is None
+
+
+@pytest.mark.integration
+def test_fix_provider_failure_artifact_preserves_partial_evidence(
+    materialized_fix_cases: dict[str, Path], tmp_path: Path
+) -> None:
+    case_path = materialized_fix_cases["direct-success"]
+    report = FixRunner(tmp_path / "fix-artifacts", EvidenceFailureProvider()).run(
+        load_fix_task(case_path)
+    )
+
+    assert report.outcome is FixOutcome.AGENT_FAILED
+    assert report.token_usage.input_tokens == 101
+    failure = report.attempts[0].provider_failure
+    assert failure is not None
+    assert failure.tool_calls[0].name == "find_symbols"
+    artifact_root = Path(report.artifact_directory)
+    artifact = artifact_root / "attempt-0-provider-failure.json"
+    assert json.loads(artifact.read_text())["response_id"] == "partial-response"
+    manifest = verify_manifest(artifact_root / "fix-manifest.json")
+    assert artifact.name in {entry.path for entry in manifest.artifacts}
+
+
+@pytest.mark.integration
+def test_fix_blocks_before_provider_when_base_non_pytest_gate_fails(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo({"bad.py": "import os\n"})
+    command = ["ruff", "check", "--no-fix", "."]
+    task = FixTask(
+        case_id="unhealthy-base-lint",
+        repository=repo,
+        base_commit=commit,
+        issue="Change the module.",
+        commands=[CommandSpec(argv=command, kind="ruff")],
+        allowed_commands=[command],
+        writable_paths=["*.py"],
+    )
+    provider = NeverCalledProvider()
+
+    report = FixRunner(tmp_path / "fix-artifacts", provider).run(task)
+
+    assert report.outcome is FixOutcome.PREFLIGHT_FAILED
+    assert provider.calls == 0
+    assert "non-pytest gate is not ready" in report.attempts[0].error
+    readiness_reports = list(
+        Path(report.artifact_directory).glob("readiness/*/report.json")
+    )
+    assert len(readiness_reports) == 1
 
 
 @pytest.mark.integration

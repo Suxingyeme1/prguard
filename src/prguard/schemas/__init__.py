@@ -31,6 +31,7 @@ from prguard.schemas.fix import (
     FixTask,
     ImplementerProposal,
     ProposalEnvelope,
+    ProviderFailureEvidence,
     ReplaceTextEdit,
     TextEdit,
 )
@@ -93,6 +94,7 @@ __all__ = [
     "PolicyViolation",
     "ProjectConfig",
     "ProposalEnvelope",
+    "ProviderFailureEvidence",
     "ReplaceTextEdit",
     "ReviewEnvelope",
     "ReviewFinding",

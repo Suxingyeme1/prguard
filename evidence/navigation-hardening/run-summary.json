@@ -1,0 +1,58 @@
+{
+  "schema_version": "prguard-public-run-summary-1",
+  "prguard_version": "0.8.1",
+  "case_id": "prettytable-474-navigation-hardening",
+  "issue_url": "https://github.com/prettytable/prettytable/issues/474",
+  "base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+  "provider": "deepseek-v4-pro",
+  "reasoning_effort": "high",
+  "claim_boundary": "The public Issue text disclosed the root cause, so this is repository-navigation and project-adaptation evidence, not a blind semantic benchmark.",
+  "fix": {
+    "workflow_version": "fix-v3",
+    "outcome": "accepted",
+    "attempts": 1,
+    "duration_seconds": 102.16777133298456,
+    "read_tool_calls": 21,
+    "terminal_tool": "submit_edits",
+    "changed_files": [
+      "src/prettytable/prettytable.py",
+      "tests/test_html.py"
+    ],
+    "targeted_gate": "22 passed",
+    "token_usage": {
+      "input_tokens": 206031,
+      "output_tokens": 7179,
+      "cached_tokens": 192384
+    },
+    "raw_manifest_payload_sha256": "dde92328a182c70647b696e4de9ad0a9139d90a63e101cc87de7079b9aa7df62"
+  },
+  "wider_gate": {
+    "outcome": "passed",
+    "pytest": "339 passed",
+    "changed_test_gate": "22 passed",
+    "policy_violations": 0,
+    "raw_manifest_payload_sha256": "aeda3a0b52b129cdbcb54b5000e443b35898d8a87710bbc0310040ff29e26bc2"
+  },
+  "retained_failure_chain": [
+    {
+      "boundary": "provider failure evidence was previously discarded",
+      "observed": "24 tool calls ended in an unauditable zero-token report",
+      "change": "partial provider tool/token evidence is now a first-class artifact",
+      "raw_manifest_payload_sha256": "41f849ca3b8ec39b17b3513f95b948c9311c74c8be6bdf6a2dd39b0435bb1d1b"
+    },
+    {
+      "boundary": "100 KB source cap skipped the 120 KB primary module",
+      "observed": "AST returned no from_html symbol and text search omitted the defect line",
+      "change": "the default bounded source cap is 250 KB and related-test discovery retains qualified symbols",
+      "raw_manifest_payload_sha256": "101a5ecbc0db5736ce31f6c9519b626c9d1c00484b61fda8f283bb4715b53eeb"
+    },
+    {
+      "boundary": "terminal submission consumed the read-tool budget and an inferred Ruff gate was unhealthy at Base Commit",
+      "observed": "the first Patch reached verification, then repair chased unrelated baseline lint",
+      "change": "terminal submission has a reserved slot; inferred lint is not a gate; explicit non-pytest gates prove Base readiness and Ruff is non-mutating",
+      "raw_manifest_payload_sha256": "38833e2d6d294c7d606b2765d2c01117bffd045b2d6da3a66da0b9bdee8477a5"
+    }
+  ],
+  "patch": "prettytable-474-v081.patch",
+  "patch_sha256": "b676c41b5832a9750774904653551b03b8f607570ed7f307d269df3fdee8dc56"
+}
