@@ -1,0 +1,62 @@
+{
+  "schema_version": "prguard-public-evidence-1",
+  "frozen_at": "2026-08-23",
+  "provider": "deepseek-v4-pro",
+  "reasoning_effort": "high",
+  "cases": [
+    {
+      "case_id": "reviewer-positive-regression",
+      "base_commit": "6381e7b514f63bc12a562ef750e6595ca979d18c",
+      "evaluator_label": "defective_candidate",
+      "label_visibility": "evaluator_only_not_in_reviewer_context",
+      "baseline_gate": "passed",
+      "review_verdict": "request_changes",
+      "finding_disposition": "true_positive",
+      "finding_count": 1,
+      "review_duration_seconds": 26.149596041999757,
+      "review_token_usage": {
+        "input_tokens": 6902,
+        "output_tokens": 1644,
+        "cached_tokens": 4096
+      },
+      "review_manifest_payload_sha256": "80e319bafd2b982cd42fee93a07f3bd48737ff1447c21df30083f4dda7688aed",
+      "repair_outcome": "accepted_after_repair",
+      "repair_run_duration_seconds": 24.84578416700242,
+      "repair_run_token_usage": {
+        "input_tokens": 15472,
+        "output_tokens": 1731,
+        "cached_tokens": 11520
+      },
+      "repair_manifest_payload_sha256": "d8281783db73c5bba7cc4daf6ad608bd419eaefc8cc81f4574a43d3f219e3e45",
+      "wider_gate": "fail_to_pass 1/1; pass_to_pass 1/1",
+      "wider_gate_manifest_payload_sha256": "a1fa3b8883f7bbd3fbae50376ea6d431f32913f9fb7762c7d88ca19b459a8a29",
+      "patch": "regression-repaired.patch",
+      "patch_sha256": "d989920365d83ba30c853e7b4ef6a6e5bcfc19cbef6d8dbbee6b5aaf096397c8"
+    },
+    {
+      "case_id": "reviewer-clean-humanize-366",
+      "issue_url": "https://github.com/python-humanize/humanize/issues/366",
+      "base_commit": "ce4147b6c8f8a132f772be0929d58305eb22c5d9",
+      "evaluator_label": "accepted_patch_after_targeted_and_wider_gates",
+      "label_visibility": "evaluator_only_not_in_reviewer_context",
+      "fix_outcome": "accepted",
+      "fix_duration_seconds": 139.3574167090119,
+      "fix_manifest_payload_sha256": "8b5e2df6b4bfe2352318a855fe4baf6b0df241f74488eb344159230dfd2943b5",
+      "review_verdict": "accept",
+      "finding_count": 0,
+      "false_block": false,
+      "review_duration_seconds": 221.87468662500032,
+      "review_token_usage": {
+        "input_tokens": 113796,
+        "output_tokens": 14780,
+        "cached_tokens": 101504
+      },
+      "review_tool_call_count": 11,
+      "review_manifest_payload_sha256": "cb4435fca277e771d212a433a625ae9584e2e737f160b1bdc501fbef8a484ab7",
+      "targeted_gate": "78 passed; Ruff passed",
+      "wider_gate": "702 passed; 74 optional benchmark skips; Ruff passed",
+      "patch": "humanize-366-v080.patch",
+      "patch_sha256": "76ad64057e591fa6d9a622c3892fbfd55427772206d73cb5da37330e9ad9fa33"
+    }
+  ]
+}

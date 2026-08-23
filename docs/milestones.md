@@ -48,6 +48,14 @@ recursive review artifacts, and two live cases: one known regression produced a 
 finding and `request_changes`; one correct patch produced no findings and `accept`. This is a
 minimal two-case gate, not a precision/recall benchmark.
 
+The v0.8 follow-up makes `review` reuse a frozen FixTask plus a candidate Patch. In a new positive
+case, the configured narrow pytest gate passed a defective Patch, while DeepSeek independently
+found the omitted lowercase contract and cited the unexecuted public regression test. One exact
+controlled repair then passed fail-to-pass and pass-to-pass. A clean Humanize #366 Patch was not
+false-blocked but added 221.875 seconds of review latency. The
+[net-benefit note](reviewer-net-benefit.md) records why this supports selective, not unconditional,
+review.
+
 ## Phase 4A: controlled review repair — minimum live gate complete
 
 Allow one controlled repair after an independently scoped review requests changes. Re-run the final

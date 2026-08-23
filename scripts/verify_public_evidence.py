@@ -29,8 +29,9 @@ def verify_evidence(evidence_root: Path) -> int:
 
 
 def main() -> int:
-    root = Path(__file__).resolve().parents[1] / "evidence" / "real-repositories"
-    count = verify_evidence(root)
+    evidence = Path(__file__).resolve().parents[1] / "evidence"
+    roots = [evidence / "real-repositories", evidence / "reviewer-value"]
+    count = sum(verify_evidence(root) for root in roots)
     print(f"public evidence verified: {count} cases")
     return 0
 

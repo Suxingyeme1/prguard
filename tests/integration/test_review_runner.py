@@ -11,6 +11,7 @@ from prguard.reviewer import ScriptedReviewerProvider
 from prguard.schemas import (
     CommandSpec,
     FindingCategory,
+    FixTask,
     ReviewerSubmission,
     ReviewFinding,
     ReviewTask,
@@ -196,4 +197,60 @@ def test_review_cli_scripted(make_repo, tmp_path: Path, capsys) -> None:
     )
     output = json.loads(capsys.readouterr().out)
     assert exit_code == 0
+    assert output["verdict"] == "accept"
+
+
+@pytest.mark.integration
+def test_review_cli_reuses_frozen_fix_task_with_candidate_patch(
+    make_repo, tmp_path: Path, capsys
+) -> None:
+    repo, commit = make_repo(
+        {
+            "value.py": "VALUE = 1\n",
+            "tests/test_value.py": (
+                "from value import VALUE\n\ndef test_value():\n    assert VALUE == 2\n"
+            ),
+        }
+    )
+    patch = write_patch(
+        tmp_path / "candidate.patch",
+        "diff --git a/value.py b/value.py\n--- a/value.py\n+++ b/value.py\n"
+        "@@ -1 +1 @@\n-VALUE = 1\n+VALUE = 2\n",
+    )
+    command = ["pytest", "-q", "tests/test_value.py"]
+    fix_task = FixTask(
+        case_id="review-from-fix-task",
+        repository=repo,
+        base_commit=commit,
+        issue="Set the value to two.",
+        commands=[CommandSpec(argv=command, kind="pytest")],
+        allowed_commands=[command],
+        writable_paths=["value.py", "tests/**"],
+    )
+    task_path = tmp_path / "fix-task.json"
+    task_path.write_text(fix_task.model_dump_json(indent=2), encoding="utf-8")
+    review_path = tmp_path / "scripted-review.json"
+    review_path.write_text(
+        json.dumps({"summary": "No defects found.", "findings": []}),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "review",
+            str(task_path),
+            "--candidate-patch",
+            str(patch),
+            "--provider",
+            "scripted",
+            "--scripted-review",
+            str(review_path),
+            "--artifacts",
+            str(tmp_path / "review-from-fix-artifacts"),
+        ]
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert output["case_id"] == "review-from-fix-task-review"
     assert output["verdict"] == "accept"

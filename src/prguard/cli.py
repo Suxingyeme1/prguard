@@ -161,6 +161,41 @@ def load_review_repair_task(path: Path) -> ReviewRepairTask:
     return ReviewRepairTask.model_validate(payload)
 
 
+def review_task_from_fix_task(
+    path: Path, candidate_patch: Path, *, repair: bool
+) -> ReviewTask | ReviewRepairTask:
+    fix = load_fix_task(path)
+    common: dict[str, object] = {
+        "case_id": f"{fix.case_id}-review",
+        "repository": fix.repository,
+        "base_commit": fix.base_commit,
+        "issue": fix.issue,
+        "candidate_patch": candidate_patch.expanduser().resolve(),
+        "commands": fix.commands,
+        "allowed_commands": fix.allowed_commands,
+        "protected_paths": fix.protected_paths,
+        "command_timeout_seconds": fix.command_timeout_seconds,
+        "task_timeout_seconds": fix.task_timeout_seconds,
+        "max_output_bytes": fix.max_output_bytes,
+        "max_tool_calls": fix.max_tool_calls,
+        "max_file_bytes": fix.max_file_bytes,
+        "max_context_bytes": fix.max_context_bytes,
+        "container": fix.container,
+        "runtime_files": fix.runtime_files,
+    }
+    if not repair:
+        return ReviewTask.model_validate(common)
+    return ReviewRepairTask.model_validate(
+        {
+            **common,
+            "writable_paths": fix.writable_paths,
+            "max_patch_bytes": fix.max_patch_bytes,
+            "max_changed_files": fix.max_changed_files,
+            "review_timeout_seconds": min(300.0, fix.task_timeout_seconds * 0.4),
+        }
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="prguard")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -258,6 +293,11 @@ def build_parser() -> argparse.ArgumentParser:
     fix.add_argument("--review-repair-proposal-sequence", type=Path)
     review = subparsers.add_parser("review", help="independently review a candidate patch")
     review.add_argument("task", type=Path)
+    review.add_argument(
+        "--candidate-patch",
+        type=Path,
+        help="reuse a frozen FixTask JSON and supply its candidate Patch directly",
+    )
     review.add_argument("--artifacts", type=Path, default=Path("artifacts/review"))
     review.add_argument("--provider", choices=("deepseek", "scripted"), default="deepseek")
     review.add_argument("--model")
@@ -471,7 +511,13 @@ def main(argv: list[str] | None = None) -> int:
                     reasoning_effort=args.reasoning_effort,
                 )
             if args.repair:
-                task = load_review_repair_task(args.task)
+                task = (
+                    review_task_from_fix_task(
+                        args.task, args.candidate_patch, repair=True
+                    )
+                    if args.candidate_patch is not None
+                    else load_review_repair_task(args.task)
+                )
                 if args.repair_provider == "scripted":
                     if args.repair_proposal_sequence is None:
                         raise ProviderError(
@@ -490,7 +536,13 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 report = ReviewRepairRunner(args.artifacts, provider, implementer).run(task)
             else:
-                task = load_review_task(args.task)
+                task = (
+                    review_task_from_fix_task(
+                        args.task, args.candidate_patch, repair=False
+                    )
+                    if args.candidate_patch is not None
+                    else load_review_task(args.task)
+                )
                 report = ReviewRunner(args.artifacts, provider).run(task)
         except ProviderError as exc:
             print(f"review configuration failed: {exc}", file=sys.stderr)
