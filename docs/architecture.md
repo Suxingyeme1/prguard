@@ -19,6 +19,10 @@ The same inputs can be replayed by checking out the same commit and applying the
 
 ### `fix` (primary)
 
+The CLI accepts either a validated local JSON contract or a canonical public GitHub Issue URL. The
+URL path runs the same onboarding stage and retains its intermediate Task and Manifest before
+continuing, so one-command UX does not remove the replay boundary.
+
 ```text
 Issue + repository + base commit
   -> Implementer: text/AST navigation -> internal plan -> structured edits

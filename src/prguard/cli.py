@@ -31,6 +31,8 @@ class _ProgressReporter:
 
     _labels: ClassVar[dict[str, str]] = {
         "run.started": "run created",
+        "onboarding.started": "freezing GitHub Issue and repository",
+        "onboarding.completed": "GitHub task prepared",
         "preflight.started": "validating repository and base commit",
         "preflight.completed": "isolated worktree ready",
         "readiness.started": "checking base test collection",
@@ -130,6 +132,10 @@ def load_issue_to_pr_task(path: Path) -> IssueToPRTask:
     repository = payload.get("repository")
     if repository and not Path(repository).is_absolute():
         payload["repository"] = path.parent / repository
+    if "fix_timeout_seconds" not in payload and "review_timeout_seconds" not in payload:
+        total = float(payload.get("task_timeout_seconds", 1200))
+        payload["fix_timeout_seconds"] = min(600.0, total * 0.65)
+        payload["review_timeout_seconds"] = min(300.0, total * 0.25)
     return IssueToPRTask.model_validate(payload)
 
 
@@ -191,9 +197,37 @@ def build_parser() -> argparse.ArgumentParser:
         "--container-image",
         help="immutable sha256 image ID/digest for container verification",
     )
-    fix = subparsers.add_parser("fix", help="generate and verify a patch from an Issue")
-    fix.add_argument("task", type=Path)
-    fix.add_argument("--artifacts", type=Path, default=Path("artifacts/fix"))
+    fix = subparsers.add_parser(
+        "fix",
+        help="generate and verify a patch from a task JSON or public GitHub Issue URL",
+    )
+    fix.add_argument("task", help="FixTask JSON path or canonical public GitHub Issue URL")
+    fix.add_argument(
+        "--workspace",
+        type=Path,
+        help="new preparation workspace required when task is a GitHub Issue URL",
+    )
+    fix.add_argument("--base-commit")
+    fix.add_argument(
+        "--source-repository",
+        type=Path,
+        help="same-origin local Git repository to use as a download cache",
+    )
+    fix_execution = fix.add_mutually_exclusive_group()
+    fix_execution.add_argument(
+        "--trust-host",
+        action="store_true",
+        help="explicitly allow unsandboxed host verification for a GitHub repository",
+    )
+    fix_execution.add_argument(
+        "--container-image",
+        help="immutable sha256 image ID/digest for GitHub repository verification",
+    )
+    fix.add_argument(
+        "--artifacts",
+        type=Path,
+        help="run artifact root (defaults to WORKSPACE/fix-runs or artifacts/fix)",
+    )
     fix.add_argument(
         "--provider", choices=("deepseek", "openai", "scripted"), default="openai"
     )
@@ -287,11 +321,58 @@ def main(argv: list[str] | None = None) -> int:
             OpenAIResponsesProvider,
             ScriptedProvider,
         )
+        from prguard.onboarding import prepare_github_issue
+        from prguard.onboarding.errors import OnboardingError
 
-        task = load_issue_to_pr_task(args.task) if args.review else load_fix_task(args.task)
         progress = _ProgressReporter(args.progress)
         progress.start()
         try:
+            target = str(args.task)
+            is_url = "://" in target
+            if is_url:
+                if args.workspace is None:
+                    raise OnboardingError(
+                        "--workspace is required when fix receives a GitHub Issue URL"
+                    )
+                progress("onboarding.started", {"issue_url": target})
+                preparation = prepare_github_issue(
+                    target,
+                    args.workspace,
+                    base_commit=args.base_commit,
+                    trust_host=args.trust_host,
+                    container_image=args.container_image,
+                    source_repository=args.source_repository,
+                )
+                progress(
+                    "onboarding.completed",
+                    {
+                        "case_id": preparation.issue.reference.number,
+                        "base_commit": preparation.issue.base_commit,
+                    },
+                )
+                task_path = preparation.task_path
+                artifact_root = args.artifacts or (args.workspace / "fix-runs")
+            else:
+                if any(
+                    value is not None and value is not False
+                    for value in (
+                        args.workspace,
+                        args.base_commit,
+                        args.source_repository,
+                        args.trust_host,
+                        args.container_image,
+                    )
+                ):
+                    raise OnboardingError(
+                        "GitHub preparation options require a GitHub Issue URL target"
+                    )
+                task_path = Path(target)
+                artifact_root = args.artifacts or Path("artifacts/fix")
+            task = (
+                load_issue_to_pr_task(task_path)
+                if args.review
+                else load_fix_task(task_path)
+            )
             if args.provider == "scripted":
                 if args.proposal_sequence is None:
                     raise ProviderError("--proposal-sequence is required for scripted provider")
@@ -356,12 +437,12 @@ def main(argv: list[str] | None = None) -> int:
                         ),
                     )
                 report = IssueToPRRunner(
-                    args.artifacts, provider, reviewer, repair_provider
+                    artifact_root, provider, reviewer, repair_provider
                 ).run(task)
             else:
-                report = FixRunner(args.artifacts, provider, progress=progress).run(task)
-        except ProviderError as exc:
-            print(f"fix configuration failed: {exc}")
+                report = FixRunner(artifact_root, provider, progress=progress).run(task)
+        except (OnboardingError, ProviderError) as exc:
+            print(f"fix configuration failed: {exc}", file=sys.stderr)
             return 2
         finally:
             progress.stop()
@@ -412,7 +493,7 @@ def main(argv: list[str] | None = None) -> int:
                 task = load_review_task(args.task)
                 report = ReviewRunner(args.artifacts, provider).run(task)
         except ProviderError as exc:
-            print(f"review configuration failed: {exc}")
+            print(f"review configuration failed: {exc}", file=sys.stderr)
             return 2
         print(report.model_dump_json(indent=2))
         if args.repair:

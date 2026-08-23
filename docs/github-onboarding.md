@@ -1,17 +1,26 @@
 # GitHub Issue onboarding
 
-`prepare-github` converts one public GitHub Issue into a frozen, reviewable `FixTask`. It fetches
-the Issue title and body, repository default branch, and full Base Commit SHA. It deliberately does
-not fetch comments, linked solutions, hidden tests, Gold Patches, or evaluator labels.
+`fix` can accept one public GitHub Issue URL directly, while `prepare-github` exposes the same
+onboarding as a separate review checkpoint. Both fetch the Issue title and body, repository default
+branch, and full Base Commit SHA. They deliberately do not fetch comments, linked solutions, hidden
+tests, Gold Patches, or evaluator labels.
 
 ## Basic flow
 
+The shortest product path is one command:
+
 ```bash
-uv run prguard prepare-github \
+uv run prguard fix \
   https://github.com/OWNER/REPOSITORY/issues/NUMBER \
-  --output work/issue-NUMBER \
-  --trust-host
+  --workspace work/issue-NUMBER \
+  --trust-host \
+  --provider deepseek \
+  --progress
 ```
+
+`work/issue-NUMBER` must be new. It retains the checkout and preparation contract under
+`artifacts/`, while implementation results are written under `fix-runs/`. Stdout remains only the
+versioned final report; onboarding and run progress go to stderr.
 
 Without `--base-commit`, the default-branch tip is resolved and frozen at preparation time. Supply
 an explicit 7–40 digit commit SHA to reproduce a historical task. Public repositories only are
@@ -29,6 +38,15 @@ clone with the same canonical GitHub `origin` may be used only as a cache:
 uv run prguard prepare-github ISSUE_URL \
   --output work/issue \
   --source-repository /path/to/same/repository \
+  --trust-host
+```
+
+For a human/CI approval point before the provider call or repository execution, stop after
+preparation:
+
+```bash
+uv run prguard prepare-github ISSUE_URL \
+  --output work/issue \
   --trust-host
 ```
 

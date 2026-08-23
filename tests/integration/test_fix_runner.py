@@ -1,9 +1,10 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from prguard.cli import load_fix_task, main
+from prguard.cli import load_fix_task, load_issue_to_pr_task, main
 from prguard.fix import FixRunner
 from prguard.harness import verify_manifest
 from prguard.implementer.providers import ProviderRequest, ScriptedProvider
@@ -163,6 +164,80 @@ def test_fix_cli_runs_scripted_issue_to_patch(
     output = json.loads(capsys.readouterr().out)
     assert exit_code == 0
     assert output["outcome"] == "accepted"
+
+
+@pytest.mark.integration
+def test_fix_cli_accepts_github_issue_url_and_preserves_preparation_workspace(
+    materialized_fix_cases: dict[str, Path], tmp_path: Path, capsys, monkeypatch
+) -> None:
+    case = materialized_fix_cases["direct-success"]
+    source_task = load_fix_task(case)
+    workspace = tmp_path / "github-workspace"
+    calls: list[dict[str, object]] = []
+
+    def fake_prepare(issue_url: str, output: Path, **kwargs):
+        calls.append({"issue_url": issue_url, "output": output, **kwargs})
+        return SimpleNamespace(
+            task_path=case,
+            issue=SimpleNamespace(
+                reference=SimpleNamespace(number=42),
+                base_commit=source_task.base_commit,
+            ),
+        )
+
+    monkeypatch.setattr("prguard.onboarding.prepare_github_issue", fake_prepare)
+    exit_code = main(
+        [
+            "fix",
+            "https://github.com/acme/slug/issues/42",
+            "--workspace",
+            str(workspace),
+            "--trust-host",
+            "--provider",
+            "scripted",
+            "--proposal-sequence",
+            str(case.parent / "proposals.json"),
+            "--progress",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+    assert exit_code == 0
+    assert output["outcome"] == "accepted"
+    assert calls == [
+        {
+            "issue_url": "https://github.com/acme/slug/issues/42",
+            "output": workspace,
+            "base_commit": None,
+            "trust_host": True,
+            "container_image": None,
+            "source_repository": None,
+        }
+    ]
+    assert Path(output["artifact_directory"]).is_relative_to(workspace / "fix-runs")
+    assert "[prguard] freezing GitHub Issue and repository" in captured.err
+    assert "[prguard] GitHub task prepared" in captured.err
+
+
+def test_fix_cli_rejects_github_only_options_for_local_task(
+    materialized_fix_cases: dict[str, Path], tmp_path: Path, capsys
+) -> None:
+    case = materialized_fix_cases["direct-success"]
+    exit_code = main(["fix", str(case), "--workspace", str(tmp_path / "unused")])
+
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "GitHub preparation options require a GitHub Issue URL" in captured.err
+
+
+def test_issue_to_pr_loader_derives_stage_budgets_for_prepared_fix_task(
+    materialized_fix_cases: dict[str, Path],
+) -> None:
+    task = load_issue_to_pr_task(materialized_fix_cases["direct-success"])
+
+    assert task.fix_timeout_seconds + task.review_timeout_seconds < task.task_timeout_seconds
 
 
 def test_fix_cli_progress_uses_stderr_without_breaking_json_stdout(
