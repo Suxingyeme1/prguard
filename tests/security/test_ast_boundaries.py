@@ -53,6 +53,23 @@ def test_ast_results_share_the_repository_context_budget(tmp_path: Path) -> None
 
 
 @pytest.mark.security
+def test_call_graph_results_share_the_repository_context_budget(tmp_path: Path) -> None:
+    calls = "\n".join(f"    sensitive_function_{index:03d}()" for index in range(100))
+    functions = "\n".join(
+        f"def sensitive_function_{index:03d}():\n    return {index}\n"
+        for index in range(100)
+    )
+    (tmp_path / "module.py").write_text(
+        f"{functions}\ndef entrypoint():\n{calls}\n",
+        encoding="utf-8",
+    )
+    tools = RepositoryTools(tmp_path, _task(tmp_path, max_context_bytes=4096))
+
+    with pytest.raises(RepositoryAccessError, match="context byte budget"):
+        tools.trace_call_graph("module.entrypoint", "callees", 1, 200)
+
+
+@pytest.mark.security
 def test_ast_index_skips_files_over_per_file_read_limit(tmp_path: Path) -> None:
     (tmp_path / "large.py").write_text(
         "def should_not_be_indexed():\n    return '" + "x" * 5000 + "'\n"

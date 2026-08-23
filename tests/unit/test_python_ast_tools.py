@@ -76,6 +76,13 @@ def test_ast_index_finds_qualified_symbols_imports_and_direct_callers(
     assert callers[0]["target"] == "shop.tax.tax"
     assert callers[0]["resolution"] == "import_alias"
 
+    reexported_callers = tools.find_callers("shop.pricing.Price.total", 20)["callers"]
+    assert any(
+        item["caller"] == "test_pricing.test_quote"
+        and item["resolution"] == "import_alias_reexport"
+        for item in reexported_callers
+    )
+
     callees = tools.find_callees("shop.pricing.Price.total", 20)["callees"]
     assert [item["target"] for item in callees] == ["shop.tax.tax", "decimal.Decimal"]
 
@@ -94,6 +101,70 @@ def test_ast_index_maps_references_and_related_public_tests(tmp_path: Path) -> N
     assert related["tests"][0]["score"] >= 6
     assert related["index"]["analysis"] == "bounded_static_ast"
     assert "runtime dispatch" in related["index"]["limitations"]
+
+
+def test_ast_index_traces_bounded_multihop_call_graph_with_test_anchors(
+    tmp_path: Path,
+) -> None:
+    _write_python_project(tmp_path)
+    tools = RepositoryTools(tmp_path, _task(tmp_path))
+
+    graph = tools.trace_call_graph(
+        "shop.pricing.Price.total",
+        direction="both",
+        max_depth=2,
+        max_results=20,
+    )
+
+    assert graph["root_resolution"] == "exact"
+    assert graph["truncated"] is False
+    nodes = {item["symbol"]: item for item in graph["nodes"]}
+    assert nodes["shop.pricing.Price.total"]["depth"] == 0
+    assert nodes["shop.pricing.quote"]["discovered_via"] == ["callers"]
+    assert nodes["shop.tax.tax"]["discovered_via"] == ["callees"]
+    assert nodes["decimal.Decimal"]["defined_in_repository"] is False
+    edges = {
+        (item["caller"], item["callee"], item["depth"])
+        for item in graph["edges"]
+    }
+    assert ("shop.pricing.quote", "shop.pricing.Price.total", 1) in edges
+    assert ("test_pricing.test_quote", "shop.pricing.Price.total", 1) in edges
+    assert ("shop.pricing.Price.total", "shop.tax.tax", 1) in edges
+    assert ("test_pricing.test_quote", "shop.pricing.quote", 2) in edges
+    assert graph["reachable_tests"] == [
+        {
+            "path": "tests/test_pricing.py",
+            "symbol": "test_pricing.test_quote",
+            "depth": 1,
+            "evidence": "reachable static caller",
+        }
+    ]
+    assert graph["related_tests"][0]["path"] == "tests/test_pricing.py"
+    assert graph["index"]["analysis"] == "bounded_static_ast"
+
+    bounded = tools.trace_call_graph(
+        "shop.pricing.Price.total", "both", max_depth=2, max_results=1
+    )
+    assert len(bounded["edges"]) == 1
+    assert bounded["truncated"] is True
+
+
+def test_call_graph_requires_an_unambiguous_root_and_reports_candidates(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "a.py").write_text("def run():\n    return 1\n", encoding="utf-8")
+    (tmp_path / "b.py").write_text("def run():\n    return 2\n", encoding="utf-8")
+    tools = RepositoryTools(tmp_path, _task(tmp_path, writable_paths=["*.py"]))
+
+    ambiguous = tools.trace_call_graph("run", "both", 2, 20)
+
+    assert ambiguous["root_resolution"] == "ambiguous"
+    assert [item["qualified_name"] for item in ambiguous["root_candidates"]] == [
+        "a.run",
+        "b.run",
+    ]
+    assert ambiguous["nodes"] == []
+    assert ambiguous["edges"] == []
 
 
 def test_ast_index_reports_parse_errors_without_exposing_file_content(
@@ -116,6 +187,24 @@ def test_ast_index_reports_parse_errors_without_exposing_file_content(
         ("list_imports", {"path": "../outside.py", "max_results": 10}),
         ("find_related_tests", {"target": "../outside.py", "max_results": 10}),
         ("find_callers", {"symbol": "value", "max_results": 201}),
+        (
+            "trace_call_graph",
+            {
+                "symbol": "value",
+                "direction": "sideways",
+                "max_depth": 2,
+                "max_results": 10,
+            },
+        ),
+        (
+            "trace_call_graph",
+            {
+                "symbol": "value",
+                "direction": "both",
+                "max_depth": 4,
+                "max_results": 10,
+            },
+        ),
     ],
 )
 def test_ast_queries_reject_unsafe_or_unbounded_inputs(

@@ -67,9 +67,14 @@ a deterministic tool, never a Test Runner Agent.
   built-in command grammar or fixed protected paths.
 - **Repository tools** expose bounded file listing, case-insensitive text search, line-range reads,
   and a lazy Python AST index for symbols, imports/re-exports, lexical references, incoming/outgoing
-  calls, and related-test ranking. Credential-like paths, traversal, escaping symlinks, binary
-  files, file/index caps, and context-budget overruns fail closed. The call graph is explicitly a
-  static approximation; runtime dispatch and reflection are unresolved.
+  calls, one-to-three-hop call-graph neighborhoods, and related/reachable-test ranking. Graph roots
+  must resolve exactly or by one unique suffix; ambiguous names return candidates and no edges.
+  Every edge retains its lexical expression, source anchor, and resolution method. Credential-like
+  paths, traversal, escaping symlinks, binary files, file/index caps, graph depth/edge caps, and
+  context-budget overruns fail closed. The graph is explicitly a static approximation; runtime
+  dispatch and reflection are unresolved. `inspect-symbol` exposes the same query for deterministic
+  debugging in a short-lived detached Base-Commit worktree; it does not call a provider or execute
+  repository code.
 - **Implementer provider** is a replaceable semantic component. DeepSeek uses bounded Chat
   Completions function calls, OpenAI uses direct Responses function calls, and the offline adapter
   makes workflow tests reproducible. None receives a shell or direct write primitive. Read-tool

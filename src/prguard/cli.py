@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -210,6 +211,17 @@ def build_parser() -> argparse.ArgumentParser:
     replay.add_argument("manifest", type=Path)
     replay.add_argument("--repository", type=Path)
     replay.add_argument("--artifacts", type=Path, default=Path("artifacts"))
+    inspect_symbol = subparsers.add_parser(
+        "inspect-symbol",
+        help="trace a bounded static Python call graph at a frozen FixTask base commit",
+    )
+    inspect_symbol.add_argument("task", type=Path)
+    inspect_symbol.add_argument("--symbol", required=True)
+    inspect_symbol.add_argument(
+        "--direction", choices=("callers", "callees", "both"), default="both"
+    )
+    inspect_symbol.add_argument("--max-depth", type=int, choices=(1, 2, 3), default=2)
+    inspect_symbol.add_argument("--max-results", type=int, default=100)
     prepare = subparsers.add_parser(
         "prepare-github",
         help="freeze a public GitHub Issue and repository into a validated FixTask",
@@ -353,6 +365,39 @@ def main(argv: list[str] | None = None) -> int:
         report = VerificationHarness(args.artifacts).run(task)
         print(report.model_dump_json(indent=2))
         return 0 if report.outcome == RunOutcome.PASSED else 1
+    if args.command == "inspect-symbol":
+        from prguard.harness.errors import PreflightError
+        from prguard.harness.git import GitRepository
+        from prguard.implementer.errors import RepositoryAccessError
+        from prguard.implementer.tools import RepositoryTools
+
+        try:
+            task = load_fix_task(args.task)
+            repository = GitRepository(task.repository)
+            resolved = repository.preflight(task.base_commit)
+            with tempfile.TemporaryDirectory(prefix="prguard-inspect-") as temporary:
+                worktree = Path(temporary) / "worktree"
+                repository.add_worktree(worktree, resolved)
+                try:
+                    result = RepositoryTools(worktree, task).trace_call_graph(
+                        args.symbol,
+                        args.direction,
+                        args.max_depth,
+                        args.max_results,
+                    )
+                finally:
+                    repository.remove_worktree(worktree)
+        except (OSError, ValueError, PreflightError, RepositoryAccessError) as exc:
+            print(f"symbol inspection failed: {exc}", file=sys.stderr)
+            return 2
+        print(
+            json.dumps(
+                {"resolved_base_commit": resolved, "call_graph": result},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
     if args.command == "fix":
         from prguard.fix import FixRunner
         from prguard.implementer.errors import ProviderError

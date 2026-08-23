@@ -1,0 +1,79 @@
+{
+  "schema_version": "prguard-call-graph-evidence-1",
+  "frozen_at": "2026-08-23",
+  "repository": "https://github.com/prettytable/prettytable",
+  "issue": "https://github.com/prettytable/prettytable/issues/474",
+  "base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+  "query": {
+    "symbol": "prettytable.prettytable.from_html",
+    "direction": "both",
+    "max_depth": 3,
+    "max_results": 80
+  },
+  "index": {
+    "language": "python",
+    "analysis": "bounded_static_ast",
+    "indexed_files": 15,
+    "parse_error_count": 0,
+    "skipped_large_files": 0,
+    "truncated": false
+  },
+  "result": {
+    "root_resolution": "exact",
+    "node_count": 7,
+    "edge_count": 6,
+    "reachable_test_count": 3,
+    "related_tests": [
+      "tests/test_html.py"
+    ],
+    "truncated": false
+  },
+  "reachable_tests": [
+    {
+      "path": "tests/test_html.py",
+      "symbol": "test_html.TestHtmlConstructor.test_html_and_back",
+      "depth": 1
+    },
+    {
+      "path": "tests/test_html.py",
+      "symbol": "test_html.TestHtmlConstructor.test_html_one_and_back",
+      "depth": 2
+    },
+    {
+      "path": "tests/test_html.py",
+      "symbol": "test_html.TestHtmlConstructor.test_html_one_fail_on_many",
+      "depth": 2
+    }
+  ],
+  "selected_edges": [
+    {
+      "caller": "prettytable.prettytable.from_html_one",
+      "callee": "prettytable.prettytable.from_html",
+      "path": "src/prettytable/prettytable.py",
+      "line": 3258,
+      "resolution": "module_definition"
+    },
+    {
+      "caller": "test_html.TestHtmlConstructor.test_html_and_back",
+      "callee": "prettytable.prettytable.from_html",
+      "path": "tests/test_html.py",
+      "line": 11,
+      "resolution": "import_alias_reexport"
+    },
+    {
+      "caller": "prettytable.prettytable.from_html",
+      "callee": "prettytable.prettytable._make_table_handler",
+      "path": "src/prettytable/prettytable.py",
+      "line": 3247,
+      "resolution": "module_definition"
+    },
+    {
+      "caller": "prettytable.prettytable.from_html",
+      "callee": "parser.feed",
+      "path": "src/prettytable/prettytable.py",
+      "line": 3248,
+      "resolution": "unresolved_lexical"
+    }
+  ],
+  "claim_boundary": "Deterministic bounded static navigation; not runtime-complete call-graph or live-model evidence."
+}

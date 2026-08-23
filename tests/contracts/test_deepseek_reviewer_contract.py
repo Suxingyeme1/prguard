@@ -122,6 +122,7 @@ def test_deepseek_reviewer_has_independent_bounded_context(tmp_path: Path) -> No
     ]
     assert "find_symbols" in tool_names
     assert "find_callers" in tool_names
+    assert "trace_call_graph" in tool_names
     assert "submit_review" in tool_names
     assert "submit_edits" not in tool_names
     assert "submit_patch" not in tool_names

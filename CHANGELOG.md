@@ -3,6 +3,36 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.8.2 — 2026-08-23
+
+### Added
+
+- `trace_call_graph`, a read-only Python AST tool shared by Implementer and Independent Reviewer;
+- `inspect-symbol`, a key-free CLI that runs the same query in a detached worktree at the Task's
+  resolved Base Commit;
+- bounded caller, callee, or bidirectional traversal with a fixed one-to-three-hop depth and a
+  caller-to-callee edge cap;
+- exact/unique/ambiguous root resolution, repository-definition anchors, external-node labels,
+  per-edge resolution evidence, reachable-test anchors, and deterministic truncation metadata.
+
+### Changed
+
+- package re-export resolution now handles member access through `__init__.py` aliases, so calls
+  such as `PublicClass.method()` map back to the defining module when static evidence permits;
+- package runtime version metadata is synchronized with the project release version and covered by
+  a contract test;
+- provider instructions now describe the bounded graph as navigation evidence and still require
+  source-line reads before editing or filing a review finding.
+
+### Evidence
+
+- at frozen PrettyTable commit `3c80d392d32f48b0ab1e368793ddb751dbe41807`, tracing
+  `prettytable.prettytable.from_html` indexed 15 files and returned 7 nodes, 6 edges, and three
+  reachable public tests without truncation or source execution;
+- the result linked `from_html_one` and `tests/test_html.py` through re-export-aware edges. This is
+  deterministic code-navigation evidence, not proof of a runtime-complete call graph or a new
+  model task-resolution result.
+
 ## 0.8.1 — 2026-08-23
 
 ### Added

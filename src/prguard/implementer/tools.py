@@ -246,6 +246,29 @@ class RepositoryTools:
             self._build_python_ast_index().find_callees(symbol, max_results)
         )
 
+    def trace_call_graph(
+        self,
+        symbol: str,
+        direction: str = "both",
+        max_depth: int = 2,
+        max_results: int = 100,
+    ) -> dict[str, object]:
+        self._validate_ast_query(symbol, max_results)
+        if direction not in {"callers", "callees", "both"}:
+            raise RepositoryAccessError(
+                "call graph direction must be callers, callees, or both"
+            )
+        if max_depth < 1 or max_depth > 3:
+            raise RepositoryAccessError("call graph max_depth must be between 1 and 3")
+        return self._charge(  # type: ignore[return-value]
+            self._build_python_ast_index().trace_call_graph(
+                symbol,
+                direction,
+                max_depth,
+                max_results,
+            )
+        )
+
     def find_references(self, symbol: str, max_results: int = 100) -> dict[str, object]:
         self._validate_ast_query(symbol, max_results)
         return self._charge(  # type: ignore[return-value]
