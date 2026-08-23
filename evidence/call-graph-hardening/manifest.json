@@ -1,0 +1,16 @@
+{
+  "schema_version": "prguard-public-artifacts-1",
+  "frozen_at": "2026-08-23",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "104d272265ab24b7c0a9331bbe9d807faa7285b40b04a710f22739ac9c323053",
+      "size_bytes": 2252
+    },
+    {
+      "path": "run-summary.json",
+      "sha256": "6b8d7611e4ad24a2e9e7af3487048a930ce5869a00bccbd53d199fe80f5b32e7",
+      "size_bytes": 2297
+    }
+  ]
+}

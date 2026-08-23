@@ -15,7 +15,7 @@ unified diff, command evidence, structured decisions, and a SHA-256 manifest.
 
 ```mermaid
 flowchart LR
-    I["GitHub/local Issue + repository + base commit"] --> A["Implementer<br/>text + AST navigation · plan · structured edits"]
+    I["GitHub/local Issue + repository + base commit"] --> A["Implementer<br/>text + bounded AST graph · plan · structured edits"]
     A --> P["Git-authored unified diff"]
     P --> H["Deterministic harness<br/>policy · pytest · ruff · timeout"]
     H -->|"failure evidence; once"| A
@@ -115,6 +115,18 @@ uv run prguard review work/humanize-366/artifacts/task.json \
 
 Add `--repair` to permit one controlled repair under the FixTask's original writable/size policy.
 
+Inspect the same frozen Base Commit without calling a model or executing repository code:
+
+```bash
+uv run prguard inspect-symbol work/humanize-366/artifacts/task.json \
+  --symbol humanize.filesize.naturalsize \
+  --direction both \
+  --max-depth 2
+```
+
+The command creates a short-lived detached worktree and returns bounded static nodes, edges,
+resolution evidence, and reachable/related public tests as JSON.
+
 Run the complete quality gate:
 
 ```bash
@@ -129,8 +141,8 @@ uv run pytest -q
   artifacts;
 - reviewed `.prguard.toml` profiles plus conservative pytest, Issue-related public-test, source
   scope, and declared Hatch VCS runtime-file discovery; lint gates are explicit policy;
-- bounded text tools plus Python AST symbol/import/reference, incoming/outgoing call, and related-test
-  navigation;
+- bounded text tools plus Python AST symbol/import/reference, direct-call queries, one-to-three-hop
+  static call-graph tracing, and related/reachable-test navigation;
 - exact `replace_text`/`create_file` submissions applied locally, with Git-authored Patch output;
 - compatibility unified-diff proposals with writable/protected path, file-count, and byte limits;
 - detached Git worktree execution at an exact base commit;
@@ -147,8 +159,8 @@ uv run pytest -q
 - provider failures retain non-secret partial tool/Token evidence, and terminal submission has a
   reserved slot outside the bounded read-tool budget;
 - recursive JSON/Markdown artifacts, final diff, and SHA-256 manifest verification;
-- one-command GitHub-URL `fix`, inspectable `prepare-github`, `review`, `run`, `replay`, and
-  `verify-manifest` CLI workflows.
+- one-command GitHub-URL `fix`, inspectable `prepare-github`, `inspect-symbol`, `review`, `run`,
+  `replay`, and `verify-manifest` CLI workflows.
 
 ## Evidence on real repositories
 
@@ -172,6 +184,11 @@ The v0.8.1 [navigation-hardening case](evidence/navigation-hardening/README.md) 
 PrettyTable failure-to-design chain, accepted live Patch, 22-test targeted gate, 339-test wider
 gate, path-free run summary, and hashes. The public Issue disclosed the root cause, so this evidence
 tests repository navigation, adaptation, and orchestration—not blind semantic diagnosis.
+
+The v0.8.2 [call-graph check](evidence/call-graph-hardening/README.md) deterministically traces the
+same frozen PrettyTable source from `from_html` to upstream callers, downstream dependencies, and
+three reachable tests. It demonstrates bounded static navigation without executing repository code;
+it does not claim runtime-complete dispatch resolution.
 
 A separate two-case [Reviewer value check](evidence/reviewer-value/README.md) records one regression
 that passed a narrow base gate but was caught and repaired by independent review, plus one accepted
@@ -232,11 +249,10 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.8.1 hardens public GitHub Issue execution using retained real failures: partial provider
-evidence, realistic large-module navigation, qualified-symbol test targeting, terminal submission
-budgeting, explicit non-mutating lint policy, Base-gate readiness, and verification-write blocking.
-A fresh PrettyTable #474 run passed 22 targeted and 339 wider tests; see the
-[v0.8.1 phase report](docs/v0.8.1-phase-report.md). A first frozen pair shows both a
+Version 0.8.2 adds bounded multi-hop static impact navigation on top of the v0.8.1 execution
+hardening. A frozen PrettyTable query linked the target function to source callers, dependencies,
+and public test entry points with explicit resolution evidence; see the
+[v0.8.2 phase report](docs/v0.8.2-phase-report.md). A first frozen pair shows both a
 true-positive Reviewer repair and the high cost of reviewing a clean real-repository Patch; see the
 [net-benefit note](docs/reviewer-net-benefit.md). The next priority is selective routing and more
 repositories that pressure-test project adaptation. Large benchmark infrastructure and extra Agent

@@ -154,6 +154,10 @@ def test_deepseek_adapter_accepts_structured_edit_submission(tmp_path: Path) -> 
     assert envelope.proposal.patch is None
     assert envelope.proposal.edits[0].operation == "replace_text"
     assert envelope.tool_calls[-1].name == "submit_edits"
+    tool_names = [
+        item["function"]["name"] for item in completions.requests[0]["tools"]
+    ]
+    assert "trace_call_graph" in tool_names
 
 
 def test_deepseek_budget_failure_preserves_partial_evidence(tmp_path: Path) -> None:

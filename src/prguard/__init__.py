@@ -3,4 +3,4 @@
 from prguard.schemas import SCHEMA_VERSION
 
 __all__ = ["SCHEMA_VERSION"]
-__version__ = "0.3.0"
+__version__ = "0.8.2"

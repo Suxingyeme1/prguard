@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import builtins
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
@@ -313,6 +314,20 @@ class PythonAstIndex:
             self.records.append(record)
         self._resolve_reexports()
 
+    @staticmethod
+    def _rewrite_export_prefix(value: str, exports: dict[str, str]) -> str:
+        """Resolve both direct re-exports and members reached through a re-export."""
+
+        matches = [
+            alias
+            for alias in exports
+            if value == alias or value.startswith(f"{alias}.")
+        ]
+        if not matches:
+            return value
+        alias = max(matches, key=len)
+        return f"{exports[alias]}{value[len(alias):]}"
+
     def _resolve_reexports(self) -> None:
         exports = {
             f"{record.module}.{item['binding']}": str(item["target"])
@@ -323,7 +338,7 @@ class PythonAstIndex:
         for _ in range(8):
             changed = False
             for alias, target in list(exports.items()):
-                resolved = exports.get(target, target)
+                resolved = self._rewrite_export_prefix(target, exports)
                 if resolved != target:
                     exports[alias] = resolved
                     changed = True
@@ -332,8 +347,8 @@ class PythonAstIndex:
         for record in self.records:
             for item in [*record.calls, *record.references]:
                 target = str(item["target"])
-                resolved = exports.get(target)
-                if resolved is not None and resolved != target:
+                resolved = self._rewrite_export_prefix(target, exports)
+                if resolved != target:
                     item["target"] = resolved
                     item["resolution"] = f"{item['resolution']}_reexport"
 
@@ -499,3 +514,196 @@ class PythonAstIndex:
             "truncated": len(results) > max_results,
             "index": self.metadata(),
         }
+
+    def _resolve_graph_root(self, query: str) -> tuple[str, list[dict[str, object]]]:
+        symbols = [symbol for record in self.records for symbol in record.symbols]
+        normalized = query.casefold()
+        exact = [
+            symbol
+            for symbol in symbols
+            if str(symbol["qualified_name"]).casefold() == normalized
+        ]
+        if len(exact) == 1:
+            return "exact", exact
+        if exact:
+            return "ambiguous", exact
+        named = [
+            symbol
+            for symbol in symbols
+            if str(symbol["name"]).casefold() == normalized
+            or str(symbol["qualified_name"]).casefold().endswith(f".{normalized}")
+        ]
+        named.sort(key=lambda item: (str(item["path"]), int(item["line"])))
+        if len(named) == 1:
+            return "unique_suffix", named
+        if named:
+            return "ambiguous", named
+        suggestions = [
+            symbol
+            for symbol in symbols
+            if normalized in str(symbol["name"]).casefold()
+            or normalized in str(symbol["qualified_name"]).casefold()
+        ]
+        suggestions.sort(key=lambda item: (str(item["path"]), int(item["line"])))
+        return "not_found", suggestions
+
+    def trace_call_graph(
+        self,
+        symbol: str,
+        direction: str,
+        max_depth: int,
+        max_results: int,
+    ) -> dict[str, object]:
+        """Return a bounded, evidence-carrying static neighborhood for one symbol."""
+
+        root_resolution, candidates = self._resolve_graph_root(symbol)
+        base: dict[str, object] = {
+            "query": symbol,
+            "root_resolution": root_resolution,
+            "root_candidates": candidates[:20],
+            "nodes": [],
+            "edges": [],
+            "reachable_tests": [],
+            "related_tests": [],
+            "limits": {
+                "direction": direction,
+                "max_depth": max_depth,
+                "max_results": max_results,
+            },
+            "truncated": len(candidates) > 20,
+            "index": self.metadata(),
+        }
+        if root_resolution in {"ambiguous", "not_found"}:
+            return base
+
+        root = str(candidates[0]["qualified_name"])
+        definitions = {
+            str(item["qualified_name"]): item
+            for record in self.records
+            for item in record.symbols
+        }
+        calls_by_caller: dict[str, list[dict[str, object]]] = {}
+        calls_by_target: dict[str, list[dict[str, object]]] = {}
+        for record in self.records:
+            for call in record.calls:
+                if call["caller"] is None:
+                    continue
+                calls_by_caller.setdefault(str(call["caller"]).casefold(), []).append(call)
+                calls_by_target.setdefault(str(call["target"]).casefold(), []).append(call)
+        nodes: dict[str, dict[str, object]] = {}
+        edges: dict[tuple[str, str, str, int], dict[str, object]] = {}
+        truncated = False
+
+        def add_node(name: str, depth: int, discovered_via: str) -> None:
+            definition = definitions.get(name)
+            existing = nodes.get(name)
+            if existing is None:
+                nodes[name] = {
+                    "symbol": name,
+                    "depth": depth,
+                    "discovered_via": {discovered_via},
+                    "defined_in_repository": definition is not None,
+                    "path": definition["path"] if definition is not None else None,
+                    "line": definition["line"] if definition is not None else None,
+                    "kind": definition["kind"] if definition is not None else None,
+                }
+                return
+            existing["depth"] = min(int(existing["depth"]), depth)
+            existing["discovered_via"].add(discovered_via)  # type: ignore[union-attr]
+
+        def add_edge(call: dict[str, object], depth: int, discovered_via: str) -> bool:
+            nonlocal truncated
+            caller = str(call["caller"])
+            callee = str(call["target"])
+            key = (caller, callee, str(call["path"]), int(call["line"]))
+            existing = edges.get(key)
+            if existing is not None:
+                existing["depth"] = min(int(existing["depth"]), depth)
+                existing["discovered_via"].add(discovered_via)  # type: ignore[union-attr]
+                return True
+            if len(edges) >= max_results:
+                truncated = True
+                return False
+            edges[key] = {
+                "caller": caller,
+                "callee": callee,
+                "path": call["path"],
+                "line": call["line"],
+                "expression": call["expression"],
+                "resolution": call["resolution"],
+                "depth": depth,
+                "discovered_via": {discovered_via},
+            }
+            return True
+
+        add_node(root, 0, "root")
+        traversals = ("callers", "callees") if direction == "both" else (direction,)
+        for traversal in traversals:
+            queue: deque[tuple[str, int]] = deque([(root, 0)])
+            visited = {root}
+            while queue and not truncated:
+                current, depth = queue.popleft()
+                if depth >= max_depth:
+                    continue
+                if traversal == "callers":
+                    adjacent = list(calls_by_target.get(current.casefold(), []))
+                    neighbor_key = "caller"
+                else:
+                    adjacent = list(calls_by_caller.get(current.casefold(), []))
+                    neighbor_key = "target"
+                adjacent.sort(key=lambda item: (str(item["path"]), int(item["line"])))
+                for call in adjacent:
+                    neighbor = str(call[neighbor_key])
+                    if not add_edge(call, depth + 1, traversal):
+                        break
+                    add_node(neighbor, depth + 1, traversal)
+                    if neighbor in definitions and neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append((neighbor, depth + 1))
+
+        node_values = list(nodes.values())
+        for item in node_values:
+            item["discovered_via"] = sorted(item["discovered_via"])  # type: ignore[arg-type]
+        node_values.sort(key=lambda item: (int(item["depth"]), str(item["symbol"])))
+        edge_values = list(edges.values())
+        for item in edge_values:
+            item["discovered_via"] = sorted(item["discovered_via"])  # type: ignore[arg-type]
+        edge_values.sort(
+            key=lambda item: (
+                int(item["depth"]),
+                str(item["caller"]),
+                str(item["callee"]),
+                str(item["path"]),
+                int(item["line"]),
+            )
+        )
+        reachable_tests = [
+            {
+                "path": item["path"],
+                "symbol": item["symbol"],
+                "depth": item["depth"],
+                "evidence": "reachable static caller",
+            }
+            for item in node_values
+            if item["path"] is not None
+            and (
+                bool({"test", "tests"} & set(PurePosixPath(str(item["path"])).parts))
+                or PurePosixPath(str(item["path"])).name.startswith("test_")
+                or PurePosixPath(str(item["path"])).name.endswith("_test.py")
+            )
+            and "callers" in item["discovered_via"]
+        ]
+        reachable_tests.sort(
+            key=lambda item: (int(item["depth"]), str(item["path"]), str(item["symbol"]))
+        )
+        related = self.find_related_tests(root, min(max_results, 25))
+        base.update(
+            {
+                "nodes": node_values,
+                "edges": edge_values,
+                "reachable_tests": reachable_tests,
+                "related_tests": related["tests"],
+                "truncated": truncated or bool(related["truncated"]),
+            }
+        )
+        return base

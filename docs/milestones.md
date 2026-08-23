@@ -138,6 +138,16 @@ wider gate. The public Issue disclosed the root cause, so the
 [v0.8.1 evidence](../evidence/navigation-hardening/README.md) supports navigation/orchestration
 hardening rather than blind semantic-resolution accuracy.
 
+The seventh increment deepens the Agent's internal code navigation without adding another Agent or
+an execution privilege. `trace_call_graph` resolves one unambiguous Python symbol and walks callers,
+callees, or both for at most three hops and a bounded number of edges. It reports repository versus
+external nodes, source anchors, lexical resolution evidence, reachable test symbols, heuristic
+related tests, and truncation. Re-export prefix resolution now maps public package aliases back to
+defining methods. A deterministic run at the frozen PrettyTable #474 commit linked `from_html` to
+`from_html_one`, its helper, and three tests across 7 nodes and 6 edges without executing source.
+The [v0.8.2 phase report](v0.8.2-phase-report.md) keeps the claim at static navigation, not complete
+runtime dispatch or new live-model accuracy.
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

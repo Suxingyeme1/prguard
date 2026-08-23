@@ -211,6 +211,30 @@ _READ_TOOLS: list[dict[str, object]] = [
     },
     {
         "type": "function",
+        "name": "trace_call_graph",
+        "description": (
+            "Trace a bounded 1-3 hop static Python call neighborhood around one unambiguous "
+            "symbol. Returns caller-to-callee edges, source anchors, resolution evidence, and "
+            "related public tests; dynamic runtime dispatch remains unresolved."
+        ),
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {"type": "string"},
+                "direction": {
+                    "type": "string",
+                    "enum": ["callers", "callees", "both"],
+                },
+                "max_depth": {"type": "integer", "minimum": 1, "maximum": 3},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
+            },
+            "required": ["symbol", "direction", "max_depth", "max_results"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
         "name": "find_references",
         "description": (
             "Find lexical Python references to a symbol with file, line, scope, and "
@@ -335,7 +359,8 @@ _TOOLS: list[dict[str, object]] = [*_READ_TOOLS, _SUBMIT_EDITS, _SUBMIT_PATCH]
 
 _INSTRUCTIONS = """You are PRGuard's single Implementer for a real local repository.
 Inspect the repository using the bounded text and Python AST navigation tools. Use AST symbol,
-import, caller/reference, and related-test results as static evidence, then read the relevant lines.
+import, bounded call-graph, reference, and related-test results as static evidence, then read the
+relevant lines.
 Form an internal plan, then prefer submit_edits with exact old/new text operations. PRGuard will
 apply those edits locally and ask Git to generate the Patch. submit_patch remains a compatibility
 fallback when the required change cannot be represented safely as exact text edits.
@@ -447,6 +472,8 @@ def _call_read_tool(
         return tools.find_callers(**arguments)  # type: ignore[arg-type]
     if name == "find_callees":
         return tools.find_callees(**arguments)  # type: ignore[arg-type]
+    if name == "trace_call_graph":
+        return tools.trace_call_graph(**arguments)  # type: ignore[arg-type]
     if name == "find_references":
         return tools.find_references(**arguments)  # type: ignore[arg-type]
     if name == "find_related_tests":

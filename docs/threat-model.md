@@ -23,7 +23,7 @@ occurs in a detached worktree.
 | Secret benchmark leakage | public Task excludes gold/labels/hidden-test fields | authoring discipline still required |
 | Repository secret disclosure | denied credential names/suffixes, symlink containment, byte-bounded reads | secrets in ordinary source files remain in scope |
 | Malicious Issue/prompt injection | fixed instructions plus bounded text/AST tools and declarative edits | model can still propose a malicious semantic change |
-| AST/call-graph overclaim | results label bounded static analysis and each resolution type | dynamic dispatch, reflection, and generated code remain unresolved |
+| AST/call-graph overclaim | results label bounded static analysis and each resolution type; graph traversal is capped at three hops and ambiguous roots return no edges | dynamic dispatch, reflection, and generated code remain unresolved |
 | Agent adds a test outside the selected pytest target | Harness derives an argv for changed Python test modules; absent pytest capability blocks | unconventional/non-Python test layouts need reviewed project configuration |
 | Overbroad model edit | exact replacements are checked and Git-authored diffs are policy-gated in isolated worktrees | configured writable globs may be too broad |
 | Ambiguous text replacement | `old_text` must occur exactly once; create targets must not exist | a unique match can still be semantically wrong |

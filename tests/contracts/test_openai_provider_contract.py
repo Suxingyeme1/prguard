@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,11 +12,19 @@ from prguard.schemas import CommandSpec, FixTask
 
 class FakeResponses:
     def __init__(
-        self, patch: str, *, structured: bool = False, never_submit: bool = False
+        self,
+        patch: str,
+        *,
+        structured: bool = False,
+        never_submit: bool = False,
+        read_tool_name: str = "list_files",
+        read_tool_arguments: str = '{"pattern":"**/*.py","max_results":20}',
     ) -> None:
         self.patch = patch
         self.structured = structured
         self.never_submit = never_submit
+        self.read_tool_name = read_tool_name
+        self.read_tool_arguments = read_tool_arguments
         self.requests: list[dict[str, object]] = []
 
     def create(self, **kwargs: object) -> SimpleNamespace:
@@ -24,9 +33,9 @@ class FakeResponses:
             output = [
                 SimpleNamespace(
                     type="function_call",
-                    name="list_files",
-                    arguments='{"pattern":"**/*.py","max_results":20}',
-                    call_id="call-list",
+                    name=self.read_tool_name,
+                    arguments=self.read_tool_arguments,
+                    call_id="call-read",
                 )
             ]
         else:
@@ -53,8 +62,6 @@ class FakeResponses:
                     "patch": self.patch,
                     "tests_changed": False,
                 }
-            import json
-
             output = [
                 SimpleNamespace(
                     type="function_call",
@@ -130,7 +137,56 @@ def test_openai_adapter_accepts_structured_edit_submission(tmp_path: Path) -> No
     names = [tool["name"] for tool in responses.requests[0]["tools"]]
     assert "find_symbols" in names
     assert "find_callees" in names
+    assert "trace_call_graph" in names
     assert "submit_edits" in names
+
+
+def test_openai_adapter_dispatches_bounded_call_graph_tool(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text(
+        "def leaf():\n    return 1\n\ndef entry():\n    return leaf()\n",
+        encoding="utf-8",
+    )
+    responses = FakeResponses(
+        "",
+        structured=True,
+        read_tool_name="trace_call_graph",
+        read_tool_arguments=json.dumps(
+            {
+                "symbol": "app.leaf",
+                "direction": "callers",
+                "max_depth": 2,
+                "max_results": 20,
+            }
+        ),
+    )
+    client = SimpleNamespace(responses=responses)
+    task = FixTask(
+        case_id="provider-call-graph-contract",
+        repository=tmp_path,
+        base_commit="a" * 40,
+        issue="Inspect leaf callers.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
+        writable_paths=["*.py"],
+    )
+
+    envelope = OpenAIResponsesProvider(client=client, model="test-model").propose(
+        ProviderRequest(task=task, attempt=0), RepositoryTools(tmp_path, task)
+    )
+
+    assert [call.name for call in envelope.tool_calls] == [
+        "trace_call_graph",
+        "submit_edits",
+    ]
+    output = next(
+        item
+        for item in responses.requests[1]["input"]
+        if isinstance(item, dict) and item.get("type") == "function_call_output"
+    )
+    graph = json.loads(output["output"])
+    assert graph["root_resolution"] == "exact"
+    assert graph["edges"][0]["caller"] == "app.entry"
+    assert graph["edges"][0]["callee"] == "app.leaf"
 
 
 def test_openai_budget_failure_preserves_partial_evidence(tmp_path: Path) -> None:
