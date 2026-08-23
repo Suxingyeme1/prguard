@@ -121,6 +121,87 @@ def test_runtime_scaffold_is_available_but_excluded_from_delivered_diff(
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    ("assertion", "expected_outcome"),
+    [("True", RunOutcome.PASSED), ("False", RunOutcome.FAILED_VERIFICATION)],
+)
+def test_changed_python_tests_are_added_to_the_deterministic_gate(
+    assertion: str,
+    expected_outcome: RunOutcome,
+    make_repo,
+    tmp_path: Path,
+) -> None:
+    repo, commit = make_repo(
+        {"tests/test_existing.py": "def test_existing():\n    assert True\n"}
+    )
+    patch = tmp_path / f"generated-{assertion}.patch"
+    patch.write_text(
+        "diff --git a/tests/test_generated.py b/tests/test_generated.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_generated.py\n"
+        "@@ -0,0 +1,2 @@\n"
+        "+def test_generated():\n"
+        f"+    assert {assertion}\n",
+        encoding="utf-8",
+    )
+    command = ["pytest", "-q", "tests/test_existing.py"]
+    task = Task(
+        case_id=f"generated-test-{assertion.lower()}",
+        repository=repo,
+        base_commit=commit,
+        issue="Add a generated regression test.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+    )
+
+    report = VerificationHarness(tmp_path / f"generated-{assertion}-artifacts").run(task)
+
+    assert report.outcome is expected_outcome
+    assert report.commands[-1].kind == "pytest_changed_tests"
+    assert report.commands[-1].argv == ["pytest", "-q", "tests/test_generated.py"]
+    assert report.commands[-1].passed is (expected_outcome is RunOutcome.PASSED)
+    assert any(event.kind == "verification.derived" for event in report.trace_events)
+
+
+@pytest.mark.integration
+def test_changed_python_tests_require_declared_pytest_capability(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo({"clean.py": "VALUE = 1\n"})
+    patch = tmp_path / "unverified-test.patch"
+    patch.write_text(
+        "diff --git a/tests/test_generated.py b/tests/test_generated.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_generated.py\n"
+        "@@ -0,0 +1,2 @@\n"
+        "+def test_generated():\n"
+        "+    assert True\n",
+        encoding="utf-8",
+    )
+    command = ["ruff", "check", "."]
+    task = Task(
+        case_id="changed-test-without-pytest",
+        repository=repo,
+        base_commit=commit,
+        issue="Do not accept an unexecuted generated test.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command, kind="ruff")],
+        allowed_commands=[command],
+    )
+
+    report = VerificationHarness(tmp_path / "unverified-test-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.POLICY_BLOCKED
+    assert report.commands == []
+    assert [violation.code for violation in report.policy_violations] == [
+        "changed_tests_without_pytest"
+    ]
+
+
+@pytest.mark.integration
 def test_container_infrastructure_error_is_not_a_test_failure(
     make_repo, tmp_path: Path, monkeypatch
 ) -> None:

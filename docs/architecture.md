@@ -80,6 +80,10 @@ a deterministic tool, never a Test Runner Agent.
   model call it runs declared pytest targets in `--collect-only` mode: failing assertions remain
   valid Fix inputs, while missing imports/plugins/generated modules fail as environment readiness
   instead of consuming a repair round.
+- **Changed-test gate** recognizes added or modified conventionally named Python test modules from
+  Git's changed-file set. If the Task declares pytest, uncovered changed tests receive one
+  Harness-authored `pytest -q` argv; if no pytest capability exists, execution is policy-blocked.
+  The derived argv is reported and replayed, and still passes the fixed no-shell grammar.
 - **Review runner** verifies the candidate first, creates a separate patched worktree, gives an
   independently scoped Reviewer only the Issue, candidate diff, deterministic evidence, and
   bounded read tools, then computes the verdict deterministically. P0-P2 findings block; P3 is
@@ -98,7 +102,9 @@ a deterministic tool, never a Test Runner Agent.
   detached worktree lifecycle.
 - **Patch manager** uses `git apply --check` then `git apply`; it never evaluates patch text.
 - **Command policy** accepts argv arrays only and supports pytest/ruff directly or through
-  `python -m`. The task allowlist must exactly contain every invoked argv.
+  `python -m`. User-declared commands require exact Task allowlisting. The sole derived form is a
+  Harness-authored pytest command whose paths come from Git's bounded changed-test set; it is
+  grammar-validated and retained in command/trace artifacts.
 - **Executor** uses `shell=False`, process groups, sanitized environment, output files, and two
   deadlines (command and task). Its default host backend keeps the deterministic Python import path
   limited to the detached worktree's `src/` directory and repository root. Its explicit container

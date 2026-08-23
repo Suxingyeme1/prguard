@@ -33,6 +33,8 @@ whether their own work is correct. PRGuard separates proposal from judgment:
   exact text edits (or a compatibility Patch fallback);
 - PRGuard applies structured edits in an isolated worktree and asks Git to produce the diff;
 - the harness applies that patch in an isolated worktree and runs only declared argv commands;
+- changed Python test modules are deterministically added to the pytest gate, so an Agent-authored
+  regression test cannot sit outside a narrowly selected original test target;
 - one failed verification can return structured evidence for a bounded replacement patch;
 - review uses an independent context and produces source-linked findings;
 - the final gate and artifact hashes are deterministic and replayable.
@@ -124,6 +126,8 @@ uv run pytest -q
 - strict `pytest` and `ruff` argv grammars with `shell=False`;
 - per-command, per-stage, and total-run deadlines with bounded captured output;
 - zero-token pytest collection readiness checks before Implementer calls;
+- Harness-derived `pytest -q <changed-test-files...>` execution after Patch application; changing
+  tests without a declared pytest capability is policy-blocked;
 - optional digest-pinned container verification with no network, read-only mounts, and resource
   limits;
 - structured pytest/ruff results, policy decisions, review findings, and trace events;

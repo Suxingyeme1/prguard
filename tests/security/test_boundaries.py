@@ -162,3 +162,43 @@ def test_verification_cannot_tamper_with_runtime_scaffold(make_repo, tmp_path: P
         violation.code == "runtime_scaffold_modified"
         for violation in report.policy_violations
     )
+
+
+@pytest.mark.security
+@pytest.mark.integration
+def test_derived_changed_test_argv_still_rejects_shell_tokens(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo(
+        {"tests/test_existing.py": "def test_existing():\n    assert True\n"}
+    )
+    patch = tmp_path / "unsafe-test-name.patch"
+    patch.write_text(
+        "diff --git a/tests/test_bad;name.py b/tests/test_bad;name.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_bad;name.py\n"
+        "@@ -0,0 +1,2 @@\n"
+        "+def test_bad_name():\n"
+        "+    assert True\n",
+        encoding="utf-8",
+    )
+    command = ["pytest", "-q", "tests/test_existing.py"]
+    task = Task(
+        case_id="unsafe-derived-test-argv",
+        repository=repo,
+        base_commit=commit,
+        issue="Reject unsafe derived argv tokens.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+    )
+
+    report = VerificationHarness(tmp_path / "unsafe-derived-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.POLICY_BLOCKED
+    assert report.commands == []
+    assert any(
+        violation.code == "command_not_allowed"
+        for violation in report.policy_violations
+    )

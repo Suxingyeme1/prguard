@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SCHEMA_VERSION = "1.0.0"
 HARNESS_VERSION = "0.1.0"
-POLICY_VERSION = "argv-v1"
+POLICY_VERSION = "argv-v2"
 FIX_WORKFLOW_VERSION = "fix-v2"
 ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v2"
 PATCH_POLICY_VERSION = "patch-v2"
