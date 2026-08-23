@@ -9,6 +9,8 @@ versions.
 
 - `prepare-github` for public GitHub Issue title/body, repository metadata, exact Base Commit,
   same-origin cached checkout, and frozen FixTask preparation;
+- direct `prguard fix https://github.com/.../issues/...` composition that retains preparation
+  artifacts and continues into the normal verified Fix workflow;
 - strict `.prguard.toml` support plus conservative pytest/Ruff and source/test-scope discovery;
 - Issue-symbol-to-public-test targeting and a recorded runtime-only adapter for missing Hatch VCS
   version files;

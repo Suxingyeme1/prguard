@@ -111,6 +111,14 @@ edits, passed 78 targeted checks plus Ruff, and then passed a wider 702-test reg
 optional benchmark skips. Both recursive Manifests verified. The earlier environment failure is
 retained and documented in the [v0.8 phase report](v0.8.0-phase-report.md).
 
+The fifth increment removes the remaining normal-path handoff between preparation and execution:
+`prguard fix` now accepts either a Task JSON or canonical public GitHub Issue URL. URL mode requires
+an explicit new workspace and execution boundary, preserves the preparation Task/report/Manifest,
+then writes Fix artifacts under the same owned workspace. The two-stage `prepare-github` path
+remains available for human or CI approval. A key-free Humanize #366 composition replay verified
+both Manifests and the clean source checkout; it is orchestration evidence, not a second live-model
+success claim.
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

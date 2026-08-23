@@ -68,16 +68,26 @@ failure/success evidence chain.
 
 ## Start from a public GitHub Issue
 
-`prepare-github` removes the need to hand-author the normal FixTask JSON. It fetches only the public
-Issue title/body and repository metadata, freezes an exact commit, checks out the repository, and
-discovers a conservative Python verification profile:
+`fix` accepts either a reviewed Task JSON or a canonical public GitHub Issue URL. The URL form
+freezes the Issue and exact commit, checks out the repository, discovers a conservative Python
+verification profile, preserves the generated Task/Manifest, and continues into implementation:
 
 ```bash
-uv run prguard prepare-github \
+uv run prguard fix \
   https://github.com/python-humanize/humanize/issues/366 \
-  --output work/humanize-366 \
+  --workspace work/humanize-366 \
   --base-commit ce4147b6c8f8a132f772be0929d58305eb22c5d9 \
-  --trust-host
+  --trust-host \
+  --provider deepseek \
+  --progress
+```
+
+Use the two-stage form when a person or CI policy should inspect preparation before spending model
+tokens or running repository code:
+
+```bash
+uv run prguard prepare-github ISSUE_URL \
+  --output work/humanize-366 --trust-host
 
 uv run prguard verify-manifest \
   work/humanize-366/artifacts/preparation-manifest.json
@@ -86,7 +96,8 @@ uv run prguard fix work/humanize-366/artifacts/task.json \
   --provider openai --progress
 ```
 
-Omit `--base-commit` to freeze the default-branch tip at preparation time. Unknown repositories
+The one-command workspace contains the same preparation artifacts plus `fix-runs/`. Omit
+`--base-commit` to freeze the default-branch tip at preparation time. Unknown repositories
 must explicitly select `--trust-host` or a digest-pinned `--container-image`; the model never makes
 that trust decision. See the [GitHub onboarding guide](docs/github-onboarding.md), including the
 optional reviewed `.prguard.toml` contract.
@@ -119,7 +130,8 @@ uv run pytest -q
 - one evidence-guided implementation repair and one review-triggered controlled repair;
 - provider-neutral scripted, DeepSeek Chat Completions, and OpenAI Responses adapters;
 - recursive JSON/Markdown artifacts, final diff, and SHA-256 manifest verification;
-- `prepare-github`, `fix`, `review`, `run`, `replay`, and `verify-manifest` CLI workflows.
+- one-command GitHub-URL `fix`, inspectable `prepare-github`, `review`, `run`, `replay`, and
+  `verify-manifest` CLI workflows.
 
 ## Evidence on real repositories
 
