@@ -32,6 +32,11 @@ Any repository check that passes on the base and fails only after the candidate 
 deterministic gate. Broader post-run checks may be reported separately, but they cannot retroactively
 turn an incomplete configured gate into evidence that the original run was review-ready.
 
+If a candidate adds or modifies a conventionally named Python test module, that exact file must be
+executed even when the frozen base command targets a narrower existing file. Such a command is
+Harness-derived from Git's changed-file set and retained in the report. A task without a declared
+pytest capability cannot claim test-backed success after changing Python tests.
+
 The initial scorecard is deliberately compact: task resolution, fail-to-pass/pass-to-pass,
 regression-free rate, Review Finding precision/recall, false block, token use, elapsed time, and
 repair rounds. Keep frozen manifests and raw artifacts. Add confidence intervals or paired tests

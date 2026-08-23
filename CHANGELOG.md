@@ -19,6 +19,8 @@ versions.
 - exact `replace_text` and `create_file` proposals, applied in an isolated worktree and converted
   by Git into the final unified diff;
 - a preparation report and standard SHA-256 RunManifest accepted by `verify-manifest`.
+- deterministic execution of added/modified Python test modules even when the original pytest
+  target is narrower; test changes without a declared pytest capability are policy-blocked.
 
 ### Evidence
 
@@ -43,6 +45,8 @@ versions.
 - runtime scaffolds are automatically protected, hash-checked after execution, and excluded from
   changed files and the delivered Patch;
 - Fix tasks now require at least one declared and allowlisted verification command.
+- the only Harness-derived command form is fixed `pytest -q` plus Git-reported changed test paths;
+  it passes the argv grammar and is retained in VerificationResult and TraceEvent artifacts.
 
 ## 0.7.0 — 2026-08-20
 

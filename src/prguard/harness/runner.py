@@ -6,7 +6,7 @@ import hashlib
 import shutil
 import time
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from uuid import uuid4
 
 from prguard.harness.artifacts import ArtifactStore
@@ -26,6 +26,7 @@ from prguard.harness.policy import (
     snapshot_tree,
 )
 from prguard.schemas import (
+    CommandSpec,
     HarnessReport,
     PatchApplicationResult,
     PolicyViolation,
@@ -33,6 +34,59 @@ from prguard.schemas import (
     Task,
     TraceEvent,
 )
+
+
+def _is_pytest_command(command: CommandSpec) -> bool:
+    argv = command.argv
+    return argv[0] == "pytest" or (
+        len(argv) >= 3 and argv[0] in {"python", "python3", "python3.12"}
+        and argv[1:3] == ["-m", "pytest"]
+    )
+
+
+def _changed_python_tests(paths: list[str]) -> list[str]:
+    tests: list[str] = []
+    for value in paths:
+        path = PurePosixPath(value)
+        if path.suffix != ".py" or path.name == "conftest.py":
+            continue
+        in_test_root = bool({"test", "tests"} & set(path.parts[:-1]))
+        conventional_name = path.name.startswith("test_") or path.name.endswith("_test.py")
+        if (in_test_root or len(path.parts) == 1) and conventional_name:
+            tests.append(path.as_posix())
+    return sorted(tests)
+
+
+def _generated_test_command(
+    commands: list[CommandSpec], changed_paths: list[str]
+) -> tuple[CommandSpec | None, PolicyViolation | None]:
+    changed_tests = _changed_python_tests(changed_paths)
+    if not changed_tests:
+        return None, None
+    pytest_commands = [command for command in commands if _is_pytest_command(command)]
+    if not pytest_commands:
+        return None, PolicyViolation(
+            code="changed_tests_without_pytest",
+            message="candidate changes Python tests but the Task declares no pytest capability",
+            paths=changed_tests,
+        )
+    explicitly_covered = {
+        path
+        for command in pytest_commands
+        for token in command.argv
+        for path in changed_tests
+        if token.split("::", 1)[0].rstrip("/") == path
+    }
+    uncovered = [path for path in changed_tests if path not in explicitly_covered]
+    if not uncovered:
+        return None, None
+    return (
+        CommandSpec(
+            argv=["pytest", "-q", *uncovered],
+            kind="pytest_changed_tests",
+        ),
+        None,
+    )
 
 
 def _materialize_runtime_files(worktree: Path, task: Task) -> dict[str, str]:
@@ -147,6 +201,11 @@ class VerificationHarness:
                 violations.extend(
                     protected_path_violations(worktree, changed, effective_protected)
                 )
+                changed_test_command, changed_test_violation = _generated_test_command(
+                    task.commands, changed
+                )
+                if changed_test_violation is not None:
+                    violations.append(changed_test_violation)
                 if violations:
                     outcome = RunOutcome.POLICY_BLOCKED
                     trace("policy.blocked", "pre-command policy check failed")
@@ -161,10 +220,22 @@ class VerificationHarness:
                     audit_before = snapshot_tree(
                         run_directory, excluded_names={"worktree", "runtime"}
                     )
+                    verification_commands = list(task.commands)
+                    execution_policy = policy
+                    if changed_test_command is not None:
+                        verification_commands.append(changed_test_command)
+                        execution_policy = CommandPolicy(
+                            [*task.allowed_commands, changed_test_command.argv]
+                        )
+                        trace(
+                            "verification.derived",
+                            "changed Python tests added to the deterministic gate",
+                            argv=changed_test_command.argv,
+                        )
                     executor = CommandExecutor(
                         worktree=worktree,
                         runtime_directory=runtime,
-                        policy=policy,
+                        policy=execution_policy,
                         default_timeout=task.command_timeout_seconds,
                         max_output_bytes=task.max_output_bytes,
                         task_deadline=deadline,
@@ -174,7 +245,7 @@ class VerificationHarness:
                         outcome = RunOutcome.TIMED_OUT
                         trace("task.timed_out", "task deadline expired before verification")
                     else:
-                        for index, command in enumerate(task.commands):
+                        for index, command in enumerate(verification_commands):
                             trace("command.started", "verification command started", index=index)
                             result = executor.execute(index, command)
                             results.append(result)
