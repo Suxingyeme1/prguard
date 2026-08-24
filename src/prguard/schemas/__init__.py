@@ -7,6 +7,7 @@ from prguard.schemas.common import (
     PATCH_POLICY_VERSION,
     POLICY_VERSION,
     REVIEW_REPAIR_WORKFLOW_VERSION,
+    REVIEW_ROUTING_POLICY_VERSION,
     REVIEW_WORKFLOW_VERSION,
     SCHEMA_VERSION,
     ArtifactEntry,
@@ -59,6 +60,13 @@ from prguard.schemas.review import (
     ReviewReport,
     ReviewTask,
 )
+from prguard.schemas.routing import (
+    ReviewRiskFactor,
+    ReviewRoute,
+    ReviewRoutingMode,
+    ReviewRoutingResult,
+    ReviewSymbolImpact,
+)
 from prguard.schemas.tasks import CodingTaskState, Task
 
 __all__ = [
@@ -68,6 +76,7 @@ __all__ = [
     "PATCH_POLICY_VERSION",
     "POLICY_VERSION",
     "REVIEW_REPAIR_WORKFLOW_VERSION",
+    "REVIEW_ROUTING_POLICY_VERSION",
     "REVIEW_WORKFLOW_VERSION",
     "SCHEMA_VERSION",
     "AgentToolCall",
@@ -103,6 +112,11 @@ __all__ = [
     "ReviewRepairReport",
     "ReviewRepairTask",
     "ReviewReport",
+    "ReviewRiskFactor",
+    "ReviewRoute",
+    "ReviewRoutingMode",
+    "ReviewRoutingResult",
+    "ReviewSymbolImpact",
     "ReviewTask",
     "ReviewerSubmission",
     "RunManifest",

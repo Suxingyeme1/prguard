@@ -131,8 +131,14 @@ def apply_patch(
     return True, ""
 
 
-def changed_files(worktree: Path) -> list[str]:
-    result = run_git(worktree, "status", "--porcelain=v1", "--untracked-files=all")
+def changed_files(worktree: Path, *, deadline: float | None = None) -> list[str]:
+    result = run_git(
+        worktree,
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+        timeout=GitRepository._timeout(deadline),
+    )
     if result.returncode != 0:
         raise PreflightError(f"unable to inspect worktree: {result.stderr.strip()}")
     paths: set[str] = set()

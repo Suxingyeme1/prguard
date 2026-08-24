@@ -17,7 +17,7 @@ occurs in a detached worktree.
 | Protected-file tampering | Git changed/untracked paths matched against protected globs | ignored files need explicit audit |
 | Path traversal in command args | absolute paths and `..` segments rejected | tools may discover paths internally |
 | Credential inheritance | minimal environment, private HOME/TMPDIR | host APIs/files remain reachable |
-| Hanging/forking process | new process group, deadline, group termination | no hard CPU/memory/pid quota |
+| Hanging/forking process | new process group, deadline, group termination after timeout or parent exit | host process-group escape/races; no hard CPU/memory/pid quota |
 | Hostile verification code | optional digest-pinned container with no network, non-root UID, read-only mounts, dropped capabilities, and hard resource limits | host-mode tasks remain unsandboxed; kernel/daemon/image stay trusted |
 | Artifact tampering | SHA-256 per file and manifest payload hash | no signing/remote attestation |
 | Secret benchmark leakage | public Task excludes gold/labels/hidden-test fields | authoring discipline still required |
@@ -33,6 +33,7 @@ occurs in a detached worktree.
 | Provider credential disclosure | environment-only keys, no key CLI/task fields, error redaction | host process inspection and misconfigured logging |
 | Endpoint credential smuggling | provider URLs reject userinfo/query/fragment and require HTTPS except loopback | a permitted endpoint still receives selected source |
 | Reviewer anchoring on Implementer | fresh provider context excludes Implementer plan/reasoning | shared model family may have correlated blind spots |
+| Reviewer anchoring on routing heuristics | routing score, factors, and recommendation remain Harness artifacts and are excluded from Reviewer context | Reviewer still sees the same Patch and verification evidence that informed deterministic factors |
 | Reviewer false authority | findings require evidence; Harness and severity policy own verdict | plausible but false evidence still needs human review |
 | Finding-to-repair prompt injection | only validated structured fields are serialized; Implementer retains fixed instructions and bounded tools | malicious repository text can still influence both models |
 | Incremental-patch ambiguity | repair must be a complete diff against the immutable Base Commit and is applied in a fresh Harness worktree | semantic omission can still pass incomplete public tests |
@@ -45,6 +46,10 @@ occurs in a detached worktree.
 | Linter/test mutates Candidate during verification | Ruff requires `check --no-fix`; before/after Candidate diffs must match | hostile code can still write outside a host worktree before audit detects it |
 | Runtime scaffold leaking into delivery | declared path is protected, hash-checked, and excluded from Git final diff | the narrow scaffold may not emulate every build backend API |
 | Provider failure hides prior work/cost | partial response metadata, tool calls, and Token usage are artifacted and hashed | provider accounting can be absent or inaccurate |
+| Selective routing bypasses required review | `always` is the default; `shadow` always reviews; only explicit `selective` can make `skip` effective, and only after an accepted Fix | a poorly calibrated explicit selective policy can still skip a semantically risky Patch |
+| Missing static evidence is mistaken for low risk | replay, deadline, AST/index, unsupported-language, ambiguity, and cleanup incompleteness force the route to review | bounded analysis can appear complete while dynamic dispatch or repository conventions hide impact |
+| Routing inputs are substituted after verification | Base Commit, Patch SHA-256, Fix Manifest, Verification Manifest, and archived/in-memory report equality are bound before routing; the top Manifest hashes the decision and delivered Patch | SHA-256 artifacts are not signed or remotely attested |
+| Implementer manipulates its own risk score | routing uses Git-visible Patch facts, frozen public policy, verified command evidence, and Harness-owned static analysis rather than model summaries or self-reported test coverage | an adversarial semantic change can deliberately remain small and use ordinary-looking paths |
 
 ## Explicit non-guarantees
 
@@ -64,3 +69,10 @@ orchestration deterministically but do not claim live-model task success. Live p
 be reported separately with provider, model, token, latency, and frozen artifacts. DeepSeek uses
 the stable Chat Completions endpoint and locally validates every tool argument and submitted patch;
 it does not depend on beta strict-function enforcement.
+
+The Reviewer routing score is a versioned prioritization heuristic, not a probability of correctness
+or a substitute for the deterministic gate. `shadow` mode is the safe way to measure its
+recommendations against real Reviewer outcomes. Explicit `selective` mode accepts the residual risk
+that a bounded, apparently complete static analysis may miss dynamic or repository-specific impact;
+an accepted selective skip means the declared verification gate passed, not that the Patch was
+proved defect-free.

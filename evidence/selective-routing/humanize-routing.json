@@ -1,0 +1,80 @@
+{
+  "additions": 8,
+  "analysis_incomplete": false,
+  "analysis_notes": [],
+  "changed_files": [
+    "src/humanize/filesize.py"
+  ],
+  "changed_python_files": [
+    "src/humanize/filesize.py"
+  ],
+  "changed_symbols": [
+    "humanize.filesize.naturalsize"
+  ],
+  "changed_test_files": [],
+  "covered_unchanged_tests": [
+    "tests/test_filesize.py"
+  ],
+  "deletions": 2,
+  "duration_seconds": 0.2785014169930946,
+  "effective_route": "review",
+  "factors": [
+    {
+      "code": "reachable_tests_not_explicitly_covered",
+      "evidence": [
+        "tests/test_i18n.py"
+      ],
+      "summary": "unchanged statically reachable tests were not named by the verified pytest argv",
+      "weight": 7
+    },
+    {
+      "code": "related_tests_not_explicitly_covered",
+      "evidence": [
+        "tests/test_benchmarks.py"
+      ],
+      "summary": "heuristically related unchanged tests were not named by the verified pytest argv",
+      "weight": 2
+    }
+  ],
+  "fix_manifest_sha256": "e0fe0c8c800246b15696e375981e34afe22f35a429af40cf2dd8a94e55fdf4ac",
+  "mode": "shadow",
+  "patch_sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f",
+  "policy_version": "review-routing-v1",
+  "pytest_scope": "targeted",
+  "pytest_targets": [
+    "tests/test_filesize.py"
+  ],
+  "recommended_route": "review",
+  "resolved_base_commit": "ce4147b6c8f8a132f772be0929d58305eb22c5d9",
+  "schema_version": "1.0.0",
+  "score": 9,
+  "symbol_impacts": [
+    {
+      "change_kind": "modified",
+      "direct_repository_callers": 0,
+      "graph_source": "candidate",
+      "graph_truncated": false,
+      "path": "src/humanize/filesize.py",
+      "reachable_tests": [
+        "tests/test_filesize.py",
+        "tests/test_i18n.py"
+      ],
+      "related_tests": [
+        "tests/test_benchmarks.py",
+        "tests/test_filesize.py",
+        "tests/test_i18n.py"
+      ],
+      "root_resolution": "exact",
+      "symbol": "humanize.filesize.naturalsize",
+      "transitive_repository_callers": 0
+    }
+  ],
+  "threshold": 5,
+  "uncovered_reachable_tests": [
+    "tests/test_i18n.py"
+  ],
+  "uncovered_related_tests": [
+    "tests/test_benchmarks.py"
+  ],
+  "verification_manifest_sha256": "86b95786e2fadb37baa39a9b8dc6e63acf1f2e7100fe75b1a7454cf5e27b494b"
+}

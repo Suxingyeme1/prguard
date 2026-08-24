@@ -32,9 +32,12 @@ Issue + repository + base commit
   -> final gate -> Review-ready Patch + artifacts
 ```
 
-With `fix --review`, an accepted Fix Patch continues into a fresh independent Reviewer context,
-optional one-time controlled repair, and a top-level final delivery Manifest. A failed Fix never
-spends Reviewer tokens.
+With `fix --review`, an accepted Fix Patch reaches a deterministic routing boundary before any
+Reviewer provider is constructed or called. `always` is the default, `shadow` records a selective
+recommendation while still reviewing, and explicit `selective` mode may deliver a completely
+analyzed low-risk Fix without a Reviewer call. Routed Patches otherwise continue into a fresh
+independent Reviewer context, optional one-time controlled repair, and a top-level final delivery
+Manifest. A failed Fix never enters routing or spends Reviewer tokens.
 
 ### `review` (quality module)
 
@@ -98,6 +101,15 @@ a deterministic tool, never a Test Runner Agent.
   Git's changed-file set. If the Task declares pytest, uncovered changed tests receive one
   Harness-authored `pytest -q` argv; if no pytest capability exists, execution is policy-blocked.
   The derived argv is reported and replayed, and still passes the fixed no-shell grammar.
+- **Reviewer router** runs only after an accepted Fix and before Independent Review. It binds the
+  resolved Base Commit and final Patch hash to the verified Fix and Verification Manifests, then
+  derives versioned risk factors from Patch scope, prior repair, test/gate and sensitive-path
+  changes, declared pytest scope, bounded Python symbol fingerprints, static caller impact, and
+  reachable/related public tests. `always` routes every Fix; `shadow` artifacts the selective
+  recommendation but still routes every Fix; only explicit `selective` mode can make `skip`
+  effective. Artifact mismatch is a hard integrity failure, while incomplete or unsupported static
+  analysis receives a blocking risk factor and routes to review. The score is an auditable policy
+  value, not a defect probability.
 - **Review runner** proves Base collection/non-pytest readiness, verifies the candidate, creates a
   separate patched worktree, gives an independently scoped Reviewer only the Issue, candidate diff,
   deterministic evidence, and bounded read tools, then computes the verdict deterministically.
@@ -109,9 +121,11 @@ a deterministic tool, never a Test Runner Agent.
   to an isolated patched worktree and folded by Git into one complete replacement Patch against the
   same Base Commit; a raw fallback must already be a complete replacement. A fresh Harness owns the
   final gate.
-- **Issue-to-PR runner** assigns a bounded Fix-stage budget inside one outer deadline, then composes
-  the accepted Fix artifact into review-repair. It copies only the final accepted Patch to the
-  delivery root and recursively hashes both nested workflows.
+- **Issue-to-PR runner** assigns a bounded Fix-stage budget inside one outer deadline, routes only an
+  accepted Fix, and lazily constructs Reviewer/repair providers only when the effective route is
+  `review`. A selective `skip` copies the byte-identical verified Fix Patch to the delivery root;
+  otherwise the runner composes it into review-repair. The top-level report records the routing
+  result and recursively hashes the decision, delivered Patch, and nested workflow artifacts.
 - **Repository manager** resolves the exact commit, requires a clean source repository, and owns
   detached worktree lifecycle.
 - **Patch manager** uses `git apply --check` then `git apply`; it never evaluates patch text.
@@ -146,9 +160,12 @@ Provider credentials are process-environment inputs, never task or CLI fields. L
 retain provider/model, response ID, token counts, endpoint class, reasoning effort, and available
 backend fingerprint, while excluding credentials and private reasoning content.
 
-Reviewer context contains issue, final diff, necessary source, and summarized evidence, but not
-Implementer reasoning. Reviewer is read-only. Gold patches, hidden tests, and defect labels belong
-to an evaluator-only record that is deliberately absent from the `Task` schema.
+Reviewer context contains issue, final diff, necessary source, and summarized verification
+evidence, but not Implementer reasoning. Reviewer is read-only. The routing score, factors, and
+recommended route also remain Harness-owned artifact metadata and are not passed into the Reviewer
+context, preventing a heuristic pre-assessment from anchoring the independent semantic review. Gold
+patches, hidden tests, and defect labels belong to an evaluator-only record that is deliberately
+absent from the `Task` schema.
 
 When controlled repair is enabled, the Implementer reads the patched candidate in a separate
 worktree. Structured edits are folded into a complete Base-Commit-relative replacement diff; a raw
@@ -168,7 +185,10 @@ The integrated `review --repair` workflow reports `accepted_without_repair`,
 `preflight_failed`. Only the first two produce an accepting final verdict.
 
 The composed `fix --review` workflow reports `accepted`, `fix_failed`, `review_failed`,
-`policy_blocked`, or `preflight_failed`. `accepted` requires both nested workflows to accept.
+`policy_blocked`, or `preflight_failed`. In default `always` and non-skipping `shadow` flows,
+`accepted` requires both nested workflows to accept. In explicit `selective` mode it may instead
+mean that the Fix passed its deterministic gate and a complete low-risk routing decision selected
+`skip`; `review_routing.effective_route` distinguishes that case from an executed review.
 
 The underlying Harness reports:
 

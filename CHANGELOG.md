@@ -3,6 +3,51 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.9.0 — 2026-08-24
+
+### Added
+
+- a Harness-owned Reviewer router after an accepted Fix, with backwards-compatible `always`,
+  measurement-only `shadow`, and explicit `selective` modes;
+- versioned routing schemas for the recommendation/effective route, integer evidence factors,
+  Patch statistics, pytest argv scope, changed Python symbols, bounded caller/test impact, analysis
+  completeness, and Fix/Verification Manifest bindings;
+- `fix --review --review-policy {always,shadow,selective}` and lazy Reviewer/repair provider
+  construction, so a selective skip does not require credentials or spend provider tokens;
+- a dedicated `review-routing.json`, Markdown routing section, and recursive top-level Manifest
+  coverage of the decision and exact delivered Patch;
+- hard review triggers for Implementer repair, candidate-controlled tests/gates, sensitive paths,
+  dependency/build files, unsupported source, incomplete AST/replay evidence, uncovered reachable
+  tests, broad Patches, and high bounded static fan-in;
+- security and integration cases for every routing mode, narrow-gate regression detection,
+  provider non-construction, hard-trigger boundaries, invalid AST, prompt/self-report
+  non-interference, and routing Artifact tamper detection.
+
+### Changed
+
+- the Issue-to-PR workflow contract is now `issue-to-pr-v4`; old Task JSON remains valid and
+  defaults to unconditional Independent Review;
+- a selective skip is represented as top-level `accepted` with `effective_route=skip`, no fabricated
+  Reviewer result, and a byte-identical copy of the verified Fix Patch;
+- routing uses a 30-second logical deadline, cannot skip after it expires, executes no repository
+  code, counts intent-to-add files, and fails closed to Review on analysis or replay uncertainty;
+- manifest identity, in-memory/archived Fix equality, resolved Base Commit, and verified Patch hash
+  are checked before any route can accept a skip;
+- successful host commands now terminate residual descendants in their isolated process group, and
+  top-level delivery rechecks its cross-Artifact Patch binding before and after Manifest creation.
+
+### Evidence
+
+- a frozen PrettyTable #474 source-only Patch passed 21 targeted and 338 wider tests; exact static
+  impact found only the explicitly selected HTML test file and shadow policy recommended `skip`
+  with score 0/5;
+- a frozen Humanize #366 source-only Patch passed 76 targeted and 700 wider tests plus Ruff, but
+  shadow policy conservatively recommended `review` with score 9/5 because an unchanged reachable
+  i18n test was outside the targeted gate;
+- the path-free two-case routing package, raw routing contracts, source Patches, wider-gate Manifest
+  hashes, and public-file hashes are independently verifiable. This pair is not a false-skip-rate
+  estimate and selective remains opt-in.
+
 ## 0.8.2 — 2026-08-23
 
 ### Added

@@ -21,6 +21,7 @@ from prguard.schemas import (
     ReviewOutcome,
     ReviewRepairOutcome,
     ReviewRepairTask,
+    ReviewRoutingMode,
     ReviewTask,
     RunOutcome,
     Task,
@@ -292,6 +293,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="continue an accepted fix through independent review and optional repair",
     )
     fix.add_argument(
+        "--review-policy",
+        choices=("always", "shadow", "selective"),
+        help=(
+            "Reviewer routing for fix --review; default Task policy is always, shadow records "
+            "a recommendation but still reviews, selective may skip only low-risk patches"
+        ),
+    )
+    fix.add_argument(
         "--review-provider", choices=("deepseek", "scripted"), default="deepseek"
     )
     fix.add_argument("--review-model")
@@ -412,6 +421,8 @@ def main(argv: list[str] | None = None) -> int:
         progress = _ProgressReporter(args.progress)
         progress.start()
         try:
+            if args.review_policy is not None and not args.review:
+                raise ProviderError("--review-policy requires --review")
             target = str(args.task)
             is_url = "://" in target
             if is_url:
@@ -458,6 +469,12 @@ def main(argv: list[str] | None = None) -> int:
                 if args.review
                 else load_fix_task(task_path)
             )
+            if args.review and args.review_policy is not None:
+                task = task.model_copy(
+                    update={
+                        "review_routing_mode": ReviewRoutingMode(args.review_policy)
+                    }
+                )
             if args.provider == "scripted":
                 if args.proposal_sequence is None:
                     raise ProviderError("--proposal-sequence is required for scripted provider")
@@ -480,49 +497,61 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
                 if args.review_provider == "scripted":
-                    if args.scripted_review is None:
-                        raise ProviderError(
-                            "--scripted-review is required for scripted Reviewer"
-                        )
-                    reviewer = ScriptedReviewerProvider.from_file(args.scripted_review)
+                    def reviewer_source():
+                        if args.scripted_review is None:
+                            raise ProviderError(
+                                "--scripted-review is required for scripted Reviewer"
+                            )
+                        return ScriptedReviewerProvider.from_file(args.scripted_review)
                 else:
-                    reviewer = DeepSeekReviewerProvider(
-                        model=args.review_model or DeepSeekReviewerProvider.default_model,
-                        reasoning_effort=args.review_reasoning_effort,
-                    )
+                    def reviewer_source():
+                        return DeepSeekReviewerProvider(
+                            model=(
+                                args.review_model
+                                or DeepSeekReviewerProvider.default_model
+                            ),
+                            reasoning_effort=args.review_reasoning_effort,
+                        )
                 repair_provider_name = args.review_repair_provider or args.provider
                 if repair_provider_name == "scripted":
-                    if args.review_repair_proposal_sequence is None:
-                        raise ProviderError(
-                            "--review-repair-proposal-sequence is required for scripted repair"
+                    def repair_source():
+                        if args.review_repair_proposal_sequence is None:
+                            raise ProviderError(
+                                "--review-repair-proposal-sequence is required for scripted repair"
+                            )
+                        return ScriptedProvider.from_file(
+                            args.review_repair_proposal_sequence
                         )
-                    repair_provider = ScriptedProvider.from_file(
-                        args.review_repair_proposal_sequence
-                    )
                 elif repair_provider_name == "deepseek":
-                    repair_provider = DeepSeekChatProvider(
-                        model=(
-                            args.review_repair_model
-                            or args.model
-                            or DeepSeekChatProvider.default_model
-                        ),
-                        reasoning_effort=(
-                            args.review_repair_reasoning_effort
-                            or args.reasoning_effort
-                            or "high"
-                        ),
-                    )
+                    def repair_source():
+                        return DeepSeekChatProvider(
+                            model=(
+                                args.review_repair_model
+                                or args.model
+                                or DeepSeekChatProvider.default_model
+                            ),
+                            reasoning_effort=(
+                                args.review_repair_reasoning_effort
+                                or args.reasoning_effort
+                                or "high"
+                            ),
+                        )
                 else:
-                    repair_provider = OpenAIResponsesProvider(
-                        model=args.review_repair_model or args.model or "gpt-5.6-terra",
-                        reasoning_effort=(
-                            args.review_repair_reasoning_effort
-                            or args.reasoning_effort
-                            or "medium"
-                        ),
-                    )
+                    def repair_source():
+                        return OpenAIResponsesProvider(
+                            model=(
+                                args.review_repair_model
+                                or args.model
+                                or "gpt-5.6-terra"
+                            ),
+                            reasoning_effort=(
+                                args.review_repair_reasoning_effort
+                                or args.reasoning_effort
+                                or "medium"
+                            ),
+                        )
                 report = IssueToPRRunner(
-                    artifact_root, provider, reviewer, repair_provider
+                    artifact_root, provider, reviewer_source, repair_source
                 ).run(task)
             else:
                 report = FixRunner(artifact_root, provider, progress=progress).run(task)

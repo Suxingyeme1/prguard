@@ -16,6 +16,33 @@ This is a deployment decision, not a claim that more Agents are intrinsically be
 records findings, false blocks, tokens, duration, repair rounds, and final regression outcomes so a
 team can estimate the terms using its own defect severity and delivery costs.
 
+## Routing modes
+
+Reviewer routing applies only after the Implementer Patch has passed its deterministic Harness
+gate. A Patch that does not apply, times out, fails a command, or violates policy is already stopped
+by the deterministic workflow; sending that Patch to a Reviewer does not count as incremental
+defect prevention.
+
+PRGuard distinguishes the routing recommendation from the route that is actually executed:
+
+| Mode | Recommendation | Effective route | Intended use |
+| --- | --- | --- | --- |
+| `always` | Review every accepted Fix | Review | Compatibility baseline and the safest initial deployment |
+| `shadow` | Compute `review` or `skip` | Review regardless | Collect paired Reviewer outcomes without allowing the heuristic to skip |
+| `selective` | Compute `review` or `skip` | Follow the recommendation | Avoid Reviewer latency and spend after the policy has enough shadow evidence |
+
+Shadow mode is the useful small-sample starting point. It preserves the exact decision that a
+selective policy would have made while still running the independent Reviewer. This produces the
+Reviewer verdict, findings, token use, latency, and optional repair outcome needed to assess the
+recommendation. Selective mode intentionally gives up that counterfactual on skipped cases, so it
+should not be the first source of routing evidence.
+
+The routing score is a sum of versioned evidence weights for observable facts such as a repair
+round, candidate-controlled tests, an uncovered statically reachable test, a sensitive path, broad
+change size, bounded static caller impact, or incomplete analysis. It is an activation score, not
+a calibrated defect probability. A score of 7 does not mean a 70% defect chance, and scores from
+different policy versions are not comparable without replaying the same cases.
+
 ## Frozen v0.8 pair
 
 The [public evidence pair](../evidence/reviewer-value/README.md) provides one positive and one cost
@@ -42,6 +69,33 @@ remain Implementer-plus-Harness unless the repository's cost of escape justifies
 - Charge all Reviewer and repair tokens, elapsed time, failed calls, and repair rounds.
 - Keep evaluator labels outside Agent-visible Task, provider context, and public prompt fixtures.
 
+Use the following terms consistently on evaluator-labelled, Harness-accepted Fixes:
+
+- **False route:** the policy recommends `review` for a Patch that the evaluator confirms is clean.
+  This measures unnecessary selection cost. It is not a false block when the Reviewer correctly
+  accepts the Patch.
+- **False skip:** the policy recommends `skip` for a Patch with an evaluator-confirmed defect. In
+  shadow mode the paired Reviewer run can additionally show whether the Reviewer would have found
+  that defect. In selective production, a skipped Patch has no such counterfactual unless it is
+  later audited; absence of a reported incident is not proof of zero false skips.
+- **False block:** an effective Reviewer run returns `request_changes` on an evaluator-confirmed
+  clean Patch. This is a Reviewer-verdict error, not a routing error. A clean Patch can therefore be
+  both a false route and a false block, or a false route without being false-blocked.
+
+Report counts and denominators, not only rates:
+
+```text
+false-route rate = false routes / evaluator-confirmed clean accepted Fixes
+false-skip rate  = false skips / evaluator-confirmed defective accepted Fixes
+false-block rate = false blocks / evaluator-confirmed clean effective reviews
+```
+
+A helpful route requires more than recommending review: the Reviewer must produce a manually
+confirmed, evidence-backed finding that the deterministic gate did not already block. Repair and
+final regression evidence are then charged to the same case when calculating net value.
+
 Two labelled cases are not enough for a routing threshold. The next useful expansion is several
-manually checked repository-level cases stratified by narrow/full gate and symbol impact—not a large
-generic benchmark or additional Agent role.
+manually checked repository-level cases stratified by targeted/broad gate, direct/repair Fix,
+ordinary/sensitive path, narrow/broad change, and complete/incomplete static analysis—not a large
+generic benchmark or additional Agent role. Freeze the policy first, run those cases in shadow
+mode, publish the raw counts and costs, and only then decide whether selective skipping is justified.

@@ -46,6 +46,70 @@ repair rounds. Keep frozen manifests and raw artifacts. Add confidence intervals
 only when the case count and decision being made justify them; do not delay the `fix` product path
 to build a large benchmark platform.
 
+## Selective Reviewer routing
+
+The routing evaluation unit is one Fix that the deterministic Harness has already accepted. Failed
+Patch application, failed verification, timeout, infrastructure failure, and policy block remain
+Harness outcomes and are excluded from routing confusion counts. The explicit `review` entry point
+also remains user-directed; selective routing concerns the optional Reviewer following a successful
+Issue-to-Patch run.
+
+Three modes answer different questions:
+
+1. `always` runs the Reviewer for every accepted Fix and provides the compatibility baseline.
+2. `shadow` records the deterministic `review` or `skip` recommendation but executes Review in
+   either case. This is the initial evaluation mode because every case retains a paired Reviewer
+   outcome and full incremental cost.
+3. `selective` follows the recommendation. It is a deployment mode, not the right mode for
+   estimating performance from a first small sample.
+
+For each shadow case, freeze the routing-policy version, score, threshold, individual factors,
+Patch hash, Base Commit, Fix and verification Manifest hashes, recommended route, effective route,
+Reviewer findings and verdict, repair outcome, tokens, and durations. The score is an ordinal sum
+of versioned evidence weights. Do not describe it as confidence, probability, expected loss, or a
+percentage, and do not compare raw scores produced by different policy versions.
+
+Evaluator labels are applied after the run and remain outside Agent-visible context:
+
+- **clean:** no candidate-caused defect is confirmed under the frozen evaluator checks;
+- **defective:** at least one candidate-caused defect is confirmed, including a regression missed
+  by the configured public gate;
+- **finding disposition:** each Reviewer finding is independently marked confirmed, rejected, or
+  unresolved using its reproduction condition or evaluator check.
+
+The routing and Reviewer errors are intentionally separate:
+
+```text
+false route = recommended review AND evaluator label clean
+false skip  = recommended skip   AND evaluator label defective
+false block = effective review   AND evaluator label clean
+              AND Reviewer verdict request_changes
+```
+
+Always publish the numerator and denominator. A clean Patch that is reviewed and accepted is a
+false route but not a false block. A defective selective skip cannot establish whether the Reviewer
+would have found the defect; that stronger counterfactual is available only from a shadow run or a
+later paired audit. Conversely, a Reviewer finding on a Patch the Harness already rejected is not
+incremental Reviewer benefit.
+
+### Small-sample rollout
+
+Before enabling selective skipping:
+
+1. freeze the routing policy and thresholds without consulting holdout defect labels;
+2. run a small manually checked set in shadow mode, stratified across targeted/broad pytest scope,
+   first-attempt/repaired Fixes, ordinary/sensitive paths, narrow/broad Patches, and
+   complete/incomplete static analysis;
+3. retain raw routing, Review, repair, verification, and Manifest artifacts;
+4. report false-route, false-skip, and false-block counts alongside confirmed incremental findings,
+   token cost, elapsed time, and repair rounds;
+5. enable selective mode only if the observed escape boundary and saved cost fit the repository's
+   own tolerance, while keeping periodic shadow or manual audits for skipped cases.
+
+Do not tune a threshold until two or three illustrative cases happen to pass. A small frozen table
+is useful for finding broken rules and integration errors, but it cannot support a population defect
+rate or a claim that the heuristic is calibrated.
+
 ## Leakage control
 
 Public cases contain issue, repository, base commit, candidate patch, commands, protected paths,

@@ -138,6 +138,24 @@ class CommandExecutor:
                     check=False,
                 )
 
+    @staticmethod
+    def _terminate_process_group(process: subprocess.Popen[bytes]) -> None:
+        """Kill descendants that outlive an otherwise completed host command."""
+
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            return
+        deadline = time.monotonic() + 1
+        while time.monotonic() < deadline:
+            try:
+                os.killpg(process.pid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.01)
+        with suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+
     def execute(self, index: int, spec: CommandSpec) -> VerificationResult:
         if self.container is None:
             effective_argv = self.policy.authorize(spec.argv)
@@ -216,6 +234,10 @@ class CommandExecutor:
                         process.wait()
                     self._remove_container(cidfile, env)
                     exit_code = None
+                else:
+                    self._terminate_process_group(process)
+                    if self.container is not None:
+                        self._remove_container(cidfile, env)
         duration = time.monotonic() - started
         stdout, stdout_truncated = _read_bounded(stdout_path, self.max_output_bytes)
         stderr, stderr_truncated = _read_bounded(stderr_path, self.max_output_bytes)

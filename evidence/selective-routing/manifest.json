@@ -1,0 +1,36 @@
+{
+  "schema_version": "prguard-public-artifacts-1",
+  "frozen_at": "2026-08-23",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "57de04757c0deb1cbac91cd7d8ae9ee3307894e4a8ffc48c822e23f9e3e30ee0",
+      "size_bytes": 2393
+    },
+    {
+      "path": "humanize-366-source-only.patch",
+      "sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f",
+      "size_bytes": 892
+    },
+    {
+      "path": "humanize-routing.json",
+      "sha256": "ddca65cb78ebfb735feb85f9f7b8a70433f8746736e15421ff7422ee817d2fb0",
+      "size_bytes": 2257
+    },
+    {
+      "path": "prettytable-474-source-only.patch",
+      "sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+      "size_bytes": 648
+    },
+    {
+      "path": "prettytable-routing.json",
+      "sha256": "3055257dd0e414fd4ca5525c2e14156f852d0e942717b3c99f0d7e7bcaf204a8",
+      "size_bytes": 1594
+    },
+    {
+      "path": "run-summary.json",
+      "sha256": "d9654ace4150206d19ccb684d5294f64c208024000345cde2f9f61c29d507ad6",
+      "size_bytes": 2204
+    }
+  ]
+}

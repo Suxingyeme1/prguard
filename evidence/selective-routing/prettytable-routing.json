@@ -1,0 +1,54 @@
+{
+  "additions": 2,
+  "analysis_incomplete": false,
+  "analysis_notes": [],
+  "changed_files": [
+    "src/prettytable/prettytable.py"
+  ],
+  "changed_python_files": [
+    "src/prettytable/prettytable.py"
+  ],
+  "changed_symbols": [
+    "prettytable.prettytable._make_table_handler"
+  ],
+  "changed_test_files": [],
+  "covered_unchanged_tests": [
+    "tests/test_html.py"
+  ],
+  "deletions": 2,
+  "duration_seconds": 0.3959272089996375,
+  "effective_route": "review",
+  "factors": [],
+  "fix_manifest_sha256": "44df76b5a4cc28453d8096f47a180315a360b9c49c5e3bab6f161182329fc283",
+  "mode": "shadow",
+  "patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+  "policy_version": "review-routing-v1",
+  "pytest_scope": "targeted",
+  "pytest_targets": [
+    "tests/test_html.py"
+  ],
+  "recommended_route": "skip",
+  "resolved_base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+  "schema_version": "1.0.0",
+  "score": 0,
+  "symbol_impacts": [
+    {
+      "change_kind": "modified",
+      "direct_repository_callers": 2,
+      "graph_source": "candidate",
+      "graph_truncated": false,
+      "path": "src/prettytable/prettytable.py",
+      "reachable_tests": [
+        "tests/test_html.py"
+      ],
+      "related_tests": [],
+      "root_resolution": "exact",
+      "symbol": "prettytable.prettytable._make_table_handler",
+      "transitive_repository_callers": 3
+    }
+  ],
+  "threshold": 5,
+  "uncovered_reachable_tests": [],
+  "uncovered_related_tests": [],
+  "verification_manifest_sha256": "8483b799a80967773a088bf35bd135996878a8e670537e2d6f942f980b8af115"
+}
