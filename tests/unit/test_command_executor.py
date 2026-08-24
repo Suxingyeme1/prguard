@@ -27,6 +27,39 @@ def test_exhausted_task_deadline_prevents_process_launch(tmp_path: Path) -> None
     assert "task deadline" in result.stderr
 
 
+def test_successful_host_command_terminates_background_children(tmp_path: Path) -> None:
+    worktree = tmp_path / "worktree"
+    runtime = tmp_path / "runtime"
+    (worktree / "tests").mkdir(parents=True)
+    runtime.mkdir()
+    (worktree / "tests" / "test_background.py").write_text(
+        "import subprocess, sys\n"
+        "from pathlib import Path\n\n"
+        "def test_background_child():\n"
+        "    target = Path.cwd().parent / 'runtime' / 'late-marker'\n"
+        "    code = (\"import time; from pathlib import Path; time.sleep(0.3); \"\n"
+        "            f\"Path({str(target)!r}).write_text('escaped')\")\n"
+        "    subprocess.Popen([sys.executable, '-c', code], "
+        "stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n",
+        encoding="utf-8",
+    )
+    command = ["pytest", "-q", "tests/test_background.py"]
+    executor = CommandExecutor(
+        worktree=worktree,
+        runtime_directory=runtime,
+        policy=CommandPolicy([command]),
+        default_timeout=5,
+        max_output_bytes=1024,
+        task_deadline=time.monotonic() + 10,
+    )
+
+    result = executor.execute(0, CommandSpec(argv=command))
+    time.sleep(0.5)
+
+    assert result.passed is True
+    assert not (runtime / "late-marker").exists()
+
+
 def _container_spec() -> ContainerExecutionSpec:
     return ContainerExecutionSpec(image="sha256:" + "a" * 64)
 

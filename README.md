@@ -19,7 +19,9 @@ flowchart LR
     A --> P["Git-authored unified diff"]
     P --> H["Deterministic harness<br/>policy · pytest · ruff · timeout"]
     H -->|"failure evidence; once"| A
-    H -->|"verified"| R["Independent Reviewer<br/>fresh read-only context"]
+    H -->|"verified"| D{"Deterministic Reviewer router<br/>always · shadow · selective"}
+    D -->|"review"| R["Independent Reviewer<br/>fresh read-only context"]
+    D -->|"selective low-risk skip"| O
     R --> G["Final deterministic gate"]
     G --> O["Review-ready patch<br/>auditable artifacts"]
 ```
@@ -36,6 +38,8 @@ whether their own work is correct. PRGuard separates proposal from judgment:
 - changed Python test modules are deterministically added to the pytest gate, so an Agent-authored
   regression test cannot sit outside a narrowly selected original test target;
 - one failed verification can return structured evidence for a bounded replacement patch;
+- a versioned deterministic router can run every review, shadow a selective recommendation, or
+  explicitly skip only a completely analyzed low-risk Fix;
 - review uses an independent context and produces source-linked findings;
 - the final gate and artifact hashes are deterministic and replayable.
 
@@ -115,6 +119,22 @@ uv run prguard review work/humanize-366/artifacts/task.json \
 
 Add `--repair` to permit one controlled repair under the FixTask's original writable/size policy.
 
+The composed `fix --review` path defaults to reviewing every accepted Fix. Use shadow mode to
+measure the selective policy while still running the Reviewer:
+
+```bash
+uv run prguard fix work/humanize-366/artifacts/task.json \
+  --provider openai \
+  --review \
+  --review-policy shadow \
+  --review-provider deepseek
+```
+
+`--review-policy selective` makes a low-risk `skip` recommendation effective. It remains explicit:
+analysis gaps, changed tests/gates, sensitive or unsupported source, dependency/build changes, an
+Implementer repair round, uncovered reachable tests, broad changes, and high static fan-in all
+retain Independent Review. The default is `always`; the standalone `review` command never routes.
+
 Inspect the same frozen Base Commit without calling a model or executing repository code:
 
 ```bash
@@ -155,6 +175,8 @@ uv run pytest -q
   limits;
 - structured pytest/ruff results, policy decisions, review findings, and trace events;
 - one evidence-guided implementation repair and one review-triggered controlled repair;
+- deterministic post-Fix Reviewer routing with backwards-compatible `always`, measurement-only
+  `shadow`, and explicit fail-closed `selective` modes;
 - provider-neutral scripted, DeepSeek Chat Completions, and OpenAI Responses adapters;
 - provider failures retain non-secret partial tool/Token evidence, and terminal submission has a
   reserved slot outside the bounded read-tool budget;
@@ -194,6 +216,12 @@ A separate two-case [Reviewer value check](evidence/reviewer-value/README.md) re
 that passed a narrow base gate but was caught and repaired by independent review, plus one accepted
 Humanize Patch that was not false-blocked but incurred substantial review latency. It supports
 selective review, not a general accuracy claim.
+
+The v0.9.0 [selective-routing shadow check](evidence/selective-routing/README.md) replays two
+source-only accepted changes at frozen PrettyTable and Humanize commits. PrettyTable passed 21
+targeted and 338 wider tests and received a `skip` recommendation; Humanize passed 76 targeted plus
+700 wider tests and Ruff but retained `review` because a reachable i18n test was outside the
+targeted gate. This is a two-case policy check, not a false-skip estimate.
 
 ## Live model run
 
@@ -249,14 +277,15 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.8.2 adds bounded multi-hop static impact navigation on top of the v0.8.1 execution
-hardening. A frozen PrettyTable query linked the target function to source callers, dependencies,
-and public test entry points with explicit resolution evidence; see the
-[v0.8.2 phase report](docs/v0.8.2-phase-report.md). A first frozen pair shows both a
-true-positive Reviewer repair and the high cost of reviewing a clean real-repository Patch; see the
-[net-benefit note](docs/reviewer-net-benefit.md). The next priority is selective routing and more
-repositories that pressure-test project adaptation. Large benchmark infrastructure and extra Agent
-roles remain intentionally deferred.
+Version 0.9.0 adds deterministic Reviewer routing after an accepted Fix. `always` preserves the
+existing quality posture, `shadow` records what a selective policy would do while still reviewing,
+and explicit `selective` can avoid provider construction for a fully analyzed low-risk Patch. The
+decision binds the exact Base Commit, Patch, Fix Manifest, and verification Manifest and is hashed
+into the top-level Artifact set; see the [v0.9.0 phase report](docs/v0.9.0-phase-report.md) and
+[ADR 0018](docs/adr/0018-reviewer-routing-is-deterministic-shadowable-and-fail-closed.md). The next
+priority is a larger manually labelled shadow set across repositories before considering selective
+as a repository default. Large benchmark infrastructure and extra Agent roles remain intentionally
+deferred.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

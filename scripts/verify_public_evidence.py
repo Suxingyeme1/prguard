@@ -63,9 +63,10 @@ def main() -> int:
         evidence / "reviewer-value",
         evidence / "navigation-hardening",
         evidence / "call-graph-hardening",
+        evidence / "selective-routing",
     ]
     count = sum(verify_evidence(root) for root in roots)
-    print(f"public evidence verified: {count} cases")
+    print(f"public evidence verified: {count} artifacts")
     return 0
 
 

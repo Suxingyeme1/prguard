@@ -14,10 +14,11 @@ SCHEMA_VERSION = "1.0.0"
 HARNESS_VERSION = "0.1.0"
 POLICY_VERSION = "argv-v3"
 FIX_WORKFLOW_VERSION = "fix-v3"
-ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v3"
+ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v4"
 PATCH_POLICY_VERSION = "patch-v2"
 REVIEW_WORKFLOW_VERSION = "review-v2"
 REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v3"
+REVIEW_ROUTING_POLICY_VERSION = "review-routing-v1"
 
 
 def utc_now() -> datetime:

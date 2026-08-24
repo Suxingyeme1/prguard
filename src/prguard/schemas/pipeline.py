@@ -16,6 +16,7 @@ from prguard.schemas.common import (
 )
 from prguard.schemas.fix import FixReport, FixTask
 from prguard.schemas.review import ReviewRepairReport
+from prguard.schemas.routing import ReviewRoutingMode, ReviewRoutingResult
 
 
 class IssueToPROutcome(StrEnum):
@@ -32,6 +33,7 @@ class IssueToPRTask(FixTask):
     task_timeout_seconds: float = Field(default=1200, gt=0, le=7200)
     fix_timeout_seconds: float = Field(default=600, gt=0, le=3600)
     review_timeout_seconds: float = Field(default=300, gt=0, le=3600)
+    review_routing_mode: ReviewRoutingMode = ReviewRoutingMode.ALWAYS
 
     @model_validator(mode="after")
     def stage_budgets_leave_repair_time(self) -> IssueToPRTask:
@@ -49,6 +51,7 @@ class IssueToPRReport(StrictModel):
     outcome: IssueToPROutcome
     verdict: Verdict
     fix: FixReport | None = None
+    review_routing: ReviewRoutingResult | None = None
     review_repair: ReviewRepairReport | None = None
     final_patch: Path | None = None
     error: str | None = None

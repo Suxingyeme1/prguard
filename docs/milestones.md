@@ -148,6 +148,18 @@ defining methods. A deterministic run at the frozen PrettyTable #474 commit link
 The [v0.8.2 phase report](v0.8.2-phase-report.md) keeps the claim at static navigation, not complete
 runtime dispatch or new live-model accuracy.
 
+The eighth increment turns that evidence into a deterministic post-Fix Reviewer router without
+letting an Agent judge its own need for review. `always` remains the compatible default, `shadow`
+records the selective recommendation while still reviewing, and only explicit `selective` can
+skip. The policy binds Base Commit, exact Patch, Fix/Verification Manifests, pytest argv scope,
+changed symbols, reachable tests, static fan-in, repair history, and analysis completeness; any
+integrity mismatch stops the pipeline and any incomplete/static-unsupported case routes to review.
+A frozen shadow pair produced one real-repository `skip` recommendation after 21 targeted and 338
+wider PrettyTable tests, and one conservative Humanize `review` recommendation despite 76 targeted
+plus 700 wider tests and Ruff because a reachable i18n test was outside the targeted gate. The
+[v0.9.0 phase report](v0.9.0-phase-report.md) keeps selective opt-in until a broader labelled shadow
+set can measure false skips and Reviewer net value.
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

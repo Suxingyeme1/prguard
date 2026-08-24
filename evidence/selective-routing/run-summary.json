@@ -1,0 +1,61 @@
+{
+  "cases": [
+    {
+      "base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+      "case_id": "prettytable-474-source-only-shadow",
+      "changed_files": [
+        "src/prettytable/prettytable.py"
+      ],
+      "evaluator_label": "clean_accepted_source_change",
+      "fix_gate": {
+        "commands": [
+          "pytest -q tests/test_html.py"
+        ],
+        "result": "21 passed"
+      },
+      "issue_url": "https://github.com/prettytable/prettytable/issues/474",
+      "patch": "prettytable-474-source-only.patch",
+      "patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+      "routing": "prettytable-routing.json",
+      "routing_result": "recommended skip; shadow effective review; score 0/5",
+      "wider_gate": {
+        "commands": [
+          "pytest -q"
+        ],
+        "manifest_payload_sha256": "cabe85fae9306ed3bc3fe0ffd60e98b763f6690b024d47a4653795a810df6cf4",
+        "result": "338 passed"
+      }
+    },
+    {
+      "base_commit": "ce4147b6c8f8a132f772be0929d58305eb22c5d9",
+      "case_id": "humanize-366-source-only-shadow",
+      "changed_files": [
+        "src/humanize/filesize.py"
+      ],
+      "evaluator_label": "clean_accepted_source_change",
+      "fix_gate": {
+        "commands": [
+          "pytest -q tests/test_filesize.py",
+          "ruff check --no-fix ."
+        ],
+        "result": "76 passed; Ruff passed"
+      },
+      "issue_url": "https://github.com/python-humanize/humanize/issues/366",
+      "patch": "humanize-366-source-only.patch",
+      "patch_sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f",
+      "routing": "humanize-routing.json",
+      "routing_result": "recommended review; shadow effective review; score 9/5",
+      "wider_gate": {
+        "commands": [
+          "pytest -q --ignore=tests/test_benchmarks.py",
+          "ruff check --no-fix ."
+        ],
+        "manifest_payload_sha256": "324e5fbd0c67185564683590e9cf04753f9a4fd12d0b713f89317840634a6651",
+        "result": "700 passed, 74 skipped; Ruff passed"
+      }
+    }
+  ],
+  "frozen_at": "2026-08-23",
+  "policy_version": "review-routing-v1",
+  "schema_version": "prguard-selective-routing-evidence-1"
+}
