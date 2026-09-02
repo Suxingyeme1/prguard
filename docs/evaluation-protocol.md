@@ -118,6 +118,12 @@ numerators, denominators, missing Reviewer coverage, observed Token/latency/repa
 activation blockers. A missing denominator is reported as `0/0` with no rate, never as zero
 percent.
 
+Evaluator labels are revisable when new post-run evidence is bound to the same Base Commit and
+candidate Patch. Passing the repository's entire existing suite is evidence, not an immutable
+`clean` label: the PrettyTable case was reclassified after independent Review proposed a concrete
+multi-table check that passed on Base and failed on Candidate. The original test results remain in
+the record; the later check does not get retroactively exposed to the Reviewer context.
+
 ## Leakage control
 
 Public cases contain issue, repository, base commit, candidate patch, commands, protected paths,

@@ -163,10 +163,15 @@ set can measure false skips and Reviewer net value.
 The ninth increment adds a small executable Shadow scorecard rather than a benchmark platform.
 Evaluator labels stay outside Agent schemas and are attached only after execution. Each case binds
 the exact candidate Patch and routing Artifact by SHA-256; Reviewer evidence joins only when Base
-Commit and candidate Patch hashes agree. The frozen three-case set derives False Route 1/2, False
-Skip 0/1, paired Reviewer coverage 1/3, and one confirmed incremental finding. It automatically
-keeps selective activation not ready because same-Patch Reviewer coverage is incomplete and no
-defective real-repository case exists. See the [v0.10.0 phase report](v0.10.0-phase-report.md).
+Commit and candidate Patch hashes agree. The initial v0.10.0 table exposed incomplete paired
+coverage rather than authorizing selective deployment.
+
+The tenth increment runs the exact PrettyTable source-only Patch through live Independent Review.
+The Reviewer found a cross-table state regression after 21 targeted and 338 wider existing tests
+had passed; a paired Base/Candidate evaluator check confirmed it. The frozen three-case set now
+derives False Route 1/1, False Skip 1/2, paired Reviewer coverage 2/3, and two confirmed incremental
+findings. An observed False Skip is itself an activation blocker. See the
+[v0.10.1 phase report](v0.10.1-phase-report.md).
 
 ## Priority demos
 

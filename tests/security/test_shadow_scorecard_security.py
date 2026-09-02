@@ -47,7 +47,12 @@ def test_scorecard_rejects_cross_patch_reviewer_join(tmp_path: Path) -> None:
     root = _copy_evidence(tmp_path)
     reviewer_manifest = root / "reviewer-value" / "manifest.json"
     reviewer_payload = json.loads(reviewer_manifest.read_text(encoding="utf-8"))
-    reviewer_payload["cases"][0]["candidate_patch_sha256"] = "0" * 64
+    reviewer_case = next(
+        case
+        for case in reviewer_payload["cases"]
+        if case["case_id"] == "reviewer-positive-regression"
+    )
+    reviewer_case["candidate_patch_sha256"] = "0" * 64
     reviewer_manifest.write_text(
         json.dumps(reviewer_payload, indent=2) + "\n",
         encoding="utf-8",
@@ -56,8 +61,33 @@ def test_scorecard_rejects_cross_patch_reviewer_join(tmp_path: Path) -> None:
 
     dataset_path = root / "shadow-scorecard" / "cases.json"
     dataset = json.loads(dataset_path.read_text(encoding="utf-8"))
-    dataset["cases"][2]["reviewer_evidence"]["artifact_sha256"] = reviewer_hash
+    for case in dataset["cases"]:
+        reviewer_evidence = case["reviewer_evidence"]
+        if reviewer_evidence is not None:
+            reviewer_evidence["artifact_sha256"] = reviewer_hash
     dataset_path.write_text(json.dumps(dataset, indent=2) + "\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="Reviewer and routing candidate Patch do not match"):
+        load_shadow_evaluation(root, "shadow-scorecard/cases.json")
+
+
+def test_scorecard_rejects_cross_patch_evaluator_join(tmp_path: Path) -> None:
+    root = _copy_evidence(tmp_path)
+    check_path = root / "shadow-scorecard" / "prettytable-evaluator-check.json"
+    check = json.loads(check_path.read_text(encoding="utf-8"))
+    check["candidate_patch_sha256"] = "0" * 64
+    check_path.write_text(json.dumps(check, indent=2) + "\n", encoding="utf-8")
+    check_hash = hashlib.sha256(check_path.read_bytes()).hexdigest()
+
+    dataset_path = root / "shadow-scorecard" / "cases.json"
+    dataset = json.loads(dataset_path.read_text(encoding="utf-8"))
+    prettytable_case = next(
+        case
+        for case in dataset["cases"]
+        if case["case_id"] == "prettytable-474-source-only-shadow"
+    )
+    prettytable_case["evaluator_artifact_sha256"] = check_hash
+    dataset_path.write_text(json.dumps(dataset, indent=2) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="evaluator check and routing candidate Patch"):
         load_shadow_evaluation(root, "shadow-scorecard/cases.json")

@@ -52,6 +52,7 @@ occurs in a detached worktree.
 | Implementer manipulates its own risk score | routing uses Git-visible Patch facts, frozen public policy, verified command evidence, and Harness-owned static analysis rather than model summaries or self-reported test coverage | an adversarial semantic change can deliberately remain small and use ordinary-looking paths |
 | Evaluator labels leak into Agent context | evaluator schemas live outside `prguard.schemas`; Fix/Review tasks reject extra fields; labels are attached only after execution | a human can still accidentally paste evaluator knowledge into Issue text or source fixtures |
 | Scorecard joins evidence from different Patches | evaluator inputs hash-bind candidate Patch, route, and Reviewer manifest, then require identical Base Commit and candidate Patch SHA-256 | SHA-256 records are not signed and evaluator dispositions still require human judgment |
+| Existing test pass is treated as permanent clean evidence | evaluator labels may be revised only by a hash-bound post-run check replayed on Base and Candidate; raw prior gate evidence is retained | newly proposed checks still require independent human validation and can overfit one case |
 
 ## Explicit non-guarantees
 

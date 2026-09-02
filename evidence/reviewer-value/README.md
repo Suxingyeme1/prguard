@@ -1,10 +1,10 @@
 # Independent Reviewer value evidence
 
-Frozen: 2026-08-23<br>
-PRGuard: 0.8.0<br>
+Frozen: 2026-09-02<br>
+PRGuard: 0.10.1<br>
 Provider: DeepSeek `deepseek-v4-pro`, high reasoning
 
-This is a deliberately small decision-oriented pair, not a benchmark score. It asks whether an
+This is a deliberately small decision-oriented set, not a benchmark score. It asks whether an
 independently scoped Reviewer can add defect signal beyond the configured deterministic gate, and
 what it costs on a Patch already supported by wider evidence.
 
@@ -12,6 +12,7 @@ what it costs on a Patch already supported by wider evidence.
 | --- | --- | --- | --- | --- |
 | Known normalization regression | passed its narrow new-behavior test | 1 manually confirmed P2; `request_changes` | one exact repair; fail-to-pass 1/1 and pass-to-pass 1/1 | review 26.150 s; 6,902 input / 1,644 output |
 | Humanize #366 accepted Patch | 78 passed + Ruff; wider 702 passed, 74 skipped | 0 findings; `accept`; no false block | Patch unchanged | review 221.875 s; 113,796 input / 14,780 output |
+| PrettyTable #474 source-only Patch | 21 targeted and 338 wider existing tests passed | 1 manually confirmed P2; `request_changes` | Base passes and Candidate fails a post-run multi-table check | review 216.700 s; 214,763 input / 11,703 output |
 
 The regression label and finding disposition were evaluator-only and were never serialized into
 the Reviewer Task or provider context. The positive Reviewer cited `service.py:4` and the public
@@ -24,8 +25,16 @@ and reference navigation. It still added 221.875 seconds—159.2% of the precedi
 duration—and made the sequential Fix-plus-Review path 2.59x as long. That case has zero observed
 defect benefit and positive cost.
 
-Observed finding precision and recall are both 1/1 on the single labelled defect, and false block is
-0/1 on the single labelled clean Patch. Those fractions are case checks, not population estimates.
+On PrettyTable, the Reviewer found evidence missing from both the targeted and wider existing test
+suites. The source-only Patch correctly pads a ragged row but leaves `max_row_width` shared across
+multiple `<table>` elements, so a later two-column table following a three-column table gains an
+empty field and cell. The paired evaluator check passes at the frozen Base Commit and fails after
+the exact candidate Patch. The frozen router had recommended `skip` at 0/5, making this both an
+incremental Reviewer finding and an observed False Skip for `review-routing-v1`.
+
+Both findings on the two labelled defective cases were manually confirmed, and false block is 0/1
+on the separate labelled clean Humanize Patch. Those fractions are case checks, not population
+estimates.
 They justify preserving an optional independent Reviewer and measuring selective activation; they
 do not justify enabling it unconditionally or claiming general accuracy.
 

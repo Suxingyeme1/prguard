@@ -4,15 +4,16 @@ Frozen: 2026-08-19<br>
 PRGuard: 0.5.1<br>
 Provider: DeepSeek `deepseek-v4-pro`, high reasoning
 
-PRGuard produced a verified one-file patch for three public Python issues at exact upstream
+PRGuard produced Harness-accepted one-file patches for three public Python issues at exact upstream
 commits. This is a manually checked engineering gate, not a statistically representative
-benchmark. The selected terminal runs resolved 3/3 cases; only one case succeeded on its first
-complete provider invocation.
+benchmark. All three selected runs passed their declared gates; later independent review found an
+additional PrettyTable multi-table regression, so this package must not be read as 3/3 semantic
+task resolution. Only one case succeeded on its first complete provider invocation.
 
 | Case | Upstream commit | Deterministic gate | Wider check | Attempts | Duration |
 | --- | --- | --- | --- | ---: | ---: |
 | [Humanize #366](https://github.com/python-humanize/humanize/issues/366) | `ce4147b6c8f8a132f772be0929d58305eb22c5d9` | reproduction 1/1; filesize 76/76; ruff | 701 passed, 74 skipped* | 2 | 258.676 s |
-| [PrettyTable #474](https://github.com/prettytable/prettytable/issues/474) | `3c80d392d32f48b0ab1e368793ddb751dbe41807` | reproduction 1/1; HTML 21/21 | 338 passed** | 1 | 39.125 s |
+| [PrettyTable #474](https://github.com/prettytable/prettytable/issues/474) | `3c80d392d32f48b0ab1e368793ddb751dbe41807` | reproduction 1/1; HTML 21/21 | 338 existing tests passed; later multi-table evaluator check failed** | 1 | 39.125 s |
 | [Inflect #242](https://github.com/jaraco/inflect/issues/242) | `262a247d2d99a47a520cdb2d46adb90df88b4326` | reproduction 1/1; numwords 4/4 | 208 passed, 16 xfailed | 1 | 77.433 s |
 
 \* The optional benchmark module was excluded because its plugin was unavailable.<br>
@@ -46,7 +47,11 @@ uv run python scripts/verify_public_evidence.py
 - An Inflect diff with malformed hunk context was rejected by strict `git apply`; its repair turn
   exhausted the first tool budget before a bounded rerun passed.
 - A late Reviewer response motivated the same fail-closed post-return deadline rule for review.
+- A later same-Patch Reviewer found that the PrettyTable fix leaks maximum row width across
+  multiple tables. Base/Candidate replay confirmed the regression despite all existing tests
+  passing; this motivated explicit False-Skip blocking in the v0.10.1 scorecard.
 
-These cases support the claim that PRGuard can localize and patch three unrelated repositories and
-retain useful failure evidence. They do not establish arbitrary-repository accuracy, Reviewer net
-benefit, production isolation, or GitHub integration.
+These cases support the claim that PRGuard can localize and modify three unrelated repositories,
+execute declared gates, and retain useful failure evidence. They also demonstrate why “gate
+passed” is not synonymous with “semantically resolved.” They do not establish arbitrary-repository
+accuracy, production isolation, or complete Reviewer recall.

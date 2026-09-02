@@ -12,7 +12,7 @@ def test_public_real_repository_evidence_hashes() -> None:
 
 def test_public_reviewer_value_evidence_hashes() -> None:
     root = Path(__file__).resolve().parents[2] / "evidence" / "reviewer-value"
-    assert verify_evidence(root) == 3
+    assert verify_evidence(root) == 4
 
 
 def test_public_navigation_hardening_artifacts_hashes() -> None:
@@ -32,7 +32,7 @@ def test_public_selective_routing_artifacts_hashes() -> None:
 
 def test_public_shadow_scorecard_artifact_hashes() -> None:
     root = Path(__file__).resolve().parents[2] / "evidence" / "shadow-scorecard"
-    assert verify_evidence(root) == 5
+    assert verify_evidence(root) == 6
 
 
 def test_public_evidence_rejects_hash_mismatch(tmp_path: Path) -> None:

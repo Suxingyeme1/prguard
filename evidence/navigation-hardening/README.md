@@ -15,6 +15,13 @@ the selected [Patch](prettytable-474-v081.patch), then the targeted gate passed 
 wide regression run of the same Patch passed 339 tests; the Harness-derived changed-test gate also
 passed 22 tests, with no policy violations. Both private recursive Manifests verified.
 
+Post-release evaluation on 2026-09-02 found that the same source change preserves stale
+`max_row_width` state across multiple HTML tables. The repository's existing suite and the added
+single-table regression test did not cover that behavior. Therefore `accepted` here means the
+declared deterministic gates passed; it is not evidence that the Patch was semantically complete.
+The independently reproduced failure is frozen in the
+[Shadow Reviewer scorecard](../shadow-scorecard/README.md).
+
 ## Why the retained failures matter
 
 | Observed failure | Product correction |

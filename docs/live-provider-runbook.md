@@ -65,6 +65,13 @@ from `uv.lock`; inject `DEEPSEEK_API_KEY` through the server's secret manager or
 environment; never copy a `.env` file into the repository. Restrict file permissions with
 `umask 077` before creating artifacts.
 
+Do not put a secret assignment in process arguments such as
+`env DEEPSEEK_API_KEY=<value> prguard ...`: process listings and orchestration logs can expose that
+argv. Source a mode-`0600` environment file in a privileged/session shell or use the server secret
+manager, export the variable, then launch the unprivileged process with inherited environment. Do
+not print `env`, use `ps ... e`, or enable shell tracing. Rotate a credential immediately if any
+diagnostic output exposes it, and scan copied Artifacts for provider-key patterns before freezing.
+
 The current Git worktree boundary is not a hostile-code sandbox. Until container/network/resource
 isolation is implemented, run only trusted fixtures or repositories whose test code you are
 willing to execute as that server account. Copy the complete artifact directory back, verify its
