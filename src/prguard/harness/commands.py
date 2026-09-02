@@ -152,6 +152,11 @@ class CommandExecutor:
                 os.killpg(process.pid, 0)
             except ProcessLookupError:
                 return
+            except PermissionError:
+                # SIGTERM was already delivered. A post-reap permission failure can mean
+                # macOS has made the numeric group inaccessible (or reused it); do not risk
+                # signalling a group we can no longer identify as the command's descendant.
+                return
             time.sleep(0.01)
         with suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGKILL)

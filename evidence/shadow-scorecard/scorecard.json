@@ -1,0 +1,104 @@
+{
+  "schema_version": "prguard-shadow-scorecard-1",
+  "source_schema_version": "prguard-shadow-evaluation-1",
+  "frozen_at": "2026-09-02",
+  "policy_version": "review-routing-v1",
+  "case_count": 3,
+  "clean_cases": 2,
+  "defective_cases": 1,
+  "real_repository_cases": 2,
+  "reviewer_observed_cases": 1,
+  "recommended_reviews": 2,
+  "recommended_skips": 1,
+  "reviewer_coverage": {
+    "numerator": 1,
+    "denominator": 3,
+    "rate": 0.3333333333333333
+  },
+  "false_routes": {
+    "numerator": 1,
+    "denominator": 2,
+    "rate": 0.5
+  },
+  "false_skips": {
+    "numerator": 0,
+    "denominator": 1,
+    "rate": 0.0
+  },
+  "false_blocks": {
+    "numerator": 0,
+    "denominator": 0,
+    "rate": null
+  },
+  "defective_cases_caught_by_reviewer": {
+    "numerator": 1,
+    "denominator": 1,
+    "rate": 1.0
+  },
+  "confirmed_incremental_findings": 1,
+  "total_reviewer_duration_seconds": 26.149596041999757,
+  "total_reviewer_input_tokens": 6902,
+  "total_reviewer_output_tokens": 1644,
+  "total_repair_rounds": 1,
+  "selective_activation_ready": false,
+  "activation_blockers": [
+    "paired Reviewer outcome coverage is 1/3",
+    "no evaluator-confirmed defective real-repository case"
+  ],
+  "cases": [
+    {
+      "case_id": "prettytable-474-source-only-shadow",
+      "source": "real_repository",
+      "repository": "prettytable/prettytable",
+      "evaluator_label": "clean",
+      "resolved_base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+      "candidate_patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+      "recommended_route": "skip",
+      "routing_score": 0,
+      "routing_threshold": 5,
+      "reviewer_observed": false,
+      "reviewer_verdict": null,
+      "confirmed_incremental_findings": 0,
+      "reviewer_duration_seconds": 0.0,
+      "reviewer_input_tokens": 0,
+      "reviewer_output_tokens": 0,
+      "repair_rounds": 0
+    },
+    {
+      "case_id": "humanize-366-source-only-shadow",
+      "source": "real_repository",
+      "repository": "python-humanize/humanize",
+      "evaluator_label": "clean",
+      "resolved_base_commit": "ce4147b6c8f8a132f772be0929d58305eb22c5d9",
+      "candidate_patch_sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f",
+      "recommended_route": "review",
+      "routing_score": 9,
+      "routing_threshold": 5,
+      "reviewer_observed": false,
+      "reviewer_verdict": null,
+      "confirmed_incremental_findings": 0,
+      "reviewer_duration_seconds": 0.0,
+      "reviewer_input_tokens": 0,
+      "reviewer_output_tokens": 0,
+      "repair_rounds": 0
+    },
+    {
+      "case_id": "normalization-regression-shadow",
+      "source": "deterministic_fixture",
+      "repository": "PRGuard normalization regression fixture",
+      "evaluator_label": "defective",
+      "resolved_base_commit": "6381e7b514f63bc12a562ef750e6595ca979d18c",
+      "candidate_patch_sha256": "7b9fbfa72e59b21b524bea82bf3469cb57f6fad7e79d93eea1d88a2e151089fc",
+      "recommended_route": "review",
+      "routing_score": 7,
+      "routing_threshold": 5,
+      "reviewer_observed": true,
+      "reviewer_verdict": "request_changes",
+      "confirmed_incremental_findings": 1,
+      "reviewer_duration_seconds": 26.149596041999757,
+      "reviewer_input_tokens": 6902,
+      "reviewer_output_tokens": 1644,
+      "repair_rounds": 1
+    }
+  ]
+}

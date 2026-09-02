@@ -110,6 +110,14 @@ Do not tune a threshold until two or three illustrative cases happen to pass. A 
 is useful for finding broken rules and integration errors, but it cannot support a population defect
 rate or a claim that the heuristic is calibrated.
 
+The executable evaluator path is `scripts/build_shadow_scorecard.py`. Its input is a post-run
+dataset under `evidence/`, not an Agent Task. It verifies every candidate Patch and routing Artifact
+hash, requires `shadow` mode and the frozen policy version, and joins Reviewer evidence only when
+the exact Base Commit and candidate Patch SHA-256 match. Generated JSON and Markdown retain
+numerators, denominators, missing Reviewer coverage, observed Token/latency/repair cost, and
+activation blockers. A missing denominator is reported as `0/0` with no rate, never as zero
+percent.
+
 ## Leakage control
 
 Public cases contain issue, repository, base commit, candidate patch, commands, protected paths,

@@ -167,6 +167,12 @@ context, preventing a heuristic pre-assessment from anchoring the independent se
 patches, hidden tests, and defect labels belong to an evaluator-only record that is deliberately
 absent from the `Task` schema.
 
+Post-run evaluator records use a separate `prguard.evaluation` package, not the Agent-facing schema
+namespace. The Shadow scorecard verifies candidate Patch, route, and optional Reviewer evidence
+hashes and requires identical Base Commit/Patch bindings before joining observations. This makes
+evaluation replayable without making labels or Reviewer dispositions available during generation
+or review.
+
 When controlled repair is enabled, the Implementer reads the patched candidate in a separate
 worktree. Structured edits are folded into a complete Base-Commit-relative replacement diff; a raw
 fallback must already have that form. Feedback contains only the original candidate, validated

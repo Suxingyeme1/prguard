@@ -50,6 +50,8 @@ occurs in a detached worktree.
 | Missing static evidence is mistaken for low risk | replay, deadline, AST/index, unsupported-language, ambiguity, and cleanup incompleteness force the route to review | bounded analysis can appear complete while dynamic dispatch or repository conventions hide impact |
 | Routing inputs are substituted after verification | Base Commit, Patch SHA-256, Fix Manifest, Verification Manifest, and archived/in-memory report equality are bound before routing; the top Manifest hashes the decision and delivered Patch | SHA-256 artifacts are not signed or remotely attested |
 | Implementer manipulates its own risk score | routing uses Git-visible Patch facts, frozen public policy, verified command evidence, and Harness-owned static analysis rather than model summaries or self-reported test coverage | an adversarial semantic change can deliberately remain small and use ordinary-looking paths |
+| Evaluator labels leak into Agent context | evaluator schemas live outside `prguard.schemas`; Fix/Review tasks reject extra fields; labels are attached only after execution | a human can still accidentally paste evaluator knowledge into Issue text or source fixtures |
+| Scorecard joins evidence from different Patches | evaluator inputs hash-bind candidate Patch, route, and Reviewer manifest, then require identical Base Commit and candidate Patch SHA-256 | SHA-256 records are not signed and evaluator dispositions still require human judgment |
 
 ## Explicit non-guarantees
 

@@ -99,3 +99,9 @@ manually checked repository-level cases stratified by targeted/broad gate, direc
 ordinary/sensitive path, narrow/broad change, and complete/incomplete static analysis—not a large
 generic benchmark or additional Agent role. Freeze the policy first, run those cases in shadow
 mode, publish the raw counts and costs, and only then decide whether selective skipping is justified.
+
+The v0.10 [executable scorecard](../evidence/shadow-scorecard/README.md) enforces this boundary in
+code. Its first three joined routes produce False Route 1/2 and False Skip 0/1, but only one exact
+Patch has a paired Reviewer result and the sole defective case is a deterministic fixture. It
+therefore records activation blockers instead of interpreting the observed fractions as calibrated
+accuracy.

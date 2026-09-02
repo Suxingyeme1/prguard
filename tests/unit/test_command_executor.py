@@ -1,5 +1,6 @@
 import json
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -58,6 +59,24 @@ def test_successful_host_command_terminates_background_children(tmp_path: Path) 
 
     assert result.passed is True
     assert not (runtime / "late-marker").exists()
+
+
+def test_post_term_inaccessible_process_group_is_not_signalled_again(monkeypatch) -> None:
+    calls: list[tuple[int, int]] = []
+
+    class CompletedProcess:
+        pid = 12345
+
+    def killpg(process_group: int, requested_signal: int) -> None:
+        calls.append((process_group, requested_signal))
+        if requested_signal == 0:
+            raise PermissionError("process group is no longer attributable")
+
+    monkeypatch.setattr(os, "killpg", killpg)
+
+    CommandExecutor._terminate_process_group(CompletedProcess())  # type: ignore[arg-type]
+
+    assert calls == [(12345, signal.SIGTERM), (12345, 0)]
 
 
 def _container_spec() -> ContainerExecutionSpec:

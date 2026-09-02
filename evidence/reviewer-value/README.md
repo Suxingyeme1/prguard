@@ -29,9 +29,10 @@ Observed finding precision and recall are both 1/1 on the single labelled defect
 They justify preserving an optional independent Reviewer and measuring selective activation; they
 do not justify enabling it unconditionally or claiming general accuracy.
 
-The selected final Patches are authenticated by [manifest.json](manifest.json). Raw recursive run
-artifacts remain frozen locally because they contain machine paths; the manifest records their
-self-authenticating payload hashes. Verify the public Patch bytes with:
+The selected final Patches and the defective pre-repair candidate are authenticated by
+[manifest.json](manifest.json). Raw recursive run artifacts remain frozen locally because they
+contain machine paths; the manifest records their self-authenticating payload hashes. Verify the
+public Patch bytes with:
 
 ```bash
 uv run python scripts/verify_public_evidence.py
