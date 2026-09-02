@@ -71,6 +71,36 @@
       "patch_sha256": "76ad64057e591fa6d9a622c3892fbfd55427772206d73cb5da37330e9ad9fa33"
     },
     {
+      "case_id": "reviewer-clean-humanize-366-source-only",
+      "issue_url": "https://github.com/python-humanize/humanize/issues/366",
+      "base_commit": "ce4147b6c8f8a132f772be0929d58305eb22c5d9",
+      "evaluator_label": "clean_candidate_with_confirmed_nonblocking_test_gap",
+      "label_visibility": "evaluator_only_not_in_reviewer_context",
+      "baseline_gate": "76 targeted and 700 wider non-benchmark tests plus Ruff passed",
+      "review_verdict": "accept",
+      "finding_disposition": "true_positive_nonblocking_test_gap",
+      "finding_count": 1,
+      "false_block": false,
+      "review_duration_seconds": 268.938091814518,
+      "review_token_usage": {
+        "input_tokens": 128665,
+        "output_tokens": 13633,
+        "cached_tokens": 116224
+      },
+      "review_tool_call_count": 11,
+      "review_manifest_payload_sha256": "6b63b833416c49332de849877ec875328b77510988c31cada2dba9222b06988b",
+      "candidate_patch": "humanize-366-source-only.patch",
+      "candidate_patch_sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f",
+      "incremental_finding_count": 1,
+      "rejected_finding_count": 0,
+      "unresolved_finding_count": 0,
+      "repair_rounds": 0,
+      "targeted_gate": "76 passed; Ruff passed",
+      "wider_gate": "700 passed; 74 optional benchmark skips; Ruff passed",
+      "patch": "humanize-366-source-only.patch",
+      "patch_sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f"
+    },
+    {
       "case_id": "reviewer-positive-prettytable-multitable-regression",
       "issue_url": "https://github.com/prettytable/prettytable/issues/474",
       "base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
@@ -98,6 +128,41 @@
       "evaluator_check": "../shadow-scorecard/prettytable-evaluator-check.json",
       "patch": "prettytable-474-source-only.patch",
       "patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8"
+    },
+    {
+      "case_id": "reviewer-positive-prettytable-controlled-repair",
+      "issue_url": "https://github.com/prettytable/prettytable/issues/474",
+      "base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+      "evaluator_label": "defective_candidate_repaired",
+      "label_visibility": "evaluator_only_not_in_reviewer_context",
+      "baseline_gate": "21 targeted and 338 wider existing tests passed; evaluator multi-table check failed",
+      "review_verdict": "request_changes",
+      "finding_disposition": "true_positive",
+      "finding_count": 1,
+      "review_duration_seconds": 167.61890341341496,
+      "review_token_usage": {
+        "input_tokens": 96763,
+        "output_tokens": 8032,
+        "cached_tokens": 86400
+      },
+      "review_manifest_payload_sha256": "389e642f833a67eb2229e4a27139b259dd84f460edf1d0260cb3f2ea4173eb8c",
+      "candidate_patch": "prettytable-474-source-only.patch",
+      "candidate_patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+      "incremental_finding_count": 1,
+      "rejected_finding_count": 0,
+      "unresolved_finding_count": 0,
+      "repair_outcome": "accepted_after_repair",
+      "repair_rounds": 1,
+      "repair_run_token_usage": {
+        "input_tokens": 200635,
+        "output_tokens": 8826,
+        "cached_tokens": 179456
+      },
+      "repair_manifest_payload_sha256": "1fe705d1b4fe1c5398b46e3e25dcd1c1884d64ebd9208e5c0e82b997d5536ff6",
+      "wider_gate": "340 passed; changed-test gate 23 passed; no policy violations",
+      "wider_gate_manifest_payload_sha256": "185c8662c84e000c8114813cfa8fc2e292beb4d07783fd958e3efcca9b362cdf",
+      "patch": "prettytable-474-controlled-repair.patch",
+      "patch_sha256": "66d64c44a621d4c92cdd441bc8161fe32cdaf79ddda73877417dfb7323e8055a"
     }
   ]
 }

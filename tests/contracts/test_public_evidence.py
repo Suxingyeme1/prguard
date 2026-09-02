@@ -12,7 +12,7 @@ def test_public_real_repository_evidence_hashes() -> None:
 
 def test_public_reviewer_value_evidence_hashes() -> None:
     root = Path(__file__).resolve().parents[2] / "evidence" / "reviewer-value"
-    assert verify_evidence(root) == 4
+    assert verify_evidence(root) == 7
 
 
 def test_public_navigation_hardening_artifacts_hashes() -> None:

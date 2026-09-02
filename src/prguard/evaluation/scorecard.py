@@ -464,7 +464,7 @@ def render_shadow_scorecard_markdown(scorecard: ShadowScorecard) -> str:
     lines = [
         "# Shadow Reviewer scorecard",
         "",
-        f"Frozen: {scorecard.frozen_at.isoformat()}  ",
+        f"Frozen: {scorecard.frozen_at.isoformat()}",
         f"Policy: `{scorecard.policy_version}`",
         "",
         "| Case | Source | Label | Route | Reviewer | Confirmed incremental findings |",
@@ -506,7 +506,10 @@ def render_shadow_scorecard_markdown(scorecard: ShadowScorecard) -> str:
     if scorecard.selective_activation_ready:
         lines.append("The frozen activation requirements are satisfied.")
     else:
-        lines.append("Selective Review remains opt-in; the frozen evidence is incomplete:")
+        lines.append(
+            "Selective Review remains opt-in; the frozen evidence does not authorize "
+            "activation:"
+        )
         lines.append("")
         lines.extend(f"- {blocker}" for blocker in scorecard.activation_blockers)
     lines.extend(

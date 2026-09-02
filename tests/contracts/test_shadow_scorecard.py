@@ -49,17 +49,22 @@ def test_scorecard_keeps_counts_and_denominators_explicit() -> None:
     }
     assert scorecard.false_blocks.model_dump() == {
         "numerator": 0,
-        "denominator": 0,
-        "rate": None,
+        "denominator": 1,
+        "rate": 0.0,
     }
     assert scorecard.defective_cases_caught_by_reviewer.model_dump() == {
         "numerator": 2,
         "denominator": 2,
         "rate": 1.0,
     }
-    assert scorecard.confirmed_incremental_findings == 2
+    assert scorecard.confirmed_incremental_findings == 3
+    assert scorecard.reviewer_coverage.model_dump() == {
+        "numerator": 3,
+        "denominator": 3,
+        "rate": 1.0,
+    }
+    assert scorecard.total_repair_rounds == 2
     assert scorecard.selective_activation_ready is False
     assert scorecard.activation_blockers == [
-        "paired Reviewer outcome coverage is 2/3",
         "1 evaluator-confirmed false skip(s) under the frozen policy",
     ]

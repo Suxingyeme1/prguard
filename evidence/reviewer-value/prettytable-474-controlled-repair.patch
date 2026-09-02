@@ -1,0 +1,50 @@
+diff --git a/src/prettytable/prettytable.py b/src/prettytable/prettytable.py
+index d3cdf99..2bf1ff6 100644
+--- a/src/prettytable/prettytable.py
++++ b/src/prettytable/prettytable.py
+@@ -3186,6 +3186,7 @@ def _make_table_handler():
+                 table = self.generate_table(self.rows)
+                 self.tables.append(table)
+                 self.rows = []
++                self.max_row_width = 0
+             self.last_content = " "
+             self.active = None
+ 
+@@ -3200,8 +3201,8 @@ def _make_table_handler():
+             for row in self.rows:
+                 if len(row[0]) < self.max_row_width:
+                     appends = self.max_row_width - len(row[0])
+-                    for i in range(1, appends):
+-                        row[0].append("-")
++                    for _ in range(appends):
++                        row[0].append("")
+ 
+                 if row[1]:
+                     self.make_fields_unique(row[0])
+diff --git a/tests/test_html.py b/tests/test_html.py
+index acfd31c..a39a44a 100644
+--- a/tests/test_html.py
++++ b/tests/test_html.py
+@@ -22,6 +22,22 @@ class TestHtmlConstructor:
+         with pytest.raises(ValueError):
+             from_html_one(html_string)
+ 
++    def test_from_html_short_row_is_padded(self) -> None:
++        table = from_html(
++            "<table><tr><th>a</th><th>b</th></tr><tr><td>1</td></tr></table>"
++        )[0]
++        assert table.field_names == ["a", "b"]
++        assert table.rows == [["1", ""]]
++
++    def test_from_html_multiple_tables_are_independent(self) -> None:
++        tables = from_html(
++            "<table><tr><th>a</th><th>b</th><th>c</th></tr>"
++            "<tr><td>1</td><td>2</td><td>3</td></tr></table>"
++            "<table><tr><th>x</th><th>y</th></tr><tr><td>9</td></tr></table>"
++        )
++        assert tables[1].field_names == ["x", "y"]
++        assert tables[1].rows == [["9", ""]]
++
+ 
+ class TestHtmlOutput:
+     def test_html_output(self, helper_table: PrettyTable) -> None:

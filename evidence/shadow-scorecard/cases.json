@@ -22,8 +22,8 @@
       "evaluator_artifact_sha256": "25150febc3d28c347ff845ac0140710222b690070d644c341e316e8d4743bb89",
       "reviewer_evidence": {
         "artifact": "reviewer-value/manifest.json",
-        "artifact_sha256": "0e13cba3c173a6bc21dc794273fdbc3f6d693b0cd5ae7bee250f6b349e48ca92",
-        "case_id": "reviewer-positive-prettytable-multitable-regression"
+        "artifact_sha256": "6aefa972713e3aa3c5c0adba33d215d7e7b3439ac918c732e54c88994e61eb5f",
+        "case_id": "reviewer-positive-prettytable-controlled-repair"
       }
     },
     {
@@ -43,7 +43,11 @@
       ],
       "evaluator_artifact": null,
       "evaluator_artifact_sha256": null,
-      "reviewer_evidence": null
+      "reviewer_evidence": {
+        "artifact": "reviewer-value/manifest.json",
+        "artifact_sha256": "6aefa972713e3aa3c5c0adba33d215d7e7b3439ac918c732e54c88994e61eb5f",
+        "case_id": "reviewer-clean-humanize-366-source-only"
+      }
     },
     {
       "case_id": "normalization-regression-shadow",
@@ -64,7 +68,7 @@
       "evaluator_artifact_sha256": null,
       "reviewer_evidence": {
         "artifact": "reviewer-value/manifest.json",
-        "artifact_sha256": "0e13cba3c173a6bc21dc794273fdbc3f6d693b0cd5ae7bee250f6b349e48ca92",
+        "artifact_sha256": "6aefa972713e3aa3c5c0adba33d215d7e7b3439ac918c732e54c88994e61eb5f",
         "case_id": "reviewer-positive-regression"
       }
     }

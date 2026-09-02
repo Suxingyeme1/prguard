@@ -169,9 +169,18 @@ coverage rather than authorizing selective deployment.
 The tenth increment runs the exact PrettyTable source-only Patch through live Independent Review.
 The Reviewer found a cross-table state regression after 21 targeted and 338 wider existing tests
 had passed; a paired Base/Candidate evaluator check confirmed it. The frozen three-case set now
-derives False Route 1/1, False Skip 1/2, paired Reviewer coverage 2/3, and two confirmed incremental
-findings. An observed False Skip is itself an activation blocker. See the
+derived False Route 1/1 and False Skip 1/2. An observed False Skip is itself an activation blocker.
+See the
 [v0.10.1 phase report](v0.10.1-phase-report.md).
+
+The eleventh increment completes the exact-Patch Humanize Review and closes the real-repository
+Demo B loop. Humanize was accepted with one nonblocking missing-regression-test finding. PrettyTable
+was independently reviewed again, then the Implementer received only the structured P2 finding and
+submitted one replacement Patch that reset per-table state and added two tests. The final targeted
+gate passed 23 tests; a separate Harness run passed all 340 tests and reran the changed tests. The
+scorecard now has 3/3 paired Reviewer coverage, False Block 0/1, three confirmed incremental
+findings, and still blocks selective activation because False Skip remains 1/2. See the
+[v0.10.2 phase report](v0.10.2-phase-report.md).
 
 ## Priority demos
 
