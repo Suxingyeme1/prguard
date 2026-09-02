@@ -1,0 +1,31 @@
+{
+  "schema_version": "prguard-public-artifacts-1",
+  "frozen_at": "2026-09-02",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "66327c9f5f2e376a9ce038554661076338decd13e5fa68c7c8614f6696d626fc",
+      "size_bytes": 2042
+    },
+    {
+      "path": "cases.json",
+      "sha256": "3e2d455bfcb4df80d9faae57dff56649891c823d7489b9c0085238b6595a57d9",
+      "size_bytes": 2991
+    },
+    {
+      "path": "regression-routing.json",
+      "sha256": "20b1cd380b2f422c5aeef494d62d5e71ac788b6ab95a51654a9d2a098f4928e3",
+      "size_bytes": 1912
+    },
+    {
+      "path": "scorecard.json",
+      "sha256": "cd039254bff8be307f1e0c04414997d6835e9a994053066b4127eaa491c954ab",
+      "size_bytes": 3350
+    },
+    {
+      "path": "scorecard.md",
+      "sha256": "2c595741e40eeff9b0901244d04efea3385b7d1ebda6bdb5f00da7778cfbe90e",
+      "size_bytes": 1146
+    }
+  ]
+}

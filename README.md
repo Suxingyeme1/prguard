@@ -223,6 +223,12 @@ targeted and 338 wider tests and received a `skip` recommendation; Humanize pass
 700 wider tests and Ruff but retained `review` because a reachable i18n test was outside the
 targeted gate. This is a two-case policy check, not a false-skip estimate.
 
+The v0.10.0 [hash-bound Shadow scorecard](evidence/shadow-scorecard/README.md) joins those two clean
+routes with the frozen normalization regression only when Base Commit and candidate Patch hashes
+match. It derives False Route 1/2, False Skip 0/1, paired Reviewer coverage 1/3, and one confirmed
+incremental finding. It also keeps selective activation **not ready**: the clean real-repository
+routes lack same-Patch Reviewer observations, and there is no defective real-repository case.
+
 ## Live model run
 
 Install the optional provider dependency and keep the API key in the process environment:
@@ -268,6 +274,7 @@ source code.
 | `src/prguard/pipeline` | complete Issue-to-PR composition |
 | `src/prguard/harness` | Git/worktree, command policy, execution, artifacts |
 | `src/prguard/schemas` | versioned public contracts |
+| `src/prguard/evaluation` | post-run evaluator-only joins and scorecards |
 | `benchmark` | checked deterministic fixture templates |
 | `tests` | unit, integration, contract, and security tests |
 | `docs` | architecture, ADRs, runbooks, evaluation protocol |
@@ -277,15 +284,15 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.9.0 adds deterministic Reviewer routing after an accepted Fix. `always` preserves the
-existing quality posture, `shadow` records what a selective policy would do while still reviewing,
-and explicit `selective` can avoid provider construction for a fully analyzed low-risk Patch. The
-decision binds the exact Base Commit, Patch, Fix Manifest, and verification Manifest and is hashed
-into the top-level Artifact set; see the [v0.9.0 phase report](docs/v0.9.0-phase-report.md) and
-[ADR 0018](docs/adr/0018-reviewer-routing-is-deterministic-shadowable-and-fail-closed.md). The next
-priority is a larger manually labelled shadow set across repositories before considering selective
-as a repository default. Large benchmark infrastructure and extra Agent roles remain intentionally
-deferred.
+Version 0.10.0 adds a reproducible evaluator-only Shadow scorecard without changing the Coding
+Agent or routing policy. Frozen Patch, route, and Reviewer records are SHA-256-bound and may join
+only when their Base Commit and candidate Patch match. The generated JSON/Markdown preserves raw
+numerators and denominators and records explicit activation blockers; see the
+[v0.10.0 phase report](docs/v0.10.0-phase-report.md) and
+[ADR 0019](docs/adr/0019-evaluator-records-are-post-run-hash-bound-and-agent-invisible.md).
+Selective remains opt-in. The next priority is to obtain same-Patch Reviewer outcomes for the two
+real clean routes and add at least one evaluator-confirmed defective real-repository Patch. Large
+benchmark infrastructure and extra Agent roles remain intentionally deferred.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

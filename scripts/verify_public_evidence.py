@@ -15,14 +15,24 @@ def verify_evidence(evidence_root: Path) -> int:
         cases = manifest.get("cases")
         if not isinstance(cases, list):
             raise ValueError("unsupported or malformed public evidence manifest")
-        artifacts = [
-            {
-                "label": case["case_id"],
-                "path": case["patch"],
-                "sha256": case["patch_sha256"],
-            }
-            for case in cases
-        ]
+        artifacts = []
+        for case in cases:
+            artifacts.append(
+                {
+                    "label": case["case_id"],
+                    "path": case["patch"],
+                    "sha256": case["patch_sha256"],
+                }
+            )
+            candidate = case.get("candidate_patch")
+            if candidate is not None and candidate != case["patch"]:
+                artifacts.append(
+                    {
+                        "label": f"{case['case_id']}-candidate",
+                        "path": candidate,
+                        "sha256": case["candidate_patch_sha256"],
+                    }
+                )
     elif version == "prguard-public-artifacts-1":
         values = manifest.get("artifacts")
         if not isinstance(values, list):
@@ -64,6 +74,7 @@ def main() -> int:
         evidence / "navigation-hardening",
         evidence / "call-graph-hardening",
         evidence / "selective-routing",
+        evidence / "shadow-scorecard",
     ]
     count = sum(verify_evidence(root) for root in roots)
     print(f"public evidence verified: {count} artifacts")

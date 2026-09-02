@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0.0",
+  "policy_version": "review-routing-v1",
+  "mode": "shadow",
+  "recommended_route": "review",
+  "effective_route": "review",
+  "score": 7,
+  "threshold": 5,
+  "resolved_base_commit": "6381e7b514f63bc12a562ef750e6595ca979d18c",
+  "patch_sha256": "7b9fbfa72e59b21b524bea82bf3469cb57f6fad7e79d93eea1d88a2e151089fc",
+  "fix_manifest_sha256": "bd8955227389ae028af6fb619726d79731dab909b1ff9026a8a70f63250f0c4c",
+  "verification_manifest_sha256": "d0a0475e18981adbd000a738ad89c4d860b75c5c83f259dbbfb3823b65f9832f",
+  "changed_files": [
+    "service.py"
+  ],
+  "changed_python_files": [
+    "service.py"
+  ],
+  "changed_test_files": [],
+  "additions": 3,
+  "deletions": 1,
+  "pytest_scope": "targeted",
+  "pytest_targets": [
+    "tests/test_new_behavior.py"
+  ],
+  "changed_symbols": [
+    "service.normalize"
+  ],
+  "symbol_impacts": [
+    {
+      "symbol": "service.normalize",
+      "path": "service.py",
+      "change_kind": "modified",
+      "graph_source": "candidate",
+      "root_resolution": "exact",
+      "direct_repository_callers": 0,
+      "transitive_repository_callers": 0,
+      "reachable_tests": [
+        "tests/test_new_behavior.py",
+        "tests/test_regression.py"
+      ],
+      "related_tests": [
+        "tests/test_new_behavior.py",
+        "tests/test_regression.py"
+      ],
+      "graph_truncated": false
+    }
+  ],
+  "covered_unchanged_tests": [
+    "tests/test_new_behavior.py"
+  ],
+  "uncovered_reachable_tests": [
+    "tests/test_regression.py"
+  ],
+  "uncovered_related_tests": [],
+  "analysis_incomplete": false,
+  "analysis_notes": [],
+  "factors": [
+    {
+      "code": "reachable_tests_not_explicitly_covered",
+      "weight": 7,
+      "summary": "unchanged statically reachable tests were not named by the verified pytest argv",
+      "evidence": [
+        "tests/test_regression.py"
+      ]
+    }
+  ],
+  "duration_seconds": 0.19050604099174961
+}

@@ -4,10 +4,10 @@ Frozen: 2026-08-23
 PRGuard: 0.9.0
 Policy: `review-routing-v1`
 
-This is a two-case shadow check on accepted source changes from frozen public repositories. It is
-not a routing-accuracy benchmark and does not justify making selective mode the default. Shadow
-mode records what the selective policy would recommend while still keeping the effective route at
-`review`.
+This is a two-case routing-only shadow check on accepted source changes from frozen public
+repositories. It is not a routing-accuracy benchmark and does not justify making selective mode the
+default. Shadow mode records what the selective policy would recommend while keeping the contract's
+effective route at `review`; these two evidence runs did not retain same-Patch Reviewer outcomes.
 
 | Case | Targeted deterministic gate | Static routing evidence | Recommendation | Wider check |
 | --- | --- | --- | --- | --- |
@@ -30,7 +30,9 @@ defective cases in this pair, so it says nothing about a false-skip rate.
 The routing JSON files are path-free copies of the versioned `ReviewRoutingResult`. They bind the
 Patch SHA-256 to the frozen Base Commit plus the verified Fix and Harness Manifest payload hashes.
 Raw recursive runs remain local because they contain machine paths; the public files are separately
-hashed by `manifest.json`.
+hashed by `manifest.json`. The later
+[v0.10 Shadow scorecard](../shadow-scorecard/README.md) therefore reports paired Reviewer coverage
+as 1/3 instead of treating the `effective_route` field as proof that a provider outcome exists.
 
 Verify the public bytes with:
 

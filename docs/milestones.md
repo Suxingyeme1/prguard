@@ -160,6 +160,14 @@ plus 700 wider tests and Ruff because a reachable i18n test was outside the targ
 [v0.9.0 phase report](v0.9.0-phase-report.md) keeps selective opt-in until a broader labelled shadow
 set can measure false skips and Reviewer net value.
 
+The ninth increment adds a small executable Shadow scorecard rather than a benchmark platform.
+Evaluator labels stay outside Agent schemas and are attached only after execution. Each case binds
+the exact candidate Patch and routing Artifact by SHA-256; Reviewer evidence joins only when Base
+Commit and candidate Patch hashes agree. The frozen three-case set derives False Route 1/2, False
+Skip 0/1, paired Reviewer coverage 1/3, and one confirmed incremental finding. It automatically
+keeps selective activation not ready because same-Patch Reviewer coverage is incomplete and no
+defective real-repository case exists. See the [v0.10.0 phase report](v0.10.0-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

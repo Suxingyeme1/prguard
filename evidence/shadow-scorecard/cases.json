@@ -1,0 +1,62 @@
+{
+  "schema_version": "prguard-shadow-evaluation-1",
+  "frozen_at": "2026-09-02",
+  "policy_version": "review-routing-v1",
+  "cases": [
+    {
+      "case_id": "prettytable-474-source-only-shadow",
+      "source": "real_repository",
+      "repository": "prettytable/prettytable",
+      "issue_url": "https://github.com/prettytable/prettytable/issues/474",
+      "candidate_patch_artifact": "selective-routing/prettytable-474-source-only.patch",
+      "candidate_patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+      "routing_artifact": "selective-routing/prettytable-routing.json",
+      "routing_artifact_sha256": "3055257dd0e414fd4ca5525c2e14156f852d0e942717b3c99f0d7e7bcaf204a8",
+      "evaluator_label": "clean",
+      "label_visibility": "evaluator_only_not_in_agent_context",
+      "candidate_wider_gate": "passed",
+      "evaluator_checks": [
+        "The source-only Patch passed all 338 existing tests at the frozen Base Commit."
+      ],
+      "reviewer_evidence": null
+    },
+    {
+      "case_id": "humanize-366-source-only-shadow",
+      "source": "real_repository",
+      "repository": "python-humanize/humanize",
+      "issue_url": "https://github.com/python-humanize/humanize/issues/366",
+      "candidate_patch_artifact": "selective-routing/humanize-366-source-only.patch",
+      "candidate_patch_sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f",
+      "routing_artifact": "selective-routing/humanize-routing.json",
+      "routing_artifact_sha256": "ddca65cb78ebfb735feb85f9f7b8a70433f8746736e15421ff7422ee817d2fb0",
+      "evaluator_label": "clean",
+      "label_visibility": "evaluator_only_not_in_agent_context",
+      "candidate_wider_gate": "passed",
+      "evaluator_checks": [
+        "The source-only Patch passed 700 non-benchmark tests and Ruff at the frozen Base Commit."
+      ],
+      "reviewer_evidence": null
+    },
+    {
+      "case_id": "normalization-regression-shadow",
+      "source": "deterministic_fixture",
+      "repository": "PRGuard normalization regression fixture",
+      "issue_url": null,
+      "candidate_patch_artifact": "reviewer-value/regression-candidate.patch",
+      "candidate_patch_sha256": "7b9fbfa72e59b21b524bea82bf3469cb57f6fad7e79d93eea1d88a2e151089fc",
+      "routing_artifact": "shadow-scorecard/regression-routing.json",
+      "routing_artifact_sha256": "20b1cd380b2f422c5aeef494d62d5e71ac788b6ab95a51654a9d2a098f4928e3",
+      "evaluator_label": "defective",
+      "label_visibility": "evaluator_only_not_in_agent_context",
+      "candidate_wider_gate": "failed",
+      "evaluator_checks": [
+        "The candidate passed the narrow new-behavior gate but failed the frozen existing-behavior regression check."
+      ],
+      "reviewer_evidence": {
+        "artifact": "reviewer-value/manifest.json",
+        "artifact_sha256": "d946ee319a8ecfff996f193caf90159ddce592b68350e1eac057193831f9c17a",
+        "case_id": "reviewer-positive-regression"
+      }
+    }
+  ]
+}
