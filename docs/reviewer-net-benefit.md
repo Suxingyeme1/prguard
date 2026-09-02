@@ -108,3 +108,9 @@ direct evidence that `review-routing-v1` is not ready to skip by default. A cont
 passed 23 targeted and 340 full-suite tests. The same-Patch Humanize Reviewer accepted the clean
 change, added one nonblocking test-gap finding, and incurred 268.938 seconds of latency. Coverage is
 now 3/3, but these remain observed case counts rather than calibrated accuracy.
+
+The v0.10.3 [routing-v2 corrective replay](../evidence/review-routing-v2/README.md) converts that
+specific False Skip into a Review recommendation using a repository-agnostic AST lifecycle signal.
+It does not erase the v1 result or establish a new deployment rate: the failure informed the rule,
+so held-out manually labelled cases are still required before selective Review can be enabled by
+default.

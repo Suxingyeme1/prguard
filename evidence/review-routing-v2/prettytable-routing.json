@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0.0",
+  "policy_version": "review-routing-v2",
+  "mode": "shadow",
+  "recommended_route": "review",
+  "effective_route": "review",
+  "score": 5,
+  "threshold": 5,
+  "resolved_base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+  "patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+  "fix_manifest_sha256": "44df76b5a4cc28453d8096f47a180315a360b9c49c5e3bab6f161182329fc283",
+  "verification_manifest_sha256": "8483b799a80967773a088bf35bd135996878a8e670537e2d6f942f980b8af115",
+  "changed_files": [
+    "src/prettytable/prettytable.py"
+  ],
+  "changed_python_files": [
+    "src/prettytable/prettytable.py"
+  ],
+  "changed_test_files": [],
+  "additions": 2,
+  "deletions": 2,
+  "pytest_scope": "targeted",
+  "pytest_targets": [
+    "tests/test_html.py"
+  ],
+  "changed_symbols": [
+    "prettytable.prettytable._make_table_handler"
+  ],
+  "symbol_impacts": [
+    {
+      "symbol": "prettytable.prettytable._make_table_handler",
+      "path": "src/prettytable/prettytable.py",
+      "change_kind": "modified",
+      "graph_source": "candidate",
+      "root_resolution": "exact",
+      "direct_repository_callers": 2,
+      "transitive_repository_callers": 3,
+      "reachable_tests": [
+        "tests/test_html.py"
+      ],
+      "related_tests": [],
+      "graph_truncated": false
+    }
+  ],
+  "covered_unchanged_tests": [
+    "tests/test_html.py"
+  ],
+  "uncovered_reachable_tests": [],
+  "uncovered_related_tests": [],
+  "analysis_incomplete": false,
+  "analysis_notes": [],
+  "factors": [
+    {
+      "code": "stateful_nested_factory_changed",
+      "weight": 5,
+      "summary": "a changed factory returns a nested class with cross-method instance state",
+      "evidence": [
+        "prettytable.prettytable._make_table_handler: returns nested class _TableHandler; cross-method state=active,colspan,is_last_row_header,last_content,last_row,max_row_width,rows"
+      ]
+    }
+  ],
+  "duration_seconds": 0.44699491700157523
+}

@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0.0",
+  "policy_version": "review-routing-v2",
+  "mode": "shadow",
+  "recommended_route": "review",
+  "effective_route": "review",
+  "score": 9,
+  "threshold": 5,
+  "resolved_base_commit": "ce4147b6c8f8a132f772be0929d58305eb22c5d9",
+  "patch_sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f",
+  "fix_manifest_sha256": "e0fe0c8c800246b15696e375981e34afe22f35a429af40cf2dd8a94e55fdf4ac",
+  "verification_manifest_sha256": "86b95786e2fadb37baa39a9b8dc6e63acf1f2e7100fe75b1a7454cf5e27b494b",
+  "changed_files": [
+    "src/humanize/filesize.py"
+  ],
+  "changed_python_files": [
+    "src/humanize/filesize.py"
+  ],
+  "changed_test_files": [],
+  "additions": 8,
+  "deletions": 2,
+  "pytest_scope": "targeted",
+  "pytest_targets": [
+    "tests/test_filesize.py"
+  ],
+  "changed_symbols": [
+    "humanize.filesize.naturalsize"
+  ],
+  "symbol_impacts": [
+    {
+      "symbol": "humanize.filesize.naturalsize",
+      "path": "src/humanize/filesize.py",
+      "change_kind": "modified",
+      "graph_source": "candidate",
+      "root_resolution": "exact",
+      "direct_repository_callers": 0,
+      "transitive_repository_callers": 0,
+      "reachable_tests": [
+        "tests/test_filesize.py",
+        "tests/test_i18n.py"
+      ],
+      "related_tests": [
+        "tests/test_benchmarks.py",
+        "tests/test_filesize.py",
+        "tests/test_i18n.py"
+      ],
+      "graph_truncated": false
+    }
+  ],
+  "covered_unchanged_tests": [
+    "tests/test_filesize.py"
+  ],
+  "uncovered_reachable_tests": [
+    "tests/test_i18n.py"
+  ],
+  "uncovered_related_tests": [
+    "tests/test_benchmarks.py"
+  ],
+  "analysis_incomplete": false,
+  "analysis_notes": [],
+  "factors": [
+    {
+      "code": "reachable_tests_not_explicitly_covered",
+      "weight": 7,
+      "summary": "unchanged statically reachable tests were not named by the verified pytest argv",
+      "evidence": [
+        "tests/test_i18n.py"
+      ]
+    },
+    {
+      "code": "related_tests_not_explicitly_covered",
+      "weight": 2,
+      "summary": "heuristically related unchanged tests were not named by the verified pytest argv",
+      "evidence": [
+        "tests/test_benchmarks.py"
+      ]
+    }
+  ],
+  "duration_seconds": 0.30187458399450406
+}
