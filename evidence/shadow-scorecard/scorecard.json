@@ -7,13 +7,13 @@
   "clean_cases": 1,
   "defective_cases": 2,
   "real_repository_cases": 2,
-  "reviewer_observed_cases": 2,
+  "reviewer_observed_cases": 3,
   "recommended_reviews": 2,
   "recommended_skips": 1,
   "reviewer_coverage": {
-    "numerator": 2,
+    "numerator": 3,
     "denominator": 3,
-    "rate": 0.6666666666666666
+    "rate": 1.0
   },
   "false_routes": {
     "numerator": 1,
@@ -27,22 +27,21 @@
   },
   "false_blocks": {
     "numerator": 0,
-    "denominator": 0,
-    "rate": null
+    "denominator": 1,
+    "rate": 0.0
   },
   "defective_cases_caught_by_reviewer": {
     "numerator": 2,
     "denominator": 2,
     "rate": 1.0
   },
-  "confirmed_incremental_findings": 2,
-  "total_reviewer_duration_seconds": 242.84910761471838,
-  "total_reviewer_input_tokens": 221665,
-  "total_reviewer_output_tokens": 13347,
-  "total_repair_rounds": 1,
+  "confirmed_incremental_findings": 3,
+  "total_reviewer_duration_seconds": 462.7065912699327,
+  "total_reviewer_input_tokens": 232330,
+  "total_reviewer_output_tokens": 23309,
+  "total_repair_rounds": 2,
   "selective_activation_ready": false,
   "activation_blockers": [
-    "paired Reviewer outcome coverage is 2/3",
     "1 evaluator-confirmed false skip(s) under the frozen policy"
   ],
   "cases": [
@@ -59,10 +58,10 @@
       "reviewer_observed": true,
       "reviewer_verdict": "request_changes",
       "confirmed_incremental_findings": 1,
-      "reviewer_duration_seconds": 216.69951157271862,
-      "reviewer_input_tokens": 214763,
-      "reviewer_output_tokens": 11703,
-      "repair_rounds": 0
+      "reviewer_duration_seconds": 167.61890341341496,
+      "reviewer_input_tokens": 96763,
+      "reviewer_output_tokens": 8032,
+      "repair_rounds": 1
     },
     {
       "case_id": "humanize-366-source-only-shadow",
@@ -74,12 +73,12 @@
       "recommended_route": "review",
       "routing_score": 9,
       "routing_threshold": 5,
-      "reviewer_observed": false,
-      "reviewer_verdict": null,
-      "confirmed_incremental_findings": 0,
-      "reviewer_duration_seconds": 0.0,
-      "reviewer_input_tokens": 0,
-      "reviewer_output_tokens": 0,
+      "reviewer_observed": true,
+      "reviewer_verdict": "accept",
+      "confirmed_incremental_findings": 1,
+      "reviewer_duration_seconds": 268.938091814518,
+      "reviewer_input_tokens": 128665,
+      "reviewer_output_tokens": 13633,
       "repair_rounds": 0
     },
     {

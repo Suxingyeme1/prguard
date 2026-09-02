@@ -4,8 +4,8 @@
   "artifacts": [
     {
       "path": "README.md",
-      "sha256": "ca7e719def547207f01a9cb6c26078daed8c4958d0e6b5c249a741beadcc5505",
-      "size_bytes": 2766
+      "sha256": "e38bf1e9f4565aeef040806d9e201622876632e6156531b7e71d01b9e1452401",
+      "size_bytes": 2970
     },
     {
       "path": "humanize-366-source-only.patch",

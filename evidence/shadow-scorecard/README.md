@@ -1,7 +1,7 @@
 # Shadow Reviewer routing scorecard
 
 Frozen: 2026-09-02
-PRGuard: 0.10.1
+PRGuard: 0.10.2
 Policy: `review-routing-v1`
 
 This package turns the existing routing and Reviewer-value evidence into one hash-bound,
@@ -21,19 +21,21 @@ computing counts.
 Evaluator records live in `prguard.evaluation`, outside Agent-visible `prguard.schemas` task
 contracts.
 
-The result is deliberately conservative:
+All three routes now have same-Base, same-Patch Reviewer observations. Humanize was accepted with
+one confirmed nonblocking test-gap finding; PrettyTable was rejected and then repaired once. The
+result remains deliberately conservative:
 
 - false route: 1/1 clean accepted Fix;
 - false skip: 1/2 defective accepted Fixes;
-- paired Reviewer coverage: 2/3;
-- two confirmed incremental findings and one repair round;
-- selective activation: **not ready** because one frozen `skip` is now evaluator-confirmed
-  defective and Humanize still lacks a same-Patch Reviewer observation.
+- paired Reviewer coverage: 3/3;
+- three confirmed incremental findings and two repair rounds;
+- false block: 0/1 clean effective Review;
+- selective activation: **not ready** because one frozen `skip` is evaluator-confirmed defective.
 
-`false block` is 0/0 in this joined set, not zero percent. The separate Humanize Reviewer-value
-case remains valid evidence of one clean acceptance, but its Patch hash differs from the source-only
-Humanize routing case, so the scorecard correctly refuses to join them. The observed fractions are
-case counts, not calibrated population rates.
+The earlier Humanize Reviewer-value case remains valid evidence for a different source-and-test
+Patch. The new paired run uses the exact source-only Patch selected by the frozen routing case, so
+the scorecard can join it without weakening its hash checks. The observed fractions are case
+counts, not calibrated population rates.
 
 Regenerate the two derived views with:
 

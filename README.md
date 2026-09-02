@@ -212,11 +212,12 @@ same frozen PrettyTable source from `from_html` to upstream callers, downstream 
 three reachable tests. It demonstrates bounded static navigation without executing repository code;
 it does not claim runtime-complete dispatch resolution.
 
-A small [Reviewer value check](evidence/reviewer-value/README.md) now records two confirmed
-incremental findings plus one clean cost case. The second finding is on the exact PrettyTable Patch
+A small [Reviewer value check](evidence/reviewer-value/README.md) now records three confirmed
+incremental findings plus clean-review cost. The blocking real-repository finding is on the exact PrettyTable Patch
 that passed 21 targeted and 338 wider existing tests: Reviewer evidence exposed a multi-table
-regression that a paired Base/Candidate check confirmed. The clean Humanize review was not
-false-blocked but incurred substantial latency.
+regression that a paired Base/Candidate check confirmed. One controlled repair then passed 23
+targeted and all 340 repository tests. The exact source-only Humanize review was not false-blocked;
+it reported a nonblocking test gap and incurred substantial latency.
 
 The v0.9.0 [selective-routing shadow check](evidence/selective-routing/README.md) replays two
 source-only Harness-accepted changes at frozen PrettyTable and Humanize commits. PrettyTable passed
@@ -224,11 +225,11 @@ source-only Harness-accepted changes at frozen PrettyTable and Humanize commits.
 Review/evaluator check reclassified it as defective. Humanize passed 76 targeted plus 700 wider
 tests and Ruff but retained `review` because a reachable i18n test was outside the targeted gate.
 
-The v0.10.1 [hash-bound Shadow scorecard](evidence/shadow-scorecard/README.md) joins the routes,
+The v0.10.2 [hash-bound Shadow scorecard](evidence/shadow-scorecard/README.md) joins the routes,
 post-run evaluator checks, and Reviewer records only when Base Commit and candidate Patch hashes
-match. It derives False Route 1/1, False Skip 1/2, paired Reviewer coverage 2/3, and two confirmed
-incremental findings. Selective activation remains **not ready** because the frozen policy has an
-observed False Skip and Humanize lacks a same-Patch Reviewer observation.
+match. It derives False Route 1/1, False Skip 1/2, False Block 0/1, paired Reviewer coverage 3/3,
+and three confirmed incremental findings. Selective activation remains **not ready** because the
+frozen policy has an observed False Skip.
 
 ## Live model run
 
@@ -285,16 +286,17 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.10.1 hardens the evaluator-only Shadow scorecard with hash-bound post-run checks and an
-explicit False-Skip activation blocker. A same-Patch live Reviewer found a real PrettyTable
-multi-table regression after every declared existing test had passed; a paired Base/Candidate check
-confirmed it. The generated JSON/Markdown now records False Skip 1/2 and Reviewer coverage 2/3;
-see the [v0.10.1 phase report](docs/v0.10.1-phase-report.md) and
+Version 0.10.2 completes same-Patch Reviewer coverage for the frozen three-case Shadow set and the
+real-repository Demo B repair loop. A PrettyTable Reviewer found a multi-table regression after
+every declared existing test had passed; one controlled repair added regression tests and passed
+23 targeted plus 340 full-suite tests. Humanize was accepted with a nonblocking test-gap finding.
+The generated JSON/Markdown now records False Skip 1/2, False Block 0/1, and Reviewer coverage 3/3;
+see the [v0.10.2 phase report](docs/v0.10.2-phase-report.md) and
 [ADR 0019](docs/adr/0019-evaluator-records-are-post-run-hash-bound-and-agent-invisible.md).
-Selective remains opt-in. The next priority is to complete the same-Patch Humanize Reviewer run,
-repair the confirmed PrettyTable defect under the final gate, and revise `review-routing-v1` only
-after preserving this frozen failure. Large benchmark infrastructure and extra Agent roles remain
-intentionally deferred.
+Selective remains opt-in. The next priority is a separately versioned `review-routing-v2` proposal
+replayed over the frozen cases, plus additional manually checked real-repository cases before any
+default activation. Large benchmark infrastructure and extra Agent roles remain intentionally
+deferred.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

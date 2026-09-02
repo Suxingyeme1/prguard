@@ -32,9 +32,11 @@ The routing JSON files are path-free copies of the versioned `ReviewRoutingResul
 Patch SHA-256 to the frozen Base Commit plus the verified Fix and Harness Manifest payload hashes.
 Raw recursive runs remain local because they contain machine paths; the public files are separately
 hashed by `manifest.json`. The later
-[v0.10 Shadow scorecard](../shadow-scorecard/README.md) reports paired Reviewer coverage as 2/3 and
-keeps the observed False Skip as an activation blocker instead of treating the original existing
-test pass as a permanent clean label.
+[v0.10 Shadow scorecard](../shadow-scorecard/README.md) now reports paired Reviewer coverage as 3/3.
+It keeps the observed False Skip as an activation blocker instead of treating the original existing
+test pass as a permanent clean label. The paired Humanize Review accepted the Patch and reported a
+nonblocking missing-regression-test finding; the paired PrettyTable flow repaired its confirmed
+defect and passed the full 340-test suite.
 
 Verify the public bytes with:
 

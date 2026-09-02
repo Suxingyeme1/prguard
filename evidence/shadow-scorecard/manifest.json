@@ -4,13 +4,13 @@
   "artifacts": [
     {
       "path": "README.md",
-      "sha256": "6ba101ce2f428c32aa4c80653700da53e4aed3942a58e8def1784544841664b2",
-      "size_bytes": 2200
+      "sha256": "c0724c68f6d2d79309aa5bdeeefa547e0521da081a3a72a0ad3be223728b0964",
+      "size_bytes": 2364
     },
     {
       "path": "cases.json",
-      "sha256": "a0f60408a8e88e628d865b06e88d905ce342a05f6b43e7c625d7cf5c11007275",
-      "size_bytes": 3617
+      "sha256": "a795add42dbbff6d0ca9a031d65db7f4b4d37c798d8c2309ac4d3030088756c4",
+      "size_bytes": 3826
     },
     {
       "path": "prettytable-evaluator-check.json",
@@ -24,13 +24,13 @@
     },
     {
       "path": "scorecard.json",
-      "sha256": "53cfc793f4fd8bf0a4908cb2f6e8c5432e5aca82749a13a80d0ec395a0a96988",
-      "size_bytes": 3399
+      "sha256": "22bb0156a3d65b755932c4ecc252d087ccf697d662ab9684caae03b6a4fb07ab",
+      "size_bytes": 3358
     },
     {
       "path": "scorecard.md",
-      "sha256": "21bf5684482971f939a048e366f58521ddb698e376ab1d2bc2ab2703e9462893",
-      "size_bytes": 1163
+      "sha256": "cbfa5141c256fa2ac201aec9bcfd7de4e70b4a1438cf37c81f9c7119433c54f6",
+      "size_bytes": 1129
     }
   ]
 }
