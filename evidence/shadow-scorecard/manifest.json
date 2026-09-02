@@ -4,13 +4,18 @@
   "artifacts": [
     {
       "path": "README.md",
-      "sha256": "66327c9f5f2e376a9ce038554661076338decd13e5fa68c7c8614f6696d626fc",
-      "size_bytes": 2042
+      "sha256": "6ba101ce2f428c32aa4c80653700da53e4aed3942a58e8def1784544841664b2",
+      "size_bytes": 2200
     },
     {
       "path": "cases.json",
-      "sha256": "3e2d455bfcb4df80d9faae57dff56649891c823d7489b9c0085238b6595a57d9",
-      "size_bytes": 2991
+      "sha256": "a0f60408a8e88e628d865b06e88d905ce342a05f6b43e7c625d7cf5c11007275",
+      "size_bytes": 3617
+    },
+    {
+      "path": "prettytable-evaluator-check.json",
+      "sha256": "25150febc3d28c347ff845ac0140710222b690070d644c341e316e8d4743bb89",
+      "size_bytes": 921
     },
     {
       "path": "regression-routing.json",
@@ -19,13 +24,13 @@
     },
     {
       "path": "scorecard.json",
-      "sha256": "cd039254bff8be307f1e0c04414997d6835e9a994053066b4127eaa491c954ab",
-      "size_bytes": 3350
+      "sha256": "53cfc793f4fd8bf0a4908cb2f6e8c5432e5aca82749a13a80d0ec395a0a96988",
+      "size_bytes": 3399
     },
     {
       "path": "scorecard.md",
-      "sha256": "2c595741e40eeff9b0901244d04efea3385b7d1ebda6bdb5f00da7778cfbe90e",
-      "size_bytes": 1146
+      "sha256": "21bf5684482971f939a048e366f58521ddb698e376ab1d2bc2ab2703e9462893",
+      "size_bytes": 1163
     }
   ]
 }

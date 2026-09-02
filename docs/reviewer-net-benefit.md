@@ -100,8 +100,10 @@ ordinary/sensitive path, narrow/broad change, and complete/incomplete static ana
 generic benchmark or additional Agent role. Freeze the policy first, run those cases in shadow
 mode, publish the raw counts and costs, and only then decide whether selective skipping is justified.
 
-The v0.10 [executable scorecard](../evidence/shadow-scorecard/README.md) enforces this boundary in
-code. Its first three joined routes produce False Route 1/2 and False Skip 0/1, but only one exact
-Patch has a paired Reviewer result and the sole defective case is a deterministic fixture. It
-therefore records activation blockers instead of interpreting the observed fractions as calibrated
-accuracy.
+The v0.10.1 [executable scorecard](../evidence/shadow-scorecard/README.md) enforces this boundary in
+code. Its three joined routes produce False Route 1/1 and False Skip 1/2. The skipped PrettyTable
+Patch passed every declared existing test, but a same-Patch Reviewer identified a multi-table state
+regression that Base/Candidate replay confirmed. This is direct incremental benefit from Review and
+direct evidence that `review-routing-v1` is not ready to skip by default. Humanize still lacks an
+exact-Patch paired Reviewer result, so the fractions remain observed case counts rather than
+calibrated accuracy.

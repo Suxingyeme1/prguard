@@ -1,6 +1,6 @@
 {
   "schema_version": "prguard-public-evidence-1",
-  "frozen_at": "2026-08-23",
+  "frozen_at": "2026-09-02",
   "provider": "deepseek-v4-pro",
   "reasoning_effort": "high",
   "cases": [
@@ -69,6 +69,35 @@
       "wider_gate": "702 passed; 74 optional benchmark skips; Ruff passed",
       "patch": "humanize-366-v080.patch",
       "patch_sha256": "76ad64057e591fa6d9a622c3892fbfd55427772206d73cb5da37330e9ad9fa33"
+    },
+    {
+      "case_id": "reviewer-positive-prettytable-multitable-regression",
+      "issue_url": "https://github.com/prettytable/prettytable/issues/474",
+      "base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+      "evaluator_label": "defective_candidate",
+      "label_visibility": "evaluator_only_not_in_reviewer_context",
+      "baseline_gate": "21 targeted and 338 wider existing tests passed",
+      "review_verdict": "request_changes",
+      "finding_disposition": "true_positive",
+      "finding_count": 1,
+      "review_duration_seconds": 216.69951157271862,
+      "review_token_usage": {
+        "input_tokens": 214763,
+        "output_tokens": 11703,
+        "cached_tokens": 189824
+      },
+      "review_manifest_payload_sha256": "b0701730f4d1ffb56d6cc7fe9a3d0c4e27ba103d336f6878d946d681bd71ab2b",
+      "candidate_patch": "prettytable-474-source-only.patch",
+      "candidate_patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+      "incremental_finding_count": 1,
+      "rejected_finding_count": 0,
+      "unresolved_finding_count": 0,
+      "repair_outcome": "not_run",
+      "repair_rounds": 0,
+      "wider_gate": "existing suite passed; evaluator multi-table regression check failed on candidate and passed on Base",
+      "evaluator_check": "../shadow-scorecard/prettytable-evaluator-check.json",
+      "patch": "prettytable-474-source-only.patch",
+      "patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8"
     }
   ]
 }

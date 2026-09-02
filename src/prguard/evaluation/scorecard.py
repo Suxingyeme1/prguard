@@ -59,6 +59,11 @@ class ShadowEvaluationCase(StrictModel):
     label_visibility: Literal["evaluator_only_not_in_agent_context"]
     candidate_wider_gate: Literal["passed", "failed"]
     evaluator_checks: list[str] = Field(min_length=1, max_length=20)
+    evaluator_artifact: str | None = Field(default=None, min_length=1, max_length=1000)
+    evaluator_artifact_sha256: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-f]{64}$",
+    )
     reviewer_evidence: ReviewerEvidenceReference | None = None
 
     @model_validator(mode="after")
@@ -66,6 +71,8 @@ class ShadowEvaluationCase(StrictModel):
         expected = "passed" if self.evaluator_label is EvaluatorLabel.CLEAN else "failed"
         if self.candidate_wider_gate != expected:
             raise ValueError("evaluator label must agree with the frozen candidate wider gate")
+        if (self.evaluator_artifact is None) != (self.evaluator_artifact_sha256 is None):
+            raise ValueError("evaluator artifact path and hash must be declared together")
         return self
 
 
@@ -104,6 +111,28 @@ class ReviewerObservation(StrictModel):
         )
         if dispositions != self.finding_count:
             raise ValueError("Reviewer finding dispositions must sum to finding_count")
+        return self
+
+
+class EvaluatorCheckRecord(StrictModel):
+    schema_version: Literal["prguard-evaluator-check-1"]
+    case_id: str = Field(min_length=1, max_length=120)
+    resolved_base_commit: str = Field(min_length=7, max_length=64)
+    candidate_patch_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    evaluator_label: EvaluatorLabel
+    label_visibility: Literal["evaluator_only_not_in_agent_context"]
+    check_id: str = Field(min_length=1, max_length=120)
+    reproduction: str = Field(min_length=1, max_length=4000)
+    expected_observation: dict[str, object]
+    base_observation: dict[str, object]
+    candidate_observation: dict[str, object]
+    candidate_check: Literal["passed", "failed"]
+
+    @model_validator(mode="after")
+    def outcome_matches_label(self) -> EvaluatorCheckRecord:
+        expected = "passed" if self.evaluator_label is EvaluatorLabel.CLEAN else "failed"
+        if self.candidate_check != expected:
+            raise ValueError("evaluator check outcome must agree with its label")
         return self
 
 
@@ -267,6 +296,22 @@ def load_shadow_evaluation(
             raise ValueError("Shadow routing must preserve an effective Review route")
         if route.patch_sha256 != case.candidate_patch_sha256:
             raise ValueError("routing result is not bound to the frozen candidate Patch")
+        if case.evaluator_artifact is not None:
+            assert case.evaluator_artifact_sha256 is not None
+            evaluator_path = _verified_artifact(
+                evidence_root,
+                case.evaluator_artifact,
+                case.evaluator_artifact_sha256,
+            )
+            evaluator = EvaluatorCheckRecord.model_validate_json(evaluator_path.read_bytes())
+            if evaluator.case_id != case.case_id:
+                raise ValueError("evaluator check and dataset case IDs do not match")
+            if evaluator.resolved_base_commit != route.resolved_base_commit:
+                raise ValueError("evaluator check and routing Base Commit do not match")
+            if evaluator.candidate_patch_sha256 != route.patch_sha256:
+                raise ValueError("evaluator check and routing candidate Patch do not match")
+            if evaluator.evaluator_label is not case.evaluator_label:
+                raise ValueError("evaluator check and dataset labels do not match")
         reviewer = (
             _reviewer_observation(evidence_root, case.reviewer_evidence, route=route)
             if case.reviewer_evidence is not None
@@ -349,6 +394,10 @@ def build_shadow_scorecard(
     blockers: list[str] = []
     if reviewed != len(dataset.cases):
         blockers.append(f"paired Reviewer outcome coverage is {reviewed}/{len(dataset.cases)}")
+    if false_skips:
+        blockers.append(
+            f"{false_skips} evaluator-confirmed false skip(s) under the frozen policy"
+        )
     if real_defective == 0:
         blockers.append("no evaluator-confirmed defective real-repository case")
     if defective_reviewed == 0:

@@ -37,8 +37,10 @@ path traversal, and cross-Patch Reviewer joins.
 ## Consequences
 
 The scorecard can be replayed without an API key and cannot silently combine unrelated model runs.
-It makes incomplete evidence visible: the first three-case set has only one paired Reviewer result
-and no defective real-repository case, so it does not authorize selective-by-default deployment.
+It makes incomplete and adverse evidence visible. The first same-Patch real-repository Reviewer run
+reclassified a previously clean-labelled PrettyTable Patch as defective and converted its `skip`
+recommendation into a confirmed False Skip. The scorecard therefore blocks selective-by-default
+deployment even if all remaining paired observations are later collected.
 
 Evaluator dispositions remain human judgments, and SHA-256 provides integrity rather than identity
 or remote attestation. Expanding the case set still requires disciplined manual labelling and

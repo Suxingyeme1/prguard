@@ -1,0 +1,23 @@
+{
+  "schema_version": "prguard-evaluator-check-1",
+  "case_id": "prettytable-474-source-only-shadow",
+  "resolved_base_commit": "3c80d392d32f48b0ab1e368793ddb751dbe41807",
+  "candidate_patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+  "evaluator_label": "defective",
+  "label_visibility": "evaluator_only_not_in_agent_context",
+  "check_id": "later-narrower-table-preserves-natural-width",
+  "reproduction": "Parse one three-column table followed by one two-column table with from_html(); compare the second table at the frozen Base Commit and after applying the candidate Patch.",
+  "expected_observation": {
+    "field_names": ["x", "y"],
+    "rows": [["4", "5"]]
+  },
+  "base_observation": {
+    "field_names": ["x", "y"],
+    "rows": [["4", "5"]]
+  },
+  "candidate_observation": {
+    "field_names": ["x", "y", ""],
+    "rows": [["4", "5", ""]]
+  },
+  "candidate_check": "failed"
+}

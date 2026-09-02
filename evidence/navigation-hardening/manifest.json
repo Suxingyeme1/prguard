@@ -4,8 +4,8 @@
   "artifacts": [
     {
       "path": "README.md",
-      "sha256": "7933ad453048c827584d94edaa110ac546097f9e278666a3187b828d65027e00",
-      "size_bytes": 2290
+      "sha256": "47a3ff986fd9915e2030be2166c3fc3f2d0f4717f7fd9214fb9db50eb3c226fe",
+      "size_bytes": 2782
     },
     {
       "path": "prettytable-474-v081.patch",

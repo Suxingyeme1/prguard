@@ -192,7 +192,7 @@ These are engineering case studies, not a claim of broad benchmark generalizatio
 | Repository | Issue | Selected patch | Wider regression check |
 | --- | --- | --- | --- |
 | Humanize | [#366](https://github.com/python-humanize/humanize/issues/366) | accepted with two structured edits; pytest + ruff | 702 passed, 74 skipped* |
-| PrettyTable | [#474](https://github.com/prettytable/prettytable/issues/474) | accepted with source + regression-test edits | 339 passed |
+| PrettyTable | [#474](https://github.com/prettytable/prettytable/issues/474) | declared gate accepted; later independent review found a multi-table regression | 339 existing tests passed; evaluator check failed |
 | Inflect | [#242](https://github.com/jaraco/inflect/issues/242) | accepted | 208 passed, 16 xfailed |
 
 \* Optional benchmark tests were excluded because their plugin was unavailable.
@@ -212,22 +212,23 @@ same frozen PrettyTable source from `from_html` to upstream callers, downstream 
 three reachable tests. It demonstrates bounded static navigation without executing repository code;
 it does not claim runtime-complete dispatch resolution.
 
-A separate two-case [Reviewer value check](evidence/reviewer-value/README.md) records one regression
-that passed a narrow base gate but was caught and repaired by independent review, plus one accepted
-Humanize Patch that was not false-blocked but incurred substantial review latency. It supports
-selective review, not a general accuracy claim.
+A small [Reviewer value check](evidence/reviewer-value/README.md) now records two confirmed
+incremental findings plus one clean cost case. The second finding is on the exact PrettyTable Patch
+that passed 21 targeted and 338 wider existing tests: Reviewer evidence exposed a multi-table
+regression that a paired Base/Candidate check confirmed. The clean Humanize review was not
+false-blocked but incurred substantial latency.
 
 The v0.9.0 [selective-routing shadow check](evidence/selective-routing/README.md) replays two
-source-only accepted changes at frozen PrettyTable and Humanize commits. PrettyTable passed 21
-targeted and 338 wider tests and received a `skip` recommendation; Humanize passed 76 targeted plus
-700 wider tests and Ruff but retained `review` because a reachable i18n test was outside the
-targeted gate. This is a two-case policy check, not a false-skip estimate.
+source-only Harness-accepted changes at frozen PrettyTable and Humanize commits. PrettyTable passed
+21 targeted and 338 wider existing tests and received a `skip` recommendation; the later paired
+Review/evaluator check reclassified it as defective. Humanize passed 76 targeted plus 700 wider
+tests and Ruff but retained `review` because a reachable i18n test was outside the targeted gate.
 
-The v0.10.0 [hash-bound Shadow scorecard](evidence/shadow-scorecard/README.md) joins those two clean
-routes with the frozen normalization regression only when Base Commit and candidate Patch hashes
-match. It derives False Route 1/2, False Skip 0/1, paired Reviewer coverage 1/3, and one confirmed
-incremental finding. It also keeps selective activation **not ready**: the clean real-repository
-routes lack same-Patch Reviewer observations, and there is no defective real-repository case.
+The v0.10.1 [hash-bound Shadow scorecard](evidence/shadow-scorecard/README.md) joins the routes,
+post-run evaluator checks, and Reviewer records only when Base Commit and candidate Patch hashes
+match. It derives False Route 1/1, False Skip 1/2, paired Reviewer coverage 2/3, and two confirmed
+incremental findings. Selective activation remains **not ready** because the frozen policy has an
+observed False Skip and Humanize lacks a same-Patch Reviewer observation.
 
 ## Live model run
 
@@ -284,15 +285,16 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.10.0 adds a reproducible evaluator-only Shadow scorecard without changing the Coding
-Agent or routing policy. Frozen Patch, route, and Reviewer records are SHA-256-bound and may join
-only when their Base Commit and candidate Patch match. The generated JSON/Markdown preserves raw
-numerators and denominators and records explicit activation blockers; see the
-[v0.10.0 phase report](docs/v0.10.0-phase-report.md) and
+Version 0.10.1 hardens the evaluator-only Shadow scorecard with hash-bound post-run checks and an
+explicit False-Skip activation blocker. A same-Patch live Reviewer found a real PrettyTable
+multi-table regression after every declared existing test had passed; a paired Base/Candidate check
+confirmed it. The generated JSON/Markdown now records False Skip 1/2 and Reviewer coverage 2/3;
+see the [v0.10.1 phase report](docs/v0.10.1-phase-report.md) and
 [ADR 0019](docs/adr/0019-evaluator-records-are-post-run-hash-bound-and-agent-invisible.md).
-Selective remains opt-in. The next priority is to obtain same-Patch Reviewer outcomes for the two
-real clean routes and add at least one evaluator-confirmed defective real-repository Patch. Large
-benchmark infrastructure and extra Agent roles remain intentionally deferred.
+Selective remains opt-in. The next priority is to complete the same-Patch Humanize Reviewer run,
+repair the confirmed PrettyTable defect under the final gate, and revise `review-routing-v1` only
+after preserving this frozen failure. Large benchmark infrastructure and extra Agent roles remain
+intentionally deferred.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”
