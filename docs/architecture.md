@@ -109,7 +109,9 @@ a deterministic tool, never a Test Runner Agent.
   recommendation but still routes every Fix; only explicit `selective` mode can make `skip`
   effective. Artifact mismatch is a hard integrity failure, while incomplete or unsupported static
   analysis receives a blocking risk factor and routes to review. The score is an auditable policy
-  value, not a defect probability.
+  value, not a defect probability. `review-routing-v2` additionally routes a changed factory that
+  directly returns a nested class with instance state written across methods; this bounded signal
+  addresses one observed lifecycle regression but is not a general state-machine detector.
 - **Review runner** proves Base collection/non-pytest readiness, verifies the candidate, creates a
   separate patched worktree, gives an independently scoped Reviewer only the Issue, candidate diff,
   deterministic evidence, and bounded read tools, then computes the verdict deterministically.

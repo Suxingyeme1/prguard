@@ -231,6 +231,12 @@ match. It derives False Route 1/1, False Skip 1/2, False Block 0/1, paired Revie
 and three confirmed incremental findings. Selective activation remains **not ready** because the
 frozen policy has an observed False Skip.
 
+The v0.10.3 [routing-v2 corrective replay](evidence/review-routing-v2/README.md) adds one bounded
+AST signal for changed factories that directly return nested classes with cross-method instance
+state. It changes the known defective PrettyTable route from `skip` 0/5 to `review` 5/5 without
+changing the other two frozen recommendations. This is a post-failure regression check, not
+held-out evidence, so selective activation remains **not ready**.
+
 ## Live model run
 
 Install the optional provider dependency and keep the API key in the process environment:
@@ -286,17 +292,16 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.10.2 completes same-Patch Reviewer coverage for the frozen three-case Shadow set and the
-real-repository Demo B repair loop. A PrettyTable Reviewer found a multi-table regression after
-every declared existing test had passed; one controlled repair added regression tests and passed
-23 targeted plus 340 full-suite tests. Humanize was accepted with a nonblocking test-gap finding.
-The generated JSON/Markdown now records False Skip 1/2, False Block 0/1, and Reviewer coverage 3/3;
-see the [v0.10.2 phase report](docs/v0.10.2-phase-report.md) and
-[ADR 0019](docs/adr/0019-evaluator-records-are-post-run-hash-bound-and-agent-invisible.md).
-Selective remains opt-in. The next priority is a separately versioned `review-routing-v2` proposal
-replayed over the frozen cases, plus additional manually checked real-repository cases before any
-default activation. Large benchmark infrastructure and extra Agent roles remain intentionally
-deferred.
+Version 0.10.3 implements `review-routing-v2` as a narrow correction to the known PrettyTable
+False Skip. The frozen replay is hash-bound to the same Base Commits and candidate Patches, and its
+activation record explicitly remains `not_ready`: the corrected case helped design the signal and
+no held-out real-repository set has been evaluated. `always` remains the compatible default;
+selective execution stays explicit and opt-in. See the
+[v0.10.3 phase report](docs/v0.10.3-phase-report.md),
+[ADR 0020](docs/adr/0020-route-stateful-nested-factories-to-independent-review.md), and the prior
+[v0.10.2 paired Reviewer report](docs/v0.10.2-phase-report.md). The next priority is a small,
+manually labelled holdout set containing both ordinary stateful code and genuinely low-risk
+changes—not a large benchmark platform or another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

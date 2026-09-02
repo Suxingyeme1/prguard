@@ -75,6 +75,7 @@ def main() -> int:
         evidence / "call-graph-hardening",
         evidence / "selective-routing",
         evidence / "shadow-scorecard",
+        evidence / "review-routing-v2",
     ]
     count = sum(verify_evidence(root) for root in roots)
     print(f"public evidence verified: {count} artifacts")

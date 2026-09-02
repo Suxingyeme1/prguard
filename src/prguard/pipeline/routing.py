@@ -300,6 +300,87 @@ def _changed_symbol_fingerprints(
     return changed, sorted(set(notes))
 
 
+def _stateful_factory_evidence(
+    root: Path,
+    python_paths: list[str],
+    changed_symbols: set[str],
+    max_file_bytes: int,
+) -> list[str]:
+    """Find changed factories that return nested classes with cross-method state writes."""
+
+    evidence: list[str] = []
+    for relative in python_paths:
+        path = root / relative
+        if not path.exists() or path.is_symlink() or not path.is_file():
+            continue
+        if path.stat().st_size > max_file_bytes:
+            continue
+        try:
+            tree = ast.parse(_decode_python(path), filename=relative)
+        except (OSError, SyntaxError, UnicodeError, ValueError):
+            continue
+        module = _module_name(relative)
+
+        def walk(
+            body: list[ast.stmt],
+            parents: list[str],
+            module_name: str = module,
+        ) -> None:
+            for node in body:
+                if isinstance(node, ast.ClassDef):
+                    walk(node.body, [*parents, node.name])
+                    continue
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                symbol = ".".join(filter(None, [module_name, *parents, node.name]))
+                if symbol not in changed_symbols:
+                    continue
+                nested_classes = {
+                    item.name: item for item in node.body if isinstance(item, ast.ClassDef)
+                }
+                # Only a direct return from the factory body establishes the
+                # factory/class relationship.  Walking the whole subtree would
+                # also see returns inside the nested class's methods.
+                returned_names = {
+                    item.value.id
+                    for item in node.body
+                    if isinstance(item, ast.Return)
+                    and isinstance(item.value, ast.Name)
+                }
+                for class_name in sorted(returned_names & nested_classes.keys()):
+                    class_node = nested_classes[class_name]
+                    attribute_methods: dict[str, set[str]] = {}
+                    for method in class_node.body:
+                        if not isinstance(
+                            method,
+                            (ast.FunctionDef, ast.AsyncFunctionDef),
+                        ):
+                            continue
+                        for child in ast.walk(method):
+                            if (
+                                isinstance(child, ast.Attribute)
+                                and isinstance(child.value, ast.Name)
+                                and child.value.id == "self"
+                                and isinstance(child.ctx, ast.Store)
+                            ):
+                                attribute_methods.setdefault(child.attr, set()).add(
+                                    method.name
+                                )
+                    cross_method = sorted(
+                        name
+                        for name, methods in attribute_methods.items()
+                        if len(methods) >= 2
+                    )
+                    if cross_method:
+                        evidence.append(
+                            f"{symbol}: returns nested class {class_name}; cross-method "
+                            f"state={','.join(cross_method[:8])}"
+                        )
+
+        walk(tree.body, [])
+    return sorted(set(evidence))
+
+
 def _pytest_arguments(argv: list[str]) -> list[str] | None:
     if argv and argv[0] == "pytest":
         return argv[1:]
@@ -621,6 +702,7 @@ def route_accepted_fix(
     covered_unchanged_tests: list[str] = []
     uncovered_reachable: list[str] = []
     uncovered_related: list[str] = []
+    stateful_factory_evidence: list[str] = []
     analysis_incomplete = False
     source_changed_symbol_count = 0
     if len(pytest_targets) > _MAX_RESULT_TEST_PATHS:
@@ -684,6 +766,12 @@ def route_accepted_fix(
         changed_symbols = [item.symbol for item, _, _ in changed_values]
         source_changed_symbol_count = sum(
             not _is_test_path(item.path) for item, _, _ in changed_values
+        )
+        stateful_factory_evidence = _stateful_factory_evidence(
+            candidate_worktree,
+            python_paths,
+            set(changed_symbols),
+            routing_task.max_file_bytes,
         )
         if len(changed_values) > _MAX_CHANGED_SYMBOLS:
             analysis_incomplete = True
@@ -923,6 +1011,15 @@ def route_accepted_fix(
                 2,
                 "heuristically related unchanged tests were not named by the verified pytest argv",
                 uncovered_related,
+            )
+        )
+    if stateful_factory_evidence:
+        factors.append(
+            _factor(
+                "stateful_nested_factory_changed",
+                5,
+                "a changed factory returns a nested class with cross-method instance state",
+                stateful_factory_evidence,
             )
         )
     if len(source_python) >= 4 or len(changed) >= 8:

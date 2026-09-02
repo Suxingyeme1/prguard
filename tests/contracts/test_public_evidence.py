@@ -35,6 +35,11 @@ def test_public_shadow_scorecard_artifact_hashes() -> None:
     assert verify_evidence(root) == 6
 
 
+def test_public_review_routing_v2_artifact_hashes() -> None:
+    root = Path(__file__).resolve().parents[2] / "evidence" / "review-routing-v2"
+    assert verify_evidence(root) == 5
+
+
 def test_public_evidence_rejects_hash_mismatch(tmp_path: Path) -> None:
     (tmp_path / "sample.patch").write_text("diff", encoding="utf-8")
     (tmp_path / "manifest.json").write_text(

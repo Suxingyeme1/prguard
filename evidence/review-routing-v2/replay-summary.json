@@ -1,0 +1,54 @@
+{
+  "schema_version": "prguard-routing-policy-replay-1",
+  "frozen_at": "2026-09-02",
+  "baseline_policy": "review-routing-v1",
+  "candidate_policy": "review-routing-v2",
+  "activation_decision": "not_ready",
+  "activation_blockers": [
+    "The only corrected False Skip was also the case used to design the new signal.",
+    "No held-out real-repository cases have been evaluated under review-routing-v2."
+  ],
+  "cases": [
+    {
+      "case_id": "prettytable-474-source-only-shadow",
+      "evaluator_label": "defective",
+      "candidate_patch_sha256": "454247c1116b68bdaf56ff2b678a550a8c0b8f05e36d873b151d5f1d4262dfa8",
+      "baseline_routing_artifact": "../selective-routing/prettytable-routing.json",
+      "baseline_routing_sha256": "3055257dd0e414fd4ca5525c2e14156f852d0e942717b3c99f0d7e7bcaf204a8",
+      "baseline_recommendation": "skip",
+      "candidate_routing_artifact": "prettytable-routing.json",
+      "candidate_routing_sha256": "beed48b6aa078e2a4712ced9bc06fb4ef59ea6d6e4244ae68ccdc6481bae5377",
+      "candidate_recommendation": "review",
+      "candidate_score": 5,
+      "changed_factors": [
+        "stateful_nested_factory_changed"
+      ]
+    },
+    {
+      "case_id": "humanize-366-source-only-shadow",
+      "evaluator_label": "clean",
+      "candidate_patch_sha256": "887e76bcf4d1ef9dbc5dd74c3edfbcffffaaf8daa6a35aac07783dd8c71e427f",
+      "baseline_routing_artifact": "../selective-routing/humanize-routing.json",
+      "baseline_routing_sha256": "ddca65cb78ebfb735feb85f9f7b8a70433f8746736e15421ff7422ee817d2fb0",
+      "baseline_recommendation": "review",
+      "candidate_routing_artifact": "humanize-routing.json",
+      "candidate_routing_sha256": "f3f9ab986d8998a43e2d89e69082b76c156077773657121327c6fb86d5935c56",
+      "candidate_recommendation": "review",
+      "candidate_score": 9,
+      "changed_factors": []
+    },
+    {
+      "case_id": "normalization-regression-shadow",
+      "evaluator_label": "defective",
+      "candidate_patch_sha256": "7b9fbfa72e59b21b524bea82bf3469cb57f6fad7e79d93eea1d88a2e151089fc",
+      "baseline_routing_artifact": "../shadow-scorecard/regression-routing.json",
+      "baseline_routing_sha256": "20b1cd380b2f422c5aeef494d62d5e71ac788b6ab95a51654a9d2a098f4928e3",
+      "baseline_recommendation": "review",
+      "candidate_routing_artifact": "normalization-routing.json",
+      "candidate_routing_sha256": "1d34035ecd923613664703955bb033532eaac16786da44d602143d7f3561f3ca",
+      "candidate_recommendation": "review",
+      "candidate_score": 7,
+      "changed_factors": []
+    }
+  ]
+}

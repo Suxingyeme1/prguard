@@ -182,6 +182,15 @@ scorecard now has 3/3 paired Reviewer coverage, False Block 0/1, three confirmed
 findings, and still blocks selective activation because False Skip remains 1/2. See the
 [v0.10.2 phase report](v0.10.2-phase-report.md).
 
+The twelfth increment versions the first routing correction instead of silently tuning the frozen
+policy. `review-routing-v2` adds one deterministic AST factor for a changed factory that directly
+returns a nested class with instance state written across multiple methods. It moves the known
+defective PrettyTable Patch from `skip` 0/5 to `review` 5/5 while leaving Humanize and the
+normalization regression recommendations unchanged. The replay binds every v1/v2 pair to the same
+Base Commit and candidate Patch hashes. Because PrettyTable was also used to design the rule, the
+activation record remains `not_ready` until a small manually labelled holdout set tests both misses
+and unnecessary Reviews. See the [v0.10.3 phase report](v0.10.3-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

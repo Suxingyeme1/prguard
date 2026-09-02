@@ -128,10 +128,15 @@ def finalize_issue_to_pr_artifacts(
                 size_bytes=len(payload),
             )
         )
+    routing_policy_version = (
+        report.review_routing.policy_version
+        if report.review_routing
+        else REVIEW_ROUTING_POLICY_VERSION
+    )
     manifest = RunManifest(
         policy_version=(
             f"{POLICY_VERSION}+{PATCH_POLICY_VERSION}+"
-            f"{REVIEW_ROUTING_POLICY_VERSION}+{ISSUE_TO_PR_WORKFLOW_VERSION}"
+            f"{routing_policy_version}+{ISSUE_TO_PR_WORKFLOW_VERSION}"
         ),
         run_id=report.run_id,
         case_id=report.case_id,

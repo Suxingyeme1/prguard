@@ -384,6 +384,91 @@ def test_evidence_guided_second_implementer_attempt_forces_review(
     assert factors["implementer_repair_used"].evidence == ["attempts=2"]
 
 
+def test_changed_stateful_nested_factory_routes_to_review(
+    make_repo,
+    tmp_path: Path,
+) -> None:
+    before = (
+        "def make_counter():\n"
+        "    class Counter:\n"
+        "        def __init__(self) -> None:\n"
+        "            self.value = 0\n\n"
+        "        def feed(self) -> None:\n"
+        "            self.value += 1\n\n"
+        "    return Counter\n"
+    )
+    after = before.replace("self.value += 1", "self.value = self.value + 1")
+    test = (
+        "from parser import make_counter\n\n\n"
+        "def test_counter():\n"
+        "    counter = make_counter()()\n"
+        "    counter.feed()\n"
+        "    assert counter.value == 1\n"
+    )
+    repo, commit = make_repo({"parser.py": before, "tests/test_parser.py": test})
+    task = _task(
+        repo,
+        commit,
+        case_id="routing-stateful-nested-factory",
+        writable_path="parser.py",
+        command=["pytest", "-q", "tests/test_parser.py"],
+    )
+
+    _, routing = _route(
+        tmp_path,
+        task,
+        [_proposal(_patch("parser.py", before, after))],
+    )
+
+    factors = {factor.code: factor for factor in routing.factors}
+    assert routing.policy_version == "review-routing-v2"
+    assert routing.recommended_route is ReviewRoute.REVIEW
+    assert factors["stateful_nested_factory_changed"].weight == routing.threshold
+    assert factors["stateful_nested_factory_changed"].evidence == [
+        "parser.make_counter: returns nested class Counter; cross-method state=value"
+    ]
+
+
+def test_nested_factory_without_cross_method_state_does_not_raise_factor(
+    make_repo,
+    tmp_path: Path,
+) -> None:
+    before = (
+        "def make_value():\n"
+        "    class Value:\n"
+        "        def __init__(self, value: int) -> None:\n"
+        "            self.value = value\n\n"
+        "        def get(self) -> int:\n"
+        "            return self.value\n\n"
+        "    return Value\n"
+    )
+    after = before.replace("return self.value", "return int(self.value)")
+    test = (
+        "from parser import make_value\n\n\n"
+        "def test_value():\n"
+        "    assert make_value()(1).get() == 1\n"
+    )
+    repo, commit = make_repo({"parser.py": before, "tests/test_parser.py": test})
+    task = _task(
+        repo,
+        commit,
+        case_id="routing-stateless-nested-factory",
+        writable_path="parser.py",
+        command=["pytest", "-q", "tests/test_parser.py"],
+    )
+
+    _, routing = _route(
+        tmp_path,
+        task,
+        [_proposal(_patch("parser.py", before, after))],
+    )
+
+    assert routing.recommended_route is ReviewRoute.SKIP
+    assert "stateful_nested_factory_changed" not in {
+        factor.code for factor in routing.factors
+    }
+
+
 def test_routing_artifact_tampering_is_rejected_by_recursive_manifest(
     make_repo,
     tmp_path: Path,
@@ -421,6 +506,7 @@ def test_routing_artifact_tampering_is_rejected_by_recursive_manifest(
     assert report.review_routing.effective_route is ReviewRoute.SKIP
     manifest_path = Path(report.artifact_directory) / "issue-to-pr-manifest.json"
     manifest = verify_manifest(manifest_path)
+    assert "review-routing-v2" in manifest.policy_version
     assert "review-routing.json" in {entry.path for entry in manifest.artifacts}
 
     routing_path = Path(report.artifact_directory) / "review-routing.json"
