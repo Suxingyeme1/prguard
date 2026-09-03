@@ -129,3 +129,10 @@ then Independent Review found a public Context extension-point regression that a
 Base/Candidate check confirmed. v3 and v4 both select Review, while the clean python-dotenv #600
 Patch remains a zero-score skip recommendation. The pair shows concrete incremental benefit and
 concrete clean-review cost, but one case per label is not a rate estimate; selective stays opt-in.
+
+The v0.10.6 [controlled-repair record](../evidence/click-controlled-repair/README.md) completes the
+same Click path. One Implementer attempt corrected the finding with structured edits, passed 1324
+full-suite tests plus 10 changed-test replays, and restored the extension point under an
+Agent-invisible evaluator. Review and repair together cost 546.5 seconds and 491,671 input/output
+tokens in these separate live stages. This is a concrete prevented-defect outcome with measured
+cost, while the sample remains far too small to infer a general expected value.

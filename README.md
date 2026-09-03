@@ -253,6 +253,13 @@ fixes command-scope accounting so the later targeted replay cannot overwrite the
 fact. The clean python-dotenv #600 route remains `skip` 0/5. Selective activation is still **not
 ready** because this is a two-case validation, not a calibrated deployment set.
 
+The v0.10.6 [controlled-repair record](evidence/click-controlled-repair/README.md) closes that real
+Click path: a fresh Implementer received the frozen P2 finding, made four structured edits, and
+produced a replacement Patch that passed 1324 full-suite tests and 10 changed-test replays. A hidden
+Base/Candidate/Repaired evaluator confirmed the public Context override works before the candidate,
+fails on it, and works again after repair. No evaluator, maintainer outcome, later upstream fix, or
+Gold Patch was visible to the repair Agent.
+
 ## Live model run
 
 Install the optional provider dependency and keep the API key in the process environment:
@@ -308,15 +315,14 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.10.5 implements `review-routing-v4` and validates routing on a real green-gate Click defect.
-Frozen v3/v4 route pairs bind exact Base Commits, candidate Patches, Fix/Verification Manifests,
-evaluator checks, and Independent Reviewer evidence. `always` remains the compatible default;
-selective execution stays explicit and opt-in. See the
-[v0.10.5 phase report](docs/v0.10.5-phase-report.md),
-[ADR 0022](docs/adr/0022-full-pytest-dominates-derived-replays.md), and the frozen
-[validation record](evidence/review-routing-v4-validation/README.md). The next priority is a
-controlled repair of the frozen Click finding, followed by more clean and defective shadow cases—not
-a large benchmark platform or another Agent role.
+Version 0.10.6 completes a real green-gate Review-and-repair case. Frozen route, Review, repair,
+verification, evaluator, and Manifest records bind the exact Click candidate and delivered Patch.
+`always` remains the compatible default; selective execution stays explicit and opt-in. See the
+[v0.10.6 phase report](docs/v0.10.6-phase-report.md), the
+[controlled-repair evidence](evidence/click-controlled-repair/README.md), and
+[ADR 0022](docs/adr/0022-full-pytest-dominates-derived-replays.md). The next priority is a few more
+manually labelled shadow cases plus Issue-to-Patch onboarding polish—not a large benchmark platform
+or another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

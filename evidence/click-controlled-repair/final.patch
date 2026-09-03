@@ -1,0 +1,133 @@
+diff --git a/src/click/core.py b/src/click/core.py
+index 6adc65c..c5ac2cd 100644
+--- a/src/click/core.py
++++ b/src/click/core.py
+@@ -702,18 +702,22 @@ class Context:
+         :param call: If the default is a callable, call it. Disable to
+             return the callable instead.
+ 
++        .. versionchanged:: 8.3.2
++            Returns ``None`` instead of internal sentinel when no default
++            is found in the default map.
++
+         .. versionchanged:: 8.0
+             Added the ``call`` parameter.
+         """
+         if self.default_map is not None:
+-            value = self.default_map.get(name, UNSET)
++            value = self.default_map.get(name)
+ 
+             if call and callable(value):
+                 return value()
+ 
+             return value
+ 
+-        return UNSET
++        return None
+ 
+     def fail(self, message: str) -> t.NoReturn:
+         """Aborts the execution of the program with a specific error
+@@ -2280,7 +2284,7 @@ class Parameter:
+         """
+         value = ctx.lookup_default(self.name, call=False)  # type: ignore
+ 
+-        if value is UNSET:
++        if value is None:
+             value = self.default
+ 
+         if call and callable(value):
+@@ -2322,7 +2326,7 @@ class Parameter:
+ 
+         if value is UNSET:
+             default_map_value = ctx.lookup_default(self.name)  # type: ignore
+-            if default_map_value is not UNSET:
++            if default_map_value is not None:
+                 value = default_map_value
+                 source = ParameterSource.DEFAULT_MAP
+ 
+diff --git a/tests/test_defaults.py b/tests/test_defaults.py
+index 31eee84..86cb03c 100644
+--- a/tests/test_defaults.py
++++ b/tests/test_defaults.py
+@@ -110,3 +110,81 @@ def test_shared_param_prefers_first_default(runner):
+     assert "red" in result.output
+     result = runner.invoke(prefers_red, ["--green"])
+     assert "green" in result.output
++
++
++def test_lookup_default_returns_none_not_sentinel(runner):
++    """Test that lookup_default returns None when parameter not in default_map.
++
++    Regression test for issue #3145.
++    """
++
++    @click.command()
++    @click.option("--email")
++    @click.pass_context
++    def cmd(ctx, email):
++        # When key not in default_map, lookup_default should return None
++        result = ctx.lookup_default("nonexistent")
++        assert result is None, f"Expected None, got {result!r}"
++        click.echo("OK")
++
++    result = runner.invoke(cmd)
++    assert result.exit_code == 0
++    assert "OK" in result.output
++
++
++def test_lookup_default_returns_none_with_empty_default_map(runner):
++    """Test that lookup_default returns None even when default_map exists but key missing."""
++
++    @click.command()
++    @click.option("--name", default="test")
++    @click.pass_context
++    def cmd(ctx, name):
++        # Set default_map but query for nonexistent key
++        ctx.default_map = {"other_param": "value"}
++        result = ctx.lookup_default("missing_key")
++        assert result is None, f"Expected None, got {result!r}"
++        click.echo("OK")
++
++    result = runner.invoke(cmd)
++    assert result.exit_code == 0
++    assert "OK" in result.output
++
++
++def test_lookup_default_still_returns_actual_defaults(runner):
++    """Test that lookup_default still returns actual values from default_map."""
++
++    @click.command()
++    @click.option("--name")
++    @click.pass_context
++    def cmd(ctx, name):
++        ctx.default_map = {"email": "test@example.com"}
++        # Should return the actual default when present
++        result = ctx.lookup_default("email")
++        assert result == "test@example.com"
++        click.echo("OK")
++
++    result = runner.invoke(cmd)
++    assert result.exit_code == 0
++    assert "OK" in result.output
++
++
++def test_lookup_default_override_is_used_for_parameter_default(runner):
++    """Parameter resolution uses the public lookup_default method."""
++
++    class CustomContext(click.Context):
++        def lookup_default(self, name, call=True):
++            if name == "value":
++                return "custom"
++            return super().lookup_default(name, call=call)
++
++    class CustomCommand(click.Command):
++        context_class = CustomContext
++
++    @click.command(cls=CustomCommand)
++    @click.option("--value")
++    def cmd(value):
++        click.echo(value)
++
++    result = runner.invoke(cmd, [])
++    assert result.exit_code == 0
++    assert result.output.strip() == "custom"

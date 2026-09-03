@@ -1,0 +1,26 @@
+{
+  "schema_version": "prguard-public-artifacts-1",
+  "frozen_at": "2026-09-03",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "fe776523cc0f46a23fd3fe80c99936df95a74b8cdef6cd0f903ea0cd916418bc",
+      "size_bytes": 1506
+    },
+    {
+      "path": "evaluator-check.json",
+      "sha256": "6d4e4e9618a01d62781b1bee98acf1fbf46b772fe3470f04b90784cc05731a0a",
+      "size_bytes": 790
+    },
+    {
+      "path": "final.patch",
+      "sha256": "222d00a86fff14b79c7125d2b058b8684025088f728d3a540cc4ee3e0e0d501c",
+      "size_bytes": 4427
+    },
+    {
+      "path": "repair-summary.json",
+      "sha256": "35b94527ff000354381f53105c9e8de4dac7a1c2279a1355c0e6dc77b9a770bd",
+      "size_bytes": 2598
+    }
+  ]
+}
