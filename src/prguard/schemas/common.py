@@ -18,7 +18,7 @@ ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v5"
 PATCH_POLICY_VERSION = "patch-v2"
 REVIEW_WORKFLOW_VERSION = "review-v2"
 REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v4"
-REVIEW_ROUTING_POLICY_VERSION = "review-routing-v3"
+REVIEW_ROUTING_POLICY_VERSION = "review-routing-v4"
 
 
 def utc_now() -> datetime:

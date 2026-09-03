@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0.0",
+  "policy_version": "review-routing-v4",
+  "mode": "shadow",
+  "recommended_route": "review",
+  "effective_route": "review",
+  "score": 18,
+  "threshold": 5,
+  "resolved_base_commit": "cdab890e57a30a9f437b88ce9652f7bfce980c1f",
+  "patch_sha256": "d35bad3b0e98b9581a2000de66c499bb84fbcf88694a2f32a5454b806dc6d7bb",
+  "fix_manifest_sha256": "12e344b0a3b364fc704a1a4f25a8bf8b85b2b5bad698cb111983d54c87cefa3e",
+  "verification_manifest_sha256": "8e79b3676bd41264cdb7338f7babc8b6d8a2552303c5ce576b4fdd3838e84aa5",
+  "changed_files": [
+    "src/click/core.py",
+    "tests/test_defaults.py"
+  ],
+  "changed_python_files": [
+    "src/click/core.py",
+    "tests/test_defaults.py"
+  ],
+  "changed_test_files": [
+    "tests/test_defaults.py"
+  ],
+  "additions": 78,
+  "deletions": 2,
+  "pytest_scope": "full",
+  "pytest_targets": [],
+  "changed_symbols": [
+    "click.core.Context._lookup_default",
+    "click.core.Context.lookup_default",
+    "click.core.Parameter.consume_value",
+    "click.core.Parameter.get_default",
+    "test_defaults.test_lookup_default_returns_none_not_sentinel",
+    "test_defaults.test_lookup_default_returns_none_with_empty_default_map",
+    "test_defaults.test_lookup_default_still_returns_actual_defaults"
+  ],
+  "symbol_impacts": [
+    {
+      "symbol": "click.core.Context._lookup_default",
+      "path": "src/click/core.py",
+      "change_kind": "added",
+      "graph_source": "candidate",
+      "root_resolution": "exact",
+      "direct_repository_callers": 1,
+      "transitive_repository_callers": 1,
+      "reachable_tests": [],
+      "related_tests": [],
+      "graph_truncated": false
+    },
+    {
+      "symbol": "click.core.Context.lookup_default",
+      "path": "src/click/core.py",
+      "change_kind": "modified",
+      "graph_source": "candidate",
+      "root_resolution": "ambiguous",
+      "direct_repository_callers": 0,
+      "transitive_repository_callers": 0,
+      "reachable_tests": [],
+      "related_tests": [],
+      "graph_truncated": false
+    },
+    {
+      "symbol": "click.core.Parameter.consume_value",
+      "path": "src/click/core.py",
+      "change_kind": "modified",
+      "graph_source": "candidate",
+      "root_resolution": "exact",
+      "direct_repository_callers": 1,
+      "transitive_repository_callers": 1,
+      "reachable_tests": [],
+      "related_tests": [],
+      "graph_truncated": false
+    },
+    {
+      "symbol": "click.core.Parameter.get_default",
+      "path": "src/click/core.py",
+      "change_kind": "modified",
+      "graph_source": "candidate",
+      "root_resolution": "ambiguous",
+      "direct_repository_callers": 0,
+      "transitive_repository_callers": 0,
+      "reachable_tests": [],
+      "related_tests": [],
+      "graph_truncated": false
+    }
+  ],
+  "covered_unchanged_tests": [],
+  "uncovered_reachable_tests": [],
+  "uncovered_related_tests": [],
+  "analysis_incomplete": true,
+  "analysis_notes": [
+    "click.core.Context.lookup_default: static impact analysis is incomplete",
+    "click.core.Parameter.get_default: static impact analysis is incomplete"
+  ],
+  "factors": [
+    {
+      "code": "analysis_incomplete",
+      "weight": 8,
+      "summary": "static routing evidence is incomplete or could not be replayed",
+      "evidence": [
+        "click.core.Context.lookup_default: static impact analysis is incomplete",
+        "click.core.Parameter.get_default: static impact analysis is incomplete"
+      ]
+    },
+    {
+      "code": "tests_or_gate_changed",
+      "weight": 8,
+      "summary": "candidate-controlled tests or gate configuration require independent review",
+      "evidence": [
+        "tests/test_defaults.py"
+      ]
+    },
+    {
+      "code": "medium_patch",
+      "weight": 2,
+      "summary": "the candidate exceeds the medium-Patch line threshold",
+      "evidence": [
+        "changed_lines=80"
+      ]
+    }
+  ],
+  "duration_seconds": 5.586510494351387
+}

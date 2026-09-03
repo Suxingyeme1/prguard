@@ -1,0 +1,19 @@
+{
+  "schema_version": "prguard-evaluator-check-1",
+  "case_id": "python-dotenv-600",
+  "agent_visible": false,
+  "classification": "clean",
+  "base": {
+    "issue_reproduction": "failed",
+    "no_space_variant": "failed",
+    "tab_variant": "failed",
+    "multi_binding_variant": "failed"
+  },
+  "candidate": {
+    "issue_reproduction": "passed",
+    "no_space_variant": "passed",
+    "tab_variant": "passed",
+    "multi_binding_variant": "passed"
+  },
+  "confirmed_behavior": "Empty unquoted values followed by inline comments parse as empty strings without changing the checked neighboring parser behavior."
+}

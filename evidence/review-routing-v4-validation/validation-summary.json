@@ -1,0 +1,94 @@
+{
+  "schema_version": "prguard-routing-validation-1",
+  "frozen_at": "2026-09-03",
+  "baseline_policy": "review-routing-v3",
+  "candidate_policy": "review-routing-v4",
+  "activation_decision": "not_ready",
+  "activation_blockers": [
+    "The labelled v4 validation set contains only one clean and one defective real-repository observation.",
+    "The Click observation informed the v4 command-scope accounting correction and is not held-out evidence for future v4 changes.",
+    "The available observations do not estimate calibrated false-skip, false-route, or Reviewer false-block rates."
+  ],
+  "cases": [
+    {
+      "case_id": "python-dotenv-600",
+      "repository": "https://github.com/theskumar/python-dotenv",
+      "issue": "https://github.com/theskumar/python-dotenv/issues/600",
+      "evaluator_label": "clean",
+      "resolved_base_commit": "fa4e6a90b45428212452afc6ee0d5c8103b9301d",
+      "candidate_patch_sha256": "f653290e0792fa3fc083842636d2c4d5a0d234bc26161f9a676860549af9956f",
+      "v3_routing_artifact": "dotenv-routing-v3.json",
+      "v3_recommendation": "skip",
+      "v3_score": 0,
+      "v4_routing_artifact": "dotenv-routing-v4.json",
+      "v4_recommendation": "skip",
+      "v4_score": 0,
+      "verification": "217 passed, 1 skipped",
+      "evaluator_check": "dotenv-evaluator-check.json",
+      "reviewer": {
+        "verdict": "accept",
+        "finding_count": 0,
+        "duration_seconds": 384.1341648697853,
+        "input_tokens": 299307,
+        "output_tokens": 19934,
+        "cached_tokens": 282880,
+        "review_report_file_sha256": "d5c2351cd345ff36a692b84851c7b4a48dcd17885b2bfb9e0333f332689ba501",
+        "review_manifest_file_sha256": "3808de60819b3a6ed984ad3ac8f2a967008de11652cacb0536f97391de3085ab"
+      },
+      "raw_archive_sha256": "8f4dfca4f12873f8a6974079df053d72ff90d9f558eb8b491a82e4d3be46bc56"
+    },
+    {
+      "case_id": "click-3145-pr-3199",
+      "repository": "https://github.com/pallets/click",
+      "issue": "https://github.com/pallets/click/issues/3145",
+      "candidate_pull_request": "https://github.com/pallets/click/pull/3199",
+      "subsequent_fix_pull_request": "https://github.com/pallets/click/pull/3224",
+      "evaluator_label": "defective",
+      "resolved_base_commit": "cdab890e57a30a9f437b88ce9652f7bfce980c1f",
+      "candidate_commit": "ed2094bb244f49edabb58507265fbbf9b1482de7",
+      "candidate_patch_sha256": "d35bad3b0e98b9581a2000de66c499bb84fbcf88694a2f32a5454b806dc6d7bb",
+      "v3_routing_artifact": "click-routing-v3.json",
+      "v3_recommendation": "review",
+      "v3_score": 23,
+      "v4_routing_artifact": "click-routing-v4.json",
+      "v4_recommendation": "review",
+      "v4_score": 18,
+      "verification": {
+        "full_suite": "1323 passed, 21 skipped, 1 xfailed",
+        "changed_tests": "9 passed",
+        "verification_report_file_sha256": "2487eff95e66e5a06bd9ecec3e2e7ad12f6f3cfa089b58aaa4e9384de6aa48ca",
+        "verification_manifest_file_sha256": "4f0496538df49c8ba94cc9b099523861ddc89d622cda8d92609975a5a9348f1d"
+      },
+      "evaluator_check": "click-evaluator-check.json",
+      "review_finding": "click-review-finding.json",
+      "reviewer": {
+        "verdict": "request_changes",
+        "finding_count": 1,
+        "duration_seconds": 291.64520958065987,
+        "input_tokens": 246900,
+        "output_tokens": 13992,
+        "cached_tokens": 228480,
+        "review_report_file_sha256": "a21ce781017ea3423d53165e3f1d1a08556a8b37196d72af8deac04bc8a7e42a",
+        "review_manifest_file_sha256": "2dd6e3fd5430aa1d80112abcbcc6bdfae99925517f8c52153a1e82e72c26e4c3"
+      },
+      "preflight_dependency_mismatch": {
+        "outcome": "preflight_failed",
+        "model_tokens": 0,
+        "report_file_sha256": "1c1b8e56fd572900595da627c1f578db7e6127219db9c54cd1acc44a953d020d"
+      },
+      "raw_review_archive_sha256": "a5974be4ab48315aa4aa6e1a84574a2baa9029eb5368bf3d3c0afdda24397493",
+      "raw_v4_routing_archive_sha256": "f86ea2e5f8d32c08f99deb8d562af83a02a5185463ee4907a555ec8a7ec7204d"
+    }
+  ],
+  "observed_counts": {
+    "cases": 2,
+    "clean_cases": 1,
+    "defective_cases": 1,
+    "v4_skip_recommendations": 1,
+    "v4_review_recommendations": 1,
+    "false_skips": 0,
+    "false_routes": 0,
+    "reviewer_confirmed_blocking_findings": 1,
+    "reviewer_false_blocks": 0
+  }
+}

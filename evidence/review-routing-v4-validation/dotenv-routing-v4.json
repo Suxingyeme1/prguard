@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0.0",
+  "policy_version": "review-routing-v4",
+  "mode": "shadow",
+  "recommended_route": "skip",
+  "effective_route": "review",
+  "score": 0,
+  "threshold": 5,
+  "resolved_base_commit": "fa4e6a90b45428212452afc6ee0d5c8103b9301d",
+  "patch_sha256": "f653290e0792fa3fc083842636d2c4d5a0d234bc26161f9a676860549af9956f",
+  "fix_manifest_sha256": "b82f462574c287db0a02933b719e065410841799a5be3423c6c882cdc389c040",
+  "verification_manifest_sha256": "6cfc8227d7869e37f305069276a2a40c4f097a2024ea0f27d471ac4e21d2151d",
+  "changed_files": [
+    "src/dotenv/parser.py"
+  ],
+  "changed_python_files": [
+    "src/dotenv/parser.py"
+  ],
+  "changed_test_files": [],
+  "additions": 4,
+  "deletions": 2,
+  "pytest_scope": "full",
+  "pytest_targets": [],
+  "changed_symbols": [
+    "dotenv.parser.parse_binding"
+  ],
+  "symbol_impacts": [
+    {
+      "symbol": "dotenv.parser.parse_binding",
+      "path": "src/dotenv/parser.py",
+      "change_kind": "modified",
+      "graph_source": "candidate",
+      "root_resolution": "exact",
+      "direct_repository_callers": 1,
+      "transitive_repository_callers": 4,
+      "reachable_tests": [
+        "tests/test_parser.py"
+      ],
+      "related_tests": [],
+      "graph_truncated": false
+    }
+  ],
+  "covered_unchanged_tests": [
+    "tests/test_parser.py"
+  ],
+  "uncovered_reachable_tests": [],
+  "uncovered_related_tests": [],
+  "analysis_incomplete": false,
+  "analysis_notes": [],
+  "factors": [],
+  "duration_seconds": 0.5542715936899185
+}

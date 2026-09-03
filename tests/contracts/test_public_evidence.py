@@ -49,6 +49,15 @@ def test_public_review_routing_v3_holdout_artifact_hashes() -> None:
     assert verify_evidence(root) == 8
 
 
+def test_public_review_routing_v4_validation_artifact_hashes() -> None:
+    root = (
+        Path(__file__).resolve().parents[2]
+        / "evidence"
+        / "review-routing-v4-validation"
+    )
+    assert verify_evidence(root) == 9
+
+
 def test_public_evidence_rejects_hash_mismatch(tmp_path: Path) -> None:
     (tmp_path / "sample.patch").write_text("diff", encoding="utf-8")
     (tmp_path / "manifest.json").write_text(

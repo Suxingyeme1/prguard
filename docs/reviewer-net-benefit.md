@@ -122,3 +122,10 @@ deterministic full-suite accounting bug; `review-routing-v3` removes that unnece
 and leaves the other route unchanged. This is the kind of cost side of “Reviewer net benefit” that
 the routing decision must charge, but two clean cases and no held-out defect are not an activation
 dataset.
+
+The v0.10.5 [routing-v4 validation](../evidence/review-routing-v4-validation/README.md) adds that
+missing defective observation. Click #3199 passed its full 1323-test gate and 9 changed-test replays,
+then Independent Review found a public Context extension-point regression that an evaluator-only
+Base/Candidate check confirmed. v3 and v4 both select Review, while the clean python-dotenv #600
+Patch remains a zero-score skip recommendation. The pair shows concrete incremental benefit and
+concrete clean-review cost, but one case per label is not a rate estimate; selective stays opt-in.

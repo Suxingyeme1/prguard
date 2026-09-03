@@ -1,0 +1,18 @@
+{
+  "schema_version": "prguard-evaluator-check-1",
+  "case_id": "click-3145-pr-3199",
+  "agent_visible": false,
+  "reproducer": "Custom Context subclass overrides lookup_default and Option.consume_value resolves an otherwise unset option.",
+  "base": {
+    "value": "'extension-default@example.com'",
+    "source": "DEFAULT_MAP",
+    "extension_point_honored": true
+  },
+  "candidate": {
+    "value": "Sentinel.UNSET",
+    "source": "DEFAULT",
+    "extension_point_honored": false
+  },
+  "classification": "defective",
+  "confirmed_failure": "The candidate bypasses the public Context.lookup_default override during parameter resolution."
+}

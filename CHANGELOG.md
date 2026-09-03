@@ -3,6 +3,25 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.10.5 — 2026-09-03
+
+### Changed
+
+- `review-routing-v4` aggregates successful pytest commands so an unfiltered full-suite run cannot
+  be downgraded by a later Harness-derived changed-test replay;
+- full-suite scope no longer receives the contradictory
+  `no_explicit_unchanged_test_evidence` factor when another targeted pytest command follows it.
+
+### Evidence
+
+- a real defective Click #3199 candidate passed 1323 tests plus 9 changed-test replays, yet the
+  Independent Reviewer identified a public `Context.lookup_default()` extension-point regression;
+- an evaluator-only custom Context check passes at Base and fails on the exact candidate Patch,
+  confirming the Reviewer finding independently of existing tests;
+- v4 keeps Click at `review` 18/5 and a clean python-dotenv #600 Patch at `skip` 0/5;
+- selective activation remains `not_ready`; one clean and one defective observation establish
+  mechanism-level evidence, not calibrated deployment rates.
+
 ## 0.10.4 — 2026-09-03
 
 ### Changed
