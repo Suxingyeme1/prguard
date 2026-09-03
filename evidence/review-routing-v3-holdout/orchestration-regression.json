@@ -1,0 +1,14 @@
+{
+  "schema_version": "prguard-observed-regression-1",
+  "frozen_at": "2026-09-03",
+  "case_id": "python-dotenv-638-source-only",
+  "affected_version": "0.10.3",
+  "outcome": "review_failed",
+  "error": "--review-repair-proposal-sequence is required for scripted repair",
+  "provider_tokens": 0,
+  "model_call_started": false,
+  "cause": "The Issue-to-PR runner constructed the optional repair Implementer before an accepting Reviewer verdict established that no repair was needed.",
+  "correction": "Version 0.10.4 defers repair-provider construction until the Reviewer returns request_changes.",
+  "failed_pipeline_report_sha256": "d8d8c956888b0f63b808185a6be2c20dfb137fc8e32b3812575933cc8efb2298",
+  "failed_pipeline_manifest_file_sha256": "64faa1fde5640b82d346a611cf695fd35113e1c8cbf506db98fcededd689542c"
+}

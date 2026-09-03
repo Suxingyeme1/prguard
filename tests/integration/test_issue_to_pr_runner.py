@@ -380,6 +380,56 @@ def test_fix_review_cli_scripted(make_repo, tmp_path: Path, capsys) -> None:
 
 
 @pytest.mark.integration
+def test_clean_review_does_not_require_repair_provider_fixture(
+    make_repo,
+    tmp_path: Path,
+    capsys,
+) -> None:
+    repo, commit = _repo(make_repo)
+    task_path = tmp_path / "issue-to-pr-task.json"
+    task_path.write_text(
+        _task(repo, commit, "issue-to-pr-lazy-repair").model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    initial_path = tmp_path / "initial.json"
+    initial_path.write_text(
+        json.dumps([_proposal(_correct_patch(), "Implement complete behavior").model_dump()]),
+        encoding="utf-8",
+    )
+    review_path = tmp_path / "review.json"
+    review_path.write_text(
+        ReviewerSubmission(
+            summary="No evidence-backed defects.", findings=[]
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "fix",
+            str(task_path),
+            "--provider",
+            "scripted",
+            "--proposal-sequence",
+            str(initial_path),
+            "--review",
+            "--review-provider",
+            "scripted",
+            "--scripted-review",
+            str(review_path),
+            "--artifacts",
+            str(tmp_path / "cli-artifacts"),
+        ]
+    )
+
+    output = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert output["outcome"] == "accepted"
+    assert output["review_repair"]["outcome"] == "accepted_without_repair"
+    assert output["review_repair"]["repair_proposal"] is None
+
+
+@pytest.mark.integration
 def test_selective_cli_skip_needs_no_reviewer_key_or_repair_fixture(
     make_repo,
     tmp_path: Path,

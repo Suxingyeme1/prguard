@@ -1,0 +1,80 @@
+{
+  "schema_version": "prguard-routing-holdout-1",
+  "frozen_at": "2026-09-03",
+  "baseline_policy": "review-routing-v2",
+  "candidate_policy": "review-routing-v3",
+  "activation_decision": "not_ready",
+  "activation_blockers": [
+    "Only two evaluator-confirmed clean real-repository cases have been observed.",
+    "No held-out defective case has measured review-routing-v3 False Skip behavior.",
+    "The python-dotenv observation was used to define the v3 correction and is not held-out evidence for v3."
+  ],
+  "cases": [
+    {
+      "case_id": "inflect-242-source-only",
+      "repository": "https://github.com/jaraco/inflect",
+      "issue": "https://github.com/jaraco/inflect/issues/242",
+      "evaluator_label": "clean",
+      "resolved_base_commit": "f612162c36f057fc18a97b0ddfec9c4bccaaa5af",
+      "candidate_patch_sha256": "3f0f0b94671a9450c04c2f6f8877f877b139ef2e887108ff188555839d31187e",
+      "baseline_routing_artifact": "inflect-routing-v2.json",
+      "baseline_recommendation": "review",
+      "baseline_score": 9,
+      "candidate_routing_artifact": "inflect-routing-v3.json",
+      "candidate_recommendation": "review",
+      "candidate_score": 9,
+      "reviewer": {
+        "verdict": "accept",
+        "finding_count": 0,
+        "duration_seconds": 209.28124490380287,
+        "input_tokens": 258378,
+        "output_tokens": 9418,
+        "cached_tokens": 240128,
+        "review_report_sha256": "8ea7be96858b8ab163a0080c818a58d174f339dc93c12bacc18cb951f60a730f",
+        "review_manifest_file_sha256": "14deededc0ebfac65c313972eff4d9f08c843c9bd75a8855b50ed5537f84f9a3"
+      },
+      "verification": {
+        "targeted": "5 passed",
+        "wider": "215 passed, 16 xfailed",
+        "wider_report_sha256": "640c3277bd743a66f009ff7ce70c1d6165ca006e6c0e7dba1196866c51045dfc",
+        "wider_manifest_file_sha256": "5116a578818bc30dd8ce4e609cc02de2e7d1e32e567ffcd6e2eed0de599cc1c7"
+      }
+    },
+    {
+      "case_id": "python-dotenv-638-source-only",
+      "repository": "https://github.com/theskumar/python-dotenv",
+      "pull_request": "https://github.com/theskumar/python-dotenv/pull/638",
+      "evaluator_label": "clean",
+      "resolved_base_commit": "fa4e6a90b45428212452afc6ee0d5c8103b9301d",
+      "candidate_patch_sha256": "31ef7a58fcb0e4c3f9a968a8cd9f33a6456318e3801e7e30811048bd6fd3ed1a",
+      "baseline_routing_artifact": "dotenv-routing-v2.json",
+      "baseline_recommendation": "review",
+      "baseline_score": 7,
+      "candidate_routing_artifact": "dotenv-routing-v3.json",
+      "candidate_recommendation": "skip",
+      "candidate_score": 0,
+      "reviewer": {
+        "verdict": "accept",
+        "finding_count": 0,
+        "duration_seconds": 94.33938765525818,
+        "input_tokens": 132878,
+        "output_tokens": 4579,
+        "cached_tokens": 114048,
+        "review_report_sha256": "e86f785671224bd7f49170f2a8f10b80074a22c93692255dc5640377b773ba02",
+        "review_manifest_file_sha256": "e8265cbc067e5cf38734d33cb785b755c682a7290f5fd787e05e169be96b14c0"
+      },
+      "verification": {
+        "full_suite": "217 passed, 1 skipped, 28 warnings",
+        "fix_verification_report_sha256": "c441266ed7b5b4828fe107450035cca82ae4a47f562706365ae6a0bd64fa8654",
+        "pipeline_report_sha256": "5db117233a9a56f54b0d3078eaed7d29fc040ff1eeb1f2894b1bb96d7e6256b6"
+      },
+      "evaluator_check": "dotenv-evaluator-check.json"
+    }
+  ],
+  "observed_clean_case_counts": {
+    "cases": 2,
+    "v2_review_recommendations": 2,
+    "v3_review_recommendations": 1,
+    "reviewer_blocking_findings": 0
+  }
+}

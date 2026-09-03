@@ -3,6 +3,26 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.10.4 — 2026-09-03
+
+### Changed
+
+- `review-routing-v3` counts bounded reachable and related tests as covered after a verified,
+  unfiltered full pytest run, removing contradictory uncovered-test risk factors;
+- repair Implementer construction is deferred until Independent Review returns
+  `request_changes`, so an unused repair configuration cannot fail an accepting Review;
+- Issue-to-PR and Review/repair workflow contracts are versioned as `issue-to-pr-v5` and
+  `review-repair-v4`.
+
+### Evidence
+
+- Inflect #242 and python-dotenv #638 clean source-only Patches passed deterministic gates and were
+  accepted by Independent Review with zero findings;
+- python-dotenv moved from `review` 7/5 under v2 to `skip` 0/5 under v3 with the same Base Commit,
+  Patch, Fix Manifest, and Verification Manifest;
+- the two clean Reviews added 303.6 seconds and 405,253 input/output tokens; selective activation
+  remains `not_ready` because no new held-out defective case has exercised v3 False Skips.
+
 ## 0.9.0 — 2026-08-24
 
 ### Added

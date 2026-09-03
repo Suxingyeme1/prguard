@@ -112,6 +112,9 @@ a deterministic tool, never a Test Runner Agent.
   value, not a defect probability. `review-routing-v2` additionally routes a changed factory that
   directly returns a nested class with instance state written across methods; this bounded signal
   addresses one observed lifecycle regression but is not a general state-machine detector.
+  `review-routing-v3` corrects full-suite accounting: when the verified argv represents an
+  unfiltered pytest run with no explicit target, every bounded reachable/related unchanged test is
+  recorded as covered instead of generating a contradictory uncovered-test risk factor.
 - **Review runner** proves Base collection/non-pytest readiness, verifies the candidate, creates a
   separate patched worktree, gives an independently scoped Reviewer only the Issue, candidate diff,
   deterministic evidence, and bounded read tools, then computes the verdict deterministically.
@@ -124,8 +127,9 @@ a deterministic tool, never a Test Runner Agent.
   same Base Commit; a raw fallback must already be a complete replacement. A fresh Harness owns the
   final gate.
 - **Issue-to-PR runner** assigns a bounded Fix-stage budget inside one outer deadline, routes only an
-  accepted Fix, and lazily constructs Reviewer/repair providers only when the effective route is
-  `review`. A selective `skip` copies the byte-identical verified Fix Patch to the delivery root;
+  accepted Fix, constructs the Reviewer only when the effective route is `review`, and constructs
+  the repair Implementer only after a `request_changes` verdict. A selective `skip` copies the
+  byte-identical verified Fix Patch to the delivery root;
   otherwise the runner composes it into review-repair. The top-level report records the routing
   result and recursively hashes the decision, delivered Patch, and nested workflow artifacts.
 - **Repository manager** resolves the exact commit, requires a clean source repository, and owns

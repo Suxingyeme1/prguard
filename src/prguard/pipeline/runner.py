@@ -163,10 +163,6 @@ class IssueToPRRunner:
     def _resolve_reviewer(source: ReviewerSource) -> ReviewerProvider:
         return source() if callable(source) else source
 
-    @staticmethod
-    def _resolve_implementer(source: ImplementerSource) -> ImplementerProvider:
-        return source() if callable(source) else source
-
     def run(self, task: IssueToPRTask) -> IssueToPRReport:
         run_id = str(uuid4())
         run_directory = self.artifact_root / run_id
@@ -228,7 +224,7 @@ class IssueToPRRunner:
                     review_report = ReviewRepairRunner(
                         run_directory / "review",
                         self._resolve_reviewer(self.reviewer),
-                        self._resolve_implementer(self.repair_implementer),
+                        self.repair_implementer,
                     ).run(
                         _as_review_repair_task(
                             task,

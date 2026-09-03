@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import time
+from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
 
@@ -33,6 +34,8 @@ from prguard.schemas import (
     TokenUsage,
     Verdict,
 )
+
+ImplementerSource = ImplementerProvider | Callable[[], ImplementerProvider]
 
 
 def _add_usage(total: TokenUsage, extra: TokenUsage) -> None:
@@ -130,7 +133,7 @@ class ReviewRepairRunner:
         self,
         artifact_root: Path,
         reviewer: ReviewerProvider,
-        implementer: ImplementerProvider,
+        implementer: ImplementerSource,
     ) -> None:
         self.artifact_root = artifact_root.expanduser().resolve()
         self.reviewer = reviewer
@@ -198,7 +201,10 @@ class ReviewRepairRunner:
                         f"unable to prepare controlled-repair worktree: {patch_error}"
                     )
                 fix_task = _as_fix_task(task, resolved_commit)
-                repair_proposal = self.implementer.propose(
+                implementer = (
+                    self.implementer() if callable(self.implementer) else self.implementer
+                )
+                repair_proposal = implementer.propose(
                     ProviderRequest(
                         task=fix_task,
                         attempt=0,

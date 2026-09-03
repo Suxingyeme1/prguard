@@ -114,3 +114,11 @@ specific False Skip into a Review recommendation using a repository-agnostic AST
 It does not erase the v1 result or establish a new deployment rate: the failure informed the rule,
 so held-out manually labelled cases are still required before selective Review can be enabled by
 default.
+
+The v0.10.4 [holdout record](../evidence/review-routing-v3-holdout/README.md) adds two
+evaluator-confirmed clean real-repository Patches. Both v2 Reviews accepted with zero findings,
+while adding 303.6 seconds and 405,253 input/output tokens in aggregate. One route was caused by a
+deterministic full-suite accounting bug; `review-routing-v3` removes that unnecessary recommendation
+and leaves the other route unchanged. This is the kind of cost side of “Reviewer net benefit” that
+the routing decision must charge, but two clean cases and no held-out defect are not an activation
+dataset.

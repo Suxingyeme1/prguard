@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0.0",
+  "policy_version": "review-routing-v2",
+  "mode": "shadow",
+  "recommended_route": "review",
+  "effective_route": "review",
+  "score": 9,
+  "threshold": 5,
+  "resolved_base_commit": "f612162c36f057fc18a97b0ddfec9c4bccaaa5af",
+  "patch_sha256": "3f0f0b94671a9450c04c2f6f8877f877b139ef2e887108ff188555839d31187e",
+  "fix_manifest_sha256": "64ee6bb12e46193c99e40832dea036a96b9702495173c906c21b6dff7bc4b766",
+  "verification_manifest_sha256": "5d2340525db226c26713cd5fa3287eec8993e5ce87ea759785056e92e398a873",
+  "changed_files": [
+    "inflect/__init__.py"
+  ],
+  "changed_python_files": [
+    "inflect/__init__.py"
+  ],
+  "changed_test_files": [],
+  "additions": 1,
+  "deletions": 1,
+  "pytest_scope": "targeted",
+  "pytest_targets": [
+    "tests/test_numwords.py",
+    "tests/test_prguard_issue_242.py"
+  ],
+  "changed_symbols": [
+    "inflect.engine.tenfn"
+  ],
+  "symbol_impacts": [
+    {
+      "symbol": "inflect.engine.tenfn",
+      "path": "inflect/__init__.py",
+      "change_kind": "modified",
+      "graph_source": "candidate",
+      "root_resolution": "exact",
+      "direct_repository_callers": 4,
+      "transitive_repository_callers": 5,
+      "reachable_tests": [],
+      "related_tests": [
+        "tests/test_pwd.py"
+      ],
+      "graph_truncated": false
+    }
+  ],
+  "covered_unchanged_tests": [],
+  "uncovered_reachable_tests": [],
+  "uncovered_related_tests": [
+    "tests/test_pwd.py"
+  ],
+  "analysis_incomplete": false,
+  "analysis_notes": [],
+  "factors": [
+    {
+      "code": "no_explicit_unchanged_test_evidence",
+      "weight": 5,
+      "summary": "no unchanged related test is explicitly bound to the verified pytest argv",
+      "evidence": [
+        "pytest_scope=targeted"
+      ]
+    },
+    {
+      "code": "moderate_static_fan_in",
+      "weight": 2,
+      "summary": "a changed symbol has moderate bounded static caller impact",
+      "evidence": [
+        "direct=4",
+        "transitive=5"
+      ]
+    },
+    {
+      "code": "related_tests_not_explicitly_covered",
+      "weight": 2,
+      "summary": "heuristically related unchanged tests were not named by the verified pytest argv",
+      "evidence": [
+        "tests/test_pwd.py"
+      ]
+    }
+  ],
+  "duration_seconds": 0.32562416698783636
+}

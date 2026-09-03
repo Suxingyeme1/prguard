@@ -237,6 +237,14 @@ state. It changes the known defective PrettyTable route from `skip` 0/5 to `revi
 changing the other two frozen recommendations. This is a post-failure regression check, not
 held-out evidence, so selective activation remains **not ready**.
 
+The v0.10.4 [holdout and correction record](evidence/review-routing-v3-holdout/README.md) adds two
+evaluator-confirmed clean real-repository Patches. Both v2 Reviews accepted with zero findings,
+adding 303.6 seconds and 405,253 input/output tokens in aggregate. The python-dotenv run exposed a
+full-suite accounting bug: 217 tests had run, but v2 still marked related tests uncovered.
+`review-routing-v3` changes that exact route from `review` 7/5 to `skip` 0/5 and preserves the other
+four replayed decisions. It also defers repair-provider construction until Review actually requests
+changes. Selective activation remains **not ready** because the set contains no new held-out defect.
+
 ## Live model run
 
 Install the optional provider dependency and keep the API key in the process environment:
@@ -292,16 +300,14 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.10.3 implements `review-routing-v2` as a narrow correction to the known PrettyTable
-False Skip. The frozen replay is hash-bound to the same Base Commits and candidate Patches, and its
-activation record explicitly remains `not_ready`: the corrected case helped design the signal and
-no held-out real-repository set has been evaluated. `always` remains the compatible default;
-selective execution stays explicit and opt-in. See the
-[v0.10.3 phase report](docs/v0.10.3-phase-report.md),
-[ADR 0020](docs/adr/0020-route-stateful-nested-factories-to-independent-review.md), and the prior
-[v0.10.2 paired Reviewer report](docs/v0.10.2-phase-report.md). The next priority is a small,
-manually labelled holdout set containing both ordinary stateful code and genuinely low-risk
-changes—not a large benchmark platform or another Agent role.
+Version 0.10.4 implements `review-routing-v3` after the first small v2 holdout exposed contradictory
+full-suite accounting. Frozen v2/v3 route pairs bind the same Base Commits, candidate Patches, Fix
+Manifests, and Verification Manifests. `always` remains the compatible default; selective execution
+stays explicit and opt-in. See the [v0.10.4 phase report](docs/v0.10.4-phase-report.md),
+[ADR 0021](docs/adr/0021-full-pytest-covers-static-test-evidence.md), and the frozen
+[holdout record](evidence/review-routing-v3-holdout/README.md). The next priority is a held-out
+defective real-repository case plus additional clean cases—not a large benchmark platform or
+another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”
