@@ -325,7 +325,7 @@ def test_fix_cli_rejects_github_only_options_for_local_task(
     assert exit_code == 2
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert "GitHub preparation options require a GitHub Issue URL" in captured.err
+    assert "preparation options require a GitHub Issue URL or local Issue input" in captured.err
 
 
 def test_issue_to_pr_loader_derives_stage_budgets_for_prepared_fix_task(

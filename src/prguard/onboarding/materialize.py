@@ -8,6 +8,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from prguard.harness.errors import PreflightError
+from prguard.harness.git import GitRepository
 from prguard.onboarding.errors import OnboardingError
 from prguard.schemas import GitHubIssueSnapshot
 
@@ -163,3 +165,110 @@ def materialize_public_checkout(
         shutil.rmtree(destination, ignore_errors=True)
         raise
     return destination
+
+
+def materialize_local_checkout(
+    source_repository: Path,
+    base_commit: str,
+    root: Path,
+) -> tuple[Path, str]:
+    """Freeze a clean local repository into a separate detached Git checkout."""
+
+    source = source_repository.expanduser().resolve()
+    try:
+        resolved = GitRepository(source).preflight(base_commit)
+    except PreflightError as exc:
+        raise OnboardingError(f"local repository preflight failed: {exc}") from exc
+
+    root = root.expanduser().resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    raw_name = f"{source.name}-{resolved[:12]}"
+    destination = root / (_SAFE_SLUG.sub("-", raw_name).strip("-") or "repository")
+    if destination.exists():
+        raise OnboardingError(f"checkout destination already exists: {destination}")
+    destination.mkdir()
+    env = {
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "LC_ALL": "C",
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_SYSTEM": os.devnull,
+    }
+
+    def run(argv: list[str], timeout: float = 120) -> subprocess.CompletedProcess[str]:
+        try:
+            return subprocess.run(
+                argv,
+                check=False,
+                shell=False,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+                env=env,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise OnboardingError(
+                f"local Git materialization failed: {type(exc).__name__}"
+            ) from exc
+
+    commands = [
+        ["git", "-c", "core.hooksPath=/dev/null", "init", "--template=", os.fspath(destination)],
+        [
+            "git",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-C",
+            os.fspath(destination),
+            "remote",
+            "add",
+            "origin",
+            os.fspath(source),
+        ],
+        [
+            "git",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-C",
+            os.fspath(destination),
+            "fetch",
+            "--no-tags",
+            os.fspath(source),
+            resolved,
+        ],
+        [
+            "git",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-C",
+            os.fspath(destination),
+            "checkout",
+            "--detach",
+            "FETCH_HEAD",
+            "--",
+        ],
+    ]
+    try:
+        for command in commands:
+            completed = run(command)
+            if completed.returncode != 0:
+                raise OnboardingError(
+                    f"local Git materialization failed: {completed.stderr.strip()}"
+                )
+        head = run(
+            ["git", "-C", os.fspath(destination), "rev-parse", "HEAD"], timeout=30
+        )
+        if head.returncode != 0 or head.stdout.strip() != resolved:
+            raise OnboardingError("materialized checkout does not match the frozen Base Commit")
+        status = run(
+            ["git", "-C", os.fspath(destination), "status", "--porcelain=v1"],
+            timeout=30,
+        )
+        if status.returncode != 0 or status.stdout.strip():
+            raise OnboardingError("materialized checkout is not clean")
+    except OnboardingError:
+        shutil.rmtree(destination, ignore_errors=True)
+        raise
+    return destination, resolved

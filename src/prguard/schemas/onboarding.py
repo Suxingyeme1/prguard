@@ -48,6 +48,14 @@ class GitHubIssueSnapshot(StrictModel):
         return f"{heading}\n\n{self.body}" if self.body else heading
 
 
+class LocalIssueSnapshot(StrictModel):
+    source_repository: Path
+    requested_base_commit: str = Field(min_length=1, max_length=255)
+    base_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
+    issue_text: str = Field(min_length=1, max_length=50_000)
+    issue_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class ProjectConfig(StrictModel):
     """Optional versioned `.prguard.toml` values owned by a repository."""
 
@@ -83,6 +91,21 @@ class DiscoveredProjectPolicy(StrictModel):
 
 class TaskPreparationReport(StrictModel):
     issue: GitHubIssueSnapshot
+    checkout: Path
+    task_path: Path
+    config_path: Path | None = None
+    policy_source: Literal["repository_config", "deterministic_discovery"]
+    execution_backend: Literal["host", "container"]
+    container: ContainerExecutionSpec | None = None
+    commands: list[CommandSpec]
+    writable_paths: list[str]
+    protected_paths: list[str]
+    runtime_files: list[RuntimeFileSpec] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class LocalTaskPreparationReport(StrictModel):
+    issue: LocalIssueSnapshot
     checkout: Path
     task_path: Path
     config_path: Path | None = None

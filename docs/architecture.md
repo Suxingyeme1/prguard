@@ -63,6 +63,10 @@ a deterministic tool, never a Test Runner Agent.
 - **GitHub onboarding** validates one canonical public Issue URL, fetches only Issue title/body plus
   repository/commit metadata, rejects Pull Requests and private repositories, freezes a full commit
   SHA, and materializes it without running hooks. A same-origin local clone may be an object cache.
+- **Local onboarding** accepts a clean Git toplevel plus bounded natural-language Issue text,
+  resolves `HEAD` or a requested revision, and materializes a separate detached checkout with hooks
+  and user/system Git configuration disabled. Inline text and regular UTF-8 Issue files both become
+  the same SHA-256-bound FixTask; the workspace must remain outside the source repository.
 - **Project profile discovery** accepts a strict reviewed `.prguard.toml` or conservatively detects
   pytest and Python source/test write scopes. Tool configuration alone is not repository policy:
   Ruff is enabled only by reviewed configuration and only as `check --no-fix`. Discovery never

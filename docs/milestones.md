@@ -219,6 +219,13 @@ Harness passed 1324 full-suite tests and 10 changed-test replays; the hidden eva
 Base pass to Candidate fail to Repaired pass. The evidence includes the delivered Patch and raw
 Artifact hashes. See the [v0.10.6 phase report](v0.10.6-phase-report.md).
 
+The sixteenth increment removes hand-authored JSON from the local product entry. `fix` now accepts a
+clean local Git repository plus inline Issue text or a bounded Issue file, resolves the requested
+Base to an exact commit, freezes a detached checkout, discovers a conservative project policy, and
+continues through the existing FixRunner. `prepare-local` preserves a two-stage inspection path.
+Dirty sources, workspaces inside the source, symlink/NUL Issue files, and repository hooks are
+covered by fail-closed tests. See the [v0.11.0 phase report](v0.11.0-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one
