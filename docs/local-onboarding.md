@@ -3,6 +3,27 @@
 PRGuard can start from a clean local Git repository and ordinary Issue text. You do not need to
 write Task JSON by hand.
 
+## Inspect policy first
+
+For an unfamiliar project, ask PRGuard what it would trust before running a model or repository
+code:
+
+```bash
+uv run prguard inspect-policy \
+  --repository /path/to/project \
+  --issue-file /path/to/issue.md \
+  --base-commit HEAD
+```
+
+The command requires a clean Git toplevel and resolves the Base Commit, but does not create a
+checkout, execute tests, import target modules, or call a model. Its JSON output records discovery
+signals, exact verification argv, writable/protected scopes, warnings, and next actions.
+
+An inferred `ready` policy also contains `suggested_config`: valid TOML that reproduces the detected
+gate and scopes. It is a review candidate, not an automatically trusted file. If no safe test gate
+can be identified, the report returns `needs_config` and no candidate command; choose an existing
+allowlisted gate explicitly instead of guessing one.
+
 ## One-command Fix
 
 Keep the PRGuard workspace outside the source repository:

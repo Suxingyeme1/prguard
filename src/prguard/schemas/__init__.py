@@ -43,6 +43,7 @@ from prguard.schemas.onboarding import (
     LocalIssueSnapshot,
     LocalTaskPreparationReport,
     ProjectConfig,
+    ProjectPolicyInspection,
     TaskPreparationReport,
 )
 from prguard.schemas.pipeline import IssueToPROutcome, IssueToPRReport, IssueToPRTask
@@ -106,6 +107,7 @@ __all__ = [
     "PatchApplicationResult",
     "PolicyViolation",
     "ProjectConfig",
+    "ProjectPolicyInspection",
     "ProposalEnvelope",
     "ProviderFailureEvidence",
     "ReplaceTextEdit",

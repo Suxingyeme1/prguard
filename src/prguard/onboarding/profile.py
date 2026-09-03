@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -9,7 +10,8 @@ from types import SimpleNamespace
 
 from pydantic import ValidationError
 
-from prguard.harness.errors import CommandPolicyError
+from prguard.harness.errors import CommandPolicyError, PreflightError
+from prguard.harness.git import GitRepository
 from prguard.harness.policy import CommandPolicy
 from prguard.implementer.errors import RepositoryAccessError
 from prguard.implementer.tools import RepositoryTools
@@ -18,6 +20,7 @@ from prguard.schemas import (
     CommandSpec,
     DiscoveredProjectPolicy,
     ProjectConfig,
+    ProjectPolicyInspection,
     RuntimeFileSpec,
 )
 
@@ -33,6 +36,27 @@ DEFAULT_PROTECTED_PATHS = (
     "**/*.pfx",
     "**/credentials.json",
 )
+
+
+def render_project_config(config: ProjectConfig) -> str:
+    """Render a deterministic, reviewable `.prguard.toml` candidate."""
+
+    def value(item: object) -> str:
+        return json.dumps(item, ensure_ascii=False, separators=(", ", ": "))
+
+    return "\n".join(
+        (
+            "# Generated as a review candidate; commit only after checking every scope and gate.",
+            f"version = {config.version}",
+            f"verification_commands = {value(config.verification_commands)}",
+            f"writable_paths = {value(config.writable_paths)}",
+            f"protected_paths = {value(config.protected_paths)}",
+            f"command_timeout_seconds = {config.command_timeout_seconds:g}",
+            f"task_timeout_seconds = {config.task_timeout_seconds:g}",
+            f"max_repair_attempts = {config.max_repair_attempts}",
+            "",
+        )
+    )
 
 
 def load_project_config(repository: Path) -> tuple[ProjectConfig | None, Path | None]:
@@ -280,4 +304,98 @@ def discover_project_policy(
                 else []
             ),
         ],
+    )
+
+
+def inspect_project_policy(
+    repository: Path,
+    *,
+    issue: str | None = None,
+    base_commit: str = "HEAD",
+) -> ProjectPolicyInspection:
+    """Explain policy discovery without invoking a provider or executing repository code."""
+
+    repository = repository.expanduser().resolve()
+    try:
+        resolved = GitRepository(repository).preflight(base_commit)
+    except PreflightError as exc:
+        raise ProjectDiscoveryError(f"repository preflight failed: {exc}") from exc
+
+    signals: list[str] = []
+    if (repository / ".prguard.toml").is_file():
+        signals.append("repository .prguard.toml present")
+    if (repository / "pyproject.toml").is_file():
+        signals.append("pyproject.toml present")
+    if (repository / "pytest.ini").is_file() or (repository / "tests").is_dir():
+        signals.append("pytest-compatible test layout detected")
+    discovered_scopes = _discover_writable_paths(repository)
+    if discovered_scopes:
+        signals.append("Python source/test write scopes detected")
+    if issue and _issue_identifiers(issue):
+        signals.append("Issue contains source-like identifiers for test targeting")
+
+    config_path = repository / ".prguard.toml"
+    if not config_path.is_file():
+        config_path = None
+    try:
+        policy = discover_project_policy(repository, issue=issue)
+    except ProjectDiscoveryError as exc:
+        reason = str(exc)
+        actions = []
+        if "pytest/Ruff command" in reason:
+            actions.append(
+                "Choose an existing pytest or non-mutating Ruff gate and declare it in "
+                ".prguard.toml; PRGuard will not invent a command."
+            )
+        if "source/test write scope" in reason:
+            actions.append(
+                "Declare the smallest repository-relative source and test globs in .prguard.toml."
+            )
+        if config_path is not None:
+            actions.append("Correct the existing .prguard.toml and rerun inspect-policy.")
+        if not actions:
+            actions.append("Add and review a versioned .prguard.toml, then rerun inspect-policy.")
+        return ProjectPolicyInspection(
+            repository=repository,
+            requested_base_commit=base_commit,
+            base_commit=resolved,
+            status="needs_config",
+            config_path=config_path,
+            writable_paths=discovered_scopes,
+            protected_paths=list(DEFAULT_PROTECTED_PATHS),
+            signals=signals,
+            blocking_reasons=[reason],
+            next_actions=actions,
+        )
+
+    if policy.source == "repository_config":
+        config, _ = load_project_config(repository)
+        assert config is not None
+    else:
+        config = ProjectConfig(
+            verification_commands=[command.argv for command in policy.commands],
+            writable_paths=policy.writable_paths,
+            command_timeout_seconds=policy.command_timeout_seconds,
+            task_timeout_seconds=policy.task_timeout_seconds,
+            max_repair_attempts=policy.max_repair_attempts,
+        )
+    return ProjectPolicyInspection(
+        repository=repository,
+        requested_base_commit=base_commit,
+        base_commit=resolved,
+        status="ready",
+        config_path=config_path,
+        policy_source=policy.source,
+        commands=policy.commands,
+        writable_paths=policy.writable_paths,
+        protected_paths=policy.protected_paths,
+        runtime_files=policy.runtime_files,
+        signals=signals,
+        warnings=policy.warnings,
+        next_actions=[
+            "Review suggested_config and commit it as .prguard.toml to freeze inferred policy."
+        ]
+        if policy.source == "deterministic_discovery"
+        else [],
+        suggested_config=render_project_config(config),
     )

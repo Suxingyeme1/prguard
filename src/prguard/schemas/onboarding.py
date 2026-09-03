@@ -89,6 +89,24 @@ class DiscoveredProjectPolicy(StrictModel):
     runtime_files: list[RuntimeFileSpec] = Field(default_factory=list, max_length=16)
 
 
+class ProjectPolicyInspection(StrictModel):
+    repository: Path
+    requested_base_commit: str = Field(min_length=1, max_length=255)
+    base_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
+    status: Literal["ready", "needs_config"]
+    config_path: Path | None = None
+    policy_source: Literal["repository_config", "deterministic_discovery"] | None = None
+    commands: list[CommandSpec] = Field(default_factory=list, max_length=32)
+    writable_paths: list[str] = Field(default_factory=list, max_length=128)
+    protected_paths: list[str] = Field(default_factory=list, max_length=256)
+    runtime_files: list[RuntimeFileSpec] = Field(default_factory=list, max_length=16)
+    signals: list[str] = Field(default_factory=list, max_length=32)
+    warnings: list[str] = Field(default_factory=list, max_length=32)
+    blocking_reasons: list[str] = Field(default_factory=list, max_length=16)
+    next_actions: list[str] = Field(default_factory=list, max_length=16)
+    suggested_config: str | None = None
+
+
 class TaskPreparationReport(StrictModel):
     issue: GitHubIssueSnapshot
     checkout: Path
