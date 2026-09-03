@@ -1,0 +1,51 @@
+{
+  "schema_version": "prguard-public-artifacts-1",
+  "frozen_at": "2026-09-03",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "20b7d1b9b276719a2e322cab225680f59286cae8e96e0fe799510aa98b24a7c3",
+      "size_bytes": 2583
+    },
+    {
+      "path": "click-evaluator-check.json",
+      "sha256": "203ba869992646537a4da94ba6c607bbca7a948e7eee0fe98fb6c336722875d2",
+      "size_bytes": 641
+    },
+    {
+      "path": "click-review-finding.json",
+      "sha256": "1945a7573fa7783fdc643f7ae7e33bb4d66639befe930bce977c95ed959f7970",
+      "size_bytes": 1335
+    },
+    {
+      "path": "click-routing-v3.json",
+      "sha256": "151165c1e687ffc474648790f362bd66c1fc6dbab3ec5bfa0702e9d0b531c1b1",
+      "size_bytes": 4188
+    },
+    {
+      "path": "click-routing-v4.json",
+      "sha256": "9f1d73fb36537ad3223d1f494c47dd7a13579005a8d07e05713297560b6775e9",
+      "size_bytes": 3912
+    },
+    {
+      "path": "dotenv-evaluator-check.json",
+      "sha256": "78ac1b93ec14bdc3fe8d5f9c2ae5037a1c50ac12ad4bfcd4809ab49b0e553ca5",
+      "size_bytes": 612
+    },
+    {
+      "path": "dotenv-routing-v3.json",
+      "sha256": "e73f52d639f08c670eec49f34a745223c7f9042910581957379f55de8fa9dd55",
+      "size_bytes": 1254
+    },
+    {
+      "path": "dotenv-routing-v4.json",
+      "sha256": "b9fed266c708fbf6fbd6ebe46ce1d2feb8daa1ae1a9727bad796d4b6c1e5c4be",
+      "size_bytes": 1504
+    },
+    {
+      "path": "validation-summary.json",
+      "sha256": "458d07dab01b64d1e12b8ac31377deec4400c684cb262259772c9dc531929fe8",
+      "size_bytes": 4331
+    }
+  ]
+}

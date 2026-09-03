@@ -115,6 +115,10 @@ a deterministic tool, never a Test Runner Agent.
   `review-routing-v3` corrects full-suite accounting: when the verified argv represents an
   unfiltered pytest run with no explicit target, every bounded reachable/related unchanged test is
   recorded as covered instead of generating a contradictory uncovered-test risk factor.
+  `review-routing-v4` aggregates all successful pytest commands: once an unfiltered full-suite run
+  is observed, an automatically derived changed-test replay cannot downgrade the overall scope to
+  targeted. This is evidence accounting only; a green full suite is not treated as a correctness
+  proof.
 - **Review runner** proves Base collection/non-pytest readiness, verifies the candidate, creates a
   separate patched worktree, gives an independently scoped Reviewer only the Issue, candidate diff,
   deterministic evidence, and bounded read tools, then computes the verdict deterministically.

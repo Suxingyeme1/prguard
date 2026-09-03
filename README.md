@@ -245,6 +245,14 @@ full-suite accounting bug: 217 tests had run, but v2 still marked related tests 
 four replayed decisions. It also defers repair-provider construction until Review actually requests
 changes. Selective activation remains **not ready** because the set contains no new held-out defect.
 
+The v0.10.5 [routing-v4 validation](evidence/review-routing-v4-validation/README.md) adds a real
+defective Click Pull Request. Its full 1323-test suite and 9 changed-test replays passed, but the
+Independent Reviewer identified a public `Context.lookup_default()` extension-point regression that
+an evaluator-only Base/Candidate check confirmed. Both v3 and v4 route it to Review; v4 additionally
+fixes command-scope accounting so the later targeted replay cannot overwrite the earlier full-suite
+fact. The clean python-dotenv #600 route remains `skip` 0/5. Selective activation is still **not
+ready** because this is a two-case validation, not a calibrated deployment set.
+
 ## Live model run
 
 Install the optional provider dependency and keep the API key in the process environment:
@@ -300,14 +308,15 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.10.4 implements `review-routing-v3` after the first small v2 holdout exposed contradictory
-full-suite accounting. Frozen v2/v3 route pairs bind the same Base Commits, candidate Patches, Fix
-Manifests, and Verification Manifests. `always` remains the compatible default; selective execution
-stays explicit and opt-in. See the [v0.10.4 phase report](docs/v0.10.4-phase-report.md),
-[ADR 0021](docs/adr/0021-full-pytest-covers-static-test-evidence.md), and the frozen
-[holdout record](evidence/review-routing-v3-holdout/README.md). The next priority is a held-out
-defective real-repository case plus additional clean cases—not a large benchmark platform or
-another Agent role.
+Version 0.10.5 implements `review-routing-v4` and validates routing on a real green-gate Click defect.
+Frozen v3/v4 route pairs bind exact Base Commits, candidate Patches, Fix/Verification Manifests,
+evaluator checks, and Independent Reviewer evidence. `always` remains the compatible default;
+selective execution stays explicit and opt-in. See the
+[v0.10.5 phase report](docs/v0.10.5-phase-report.md),
+[ADR 0022](docs/adr/0022-full-pytest-dominates-derived-replays.md), and the frozen
+[validation record](evidence/review-routing-v4-validation/README.md). The next priority is a
+controlled repair of the frozen Click finding, followed by more clean and defective shadow cases—not
+a large benchmark platform or another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

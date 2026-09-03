@@ -201,6 +201,16 @@ found and regression-tested eager repair-provider construction. Selective activa
 `not_ready` because the set is small and has no new held-out defective case. See the
 [v0.10.4 phase report](v0.10.4-phase-report.md).
 
+The fourteenth increment evaluates v3 against the first genuinely defective held-out real Pull
+Request. Click #3199 passed 1323 repository tests and a 9-test changed-file replay, but Independent
+Review found that a new private default lookup bypassed the public overridable Context method. A
+Base/Candidate evaluator check confirmed the extension-point regression. The case routed to Review,
+so v3 avoided a False Skip. It also exposed a command aggregation bug: the later changed-test replay
+downgraded an earlier full-suite scope to targeted. `review-routing-v4` fixes that accounting while
+preserving the route (`review` 18/5), and keeps a clean python-dotenv #600 Patch at `skip` 0/5.
+Selective activation remains `not_ready` because these counts are illustrative, not calibrated.
+See the [v0.10.5 phase report](v0.10.5-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

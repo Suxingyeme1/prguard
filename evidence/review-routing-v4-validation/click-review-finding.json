@@ -1,0 +1,24 @@
+{
+  "schema_version": "prguard-review-finding-record-1",
+  "case_id": "click-3145-pr-3199",
+  "verdict": "request_changes",
+  "finding_count": 1,
+  "finding": {
+    "severity": "P2",
+    "category": "regression",
+    "file": "src/click/core.py",
+    "line": 2301,
+    "symbol": "click.core.Parameter.get_default",
+    "confidence": 0.8,
+    "claim": "Internal default-map lookup no longer goes through the public, overridable Context.lookup_default(), so custom Context subclasses overriding lookup_default() are ignored during normal parameter default resolution.",
+    "evidence": "Parameter.get_default() and Parameter.consume_value() were changed from ctx.lookup_default(...) to ctx._lookup_default(...). The new private helper is a concrete base-class implementation, while Command.make_context documents context_class customization and Parameter.get_default still documents the public lookup_default method.",
+    "verification": "Use a custom Context whose lookup_default returns an extension value, then resolve an option with no default. Base honors the override; the candidate calls the private helper and returns the internal unset sentinel."
+  },
+  "tool_call_count": 26,
+  "duration_seconds": 291.64520958065987,
+  "token_usage": {
+    "input_tokens": 246900,
+    "output_tokens": 13992,
+    "cached_tokens": 228480
+  }
+}

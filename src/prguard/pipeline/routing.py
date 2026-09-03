@@ -399,14 +399,14 @@ def _pytest_scope_and_targets(fix: FixReport) -> tuple[str, list[str]]:
         return "none", []
     saw_pytest = False
     filtered = False
-    saw_implicit = False
+    saw_unfiltered_full = False
     targets: set[str] = set()
     for command in verification.commands:
         arguments = _pytest_arguments(command.argv)
         if arguments is None:
             continue
         saw_pytest = True
-        if any(
+        command_filtered = any(
             token in _PYTEST_FILTER_FLAGS
             or any(token.startswith(f"{flag}=") for flag in _PYTEST_FILTER_FLAGS)
             or token in _PYTEST_NON_EXECUTION_FLAGS
@@ -416,7 +416,8 @@ def _pytest_scope_and_targets(fix: FixReport) -> tuple[str, list[str]]:
             )
             or "::" in token
             for token in arguments
-        ):
+        )
+        if command_filtered:
             filtered = True
         command_targets: set[str] = set()
         for token in arguments:
@@ -433,16 +434,20 @@ def _pytest_scope_and_targets(fix: FixReport) -> tuple[str, list[str]]:
                 command_targets.add(candidate or ".")
         if command_targets:
             targets.update(command_targets)
-        else:
-            saw_implicit = True
+        elif not command_filtered:
+            # A successful unfiltered invocation with no explicit test target ran the
+            # whole configured suite. Later candidate-test replays do not narrow that
+            # already established coverage.
+            saw_unfiltered_full = True
     if not saw_pytest:
         return "none", []
+    if saw_unfiltered_full:
+        return "full", []
     if filtered:
         return "filtered", sorted(targets)
     if targets:
         return "targeted", sorted(targets)
-    assert saw_implicit
-    return "full", []
+    return "targeted", []
 
 
 def _target_covers(target: str, test_path: str) -> bool:
@@ -999,7 +1004,12 @@ def route_accepted_fix(
                 uncovered_reachable,
             )
         )
-    if source_python and source_changed_symbol_count and not covered_unchanged_tests:
+    if (
+        source_python
+        and source_changed_symbol_count
+        and not covered_unchanged_tests
+        and pytest_scope != "full"
+    ):
         factors.append(
             _factor(
                 "no_explicit_unchanged_test_evidence",
