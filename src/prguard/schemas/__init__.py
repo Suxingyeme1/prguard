@@ -40,6 +40,8 @@ from prguard.schemas.onboarding import (
     DiscoveredProjectPolicy,
     GitHubIssueReference,
     GitHubIssueSnapshot,
+    LocalIssueSnapshot,
+    LocalTaskPreparationReport,
     ProjectConfig,
     TaskPreparationReport,
 )
@@ -99,6 +101,8 @@ __all__ = [
     "IssueToPROutcome",
     "IssueToPRReport",
     "IssueToPRTask",
+    "LocalIssueSnapshot",
+    "LocalTaskPreparationReport",
     "PatchApplicationResult",
     "PolicyViolation",
     "ProjectConfig",

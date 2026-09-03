@@ -1,6 +1,12 @@
 import json
 
-from prguard.schemas import FixTask, IssueToPRTask, ReviewRepairTask, Task
+from prguard.schemas import (
+    FixTask,
+    IssueToPRTask,
+    LocalIssueSnapshot,
+    ReviewRepairTask,
+    Task,
+)
 
 
 def test_serialized_agent_context_cannot_contain_benchmark_answers() -> None:
@@ -50,4 +56,10 @@ def test_issue_to_pr_contract_excludes_evaluator_answers() -> None:
         "reviewer_reasoning",
         "implementer_reasoning",
     }
+    assert fields.isdisjoint(forbidden)
+
+
+def test_local_issue_contract_excludes_evaluator_answers() -> None:
+    fields = set(LocalIssueSnapshot.model_json_schema()["properties"])
+    forbidden = {"gold_patch", "hidden_tests", "defects", "is_valid_patch", "labels"}
     assert fields.isdisjoint(forbidden)

@@ -2,7 +2,7 @@
 
 
 class OnboardingError(RuntimeError):
-    """A remote Issue or repository could not become a safe frozen task."""
+    """An Issue or repository could not become a safe frozen task."""
 
 
 class GitHubAPIError(OnboardingError):

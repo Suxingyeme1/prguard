@@ -35,6 +35,8 @@ class _ProgressReporter:
         "run.started": "run created",
         "onboarding.started": "freezing GitHub Issue and repository",
         "onboarding.completed": "GitHub task prepared",
+        "onboarding.local_started": "freezing local repository and Issue",
+        "onboarding.local_completed": "local task prepared",
         "preflight.started": "validating repository and base commit",
         "preflight.completed": "isolated worktree ready",
         "readiness.started": "checking base test collection",
@@ -245,15 +247,49 @@ def build_parser() -> argparse.ArgumentParser:
         "--container-image",
         help="immutable sha256 image ID/digest for container verification",
     )
+    prepare_local = subparsers.add_parser(
+        "prepare-local",
+        help="freeze a local Git repository and natural-language Issue into a FixTask",
+    )
+    prepare_local.add_argument("--repository", type=Path, required=True)
+    local_issue = prepare_local.add_mutually_exclusive_group(required=True)
+    local_issue.add_argument("--issue", help="natural-language Issue text")
+    local_issue.add_argument("--issue-file", type=Path, help="UTF-8 Issue text file")
+    prepare_local.add_argument("--output", type=Path, required=True)
+    prepare_local.add_argument("--base-commit", default="HEAD")
+    local_execution = prepare_local.add_mutually_exclusive_group(required=True)
+    local_execution.add_argument(
+        "--trust-host",
+        action="store_true",
+        help="explicitly allow unsandboxed host verification for this repository",
+    )
+    local_execution.add_argument(
+        "--container-image",
+        help="immutable sha256 image ID/digest for container verification",
+    )
     fix = subparsers.add_parser(
         "fix",
-        help="generate and verify a patch from a task JSON or public GitHub Issue URL",
+        help="generate and verify a patch from Task JSON, GitHub Issue, or local Issue text",
     )
-    fix.add_argument("task", help="FixTask JSON path or canonical public GitHub Issue URL")
+    fix.add_argument(
+        "task",
+        nargs="?",
+        help="FixTask JSON, GitHub Issue URL, or Issue text when --repository is used",
+    )
+    fix.add_argument(
+        "--repository",
+        type=Path,
+        help="clean local Git repository used with positional Issue text or --issue-file",
+    )
+    fix.add_argument(
+        "--issue-file",
+        type=Path,
+        help="UTF-8 local Issue text file; requires --repository",
+    )
     fix.add_argument(
         "--workspace",
         type=Path,
-        help="new preparation workspace required when task is a GitHub Issue URL",
+        help="new preparation workspace required for GitHub or local Issue input",
     )
     fix.add_argument("--base-commit")
     fix.add_argument(
@@ -265,11 +301,11 @@ def build_parser() -> argparse.ArgumentParser:
     fix_execution.add_argument(
         "--trust-host",
         action="store_true",
-        help="explicitly allow unsandboxed host verification for a GitHub repository",
+        help="explicitly allow unsandboxed host verification for a prepared repository",
     )
     fix_execution.add_argument(
         "--container-image",
-        help="immutable sha256 image ID/digest for GitHub repository verification",
+        help="immutable sha256 image ID/digest for prepared repository verification",
     )
     fix.add_argument(
         "--artifacts",
@@ -342,6 +378,25 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "prepare-local":
+        from prguard.onboarding import prepare_local_issue, read_issue_file
+        from prguard.onboarding.errors import OnboardingError
+
+        try:
+            issue = read_issue_file(args.issue_file) if args.issue_file else args.issue
+            report = prepare_local_issue(
+                args.repository,
+                issue,
+                args.output,
+                base_commit=args.base_commit,
+                trust_host=args.trust_host,
+                container_image=args.container_image,
+            )
+        except (OnboardingError, ValueError) as exc:
+            print(f"local task preparation failed: {exc}", file=sys.stderr)
+            return 2
+        print(report.model_dump_json(indent=2))
+        return 0
     if args.command == "prepare-github":
         from prguard.onboarding import prepare_github_issue
         from prguard.onboarding.errors import OnboardingError
@@ -415,7 +470,11 @@ def main(argv: list[str] | None = None) -> int:
             OpenAIResponsesProvider,
             ScriptedProvider,
         )
-        from prguard.onboarding import prepare_github_issue
+        from prguard.onboarding import (
+            prepare_github_issue,
+            prepare_local_issue,
+            read_issue_file,
+        )
         from prguard.onboarding.errors import OnboardingError
 
         progress = _ProgressReporter(args.progress)
@@ -423,9 +482,55 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if args.review_policy is not None and not args.review:
                 raise ProviderError("--review-policy requires --review")
-            target = str(args.task)
-            is_url = "://" in target
-            if is_url:
+            target = args.task
+            is_url = target is not None and target.startswith("https://github.com/")
+            is_local_issue = args.repository is not None or args.issue_file is not None
+            if is_url and is_local_issue:
+                raise OnboardingError(
+                    "GitHub Issue URL cannot be combined with local Issue options"
+                )
+            if is_local_issue:
+                if args.repository is None:
+                    raise OnboardingError("--issue-file requires --repository")
+                if target is not None and args.issue_file is not None:
+                    raise OnboardingError(
+                        "choose positional Issue text or --issue-file, not both"
+                    )
+                if target is None and args.issue_file is None:
+                    raise OnboardingError(
+                        "local repository mode requires positional Issue text or --issue-file"
+                    )
+                if args.workspace is None:
+                    raise OnboardingError(
+                        "--workspace is required when fix receives a local Issue"
+                    )
+                if args.source_repository is not None:
+                    raise OnboardingError(
+                        "--source-repository is only valid for a GitHub Issue URL"
+                    )
+                issue = read_issue_file(args.issue_file) if args.issue_file else target
+                progress(
+                    "onboarding.local_started",
+                    {"repository": str(args.repository)},
+                )
+                preparation = prepare_local_issue(
+                    args.repository,
+                    issue,
+                    args.workspace,
+                    base_commit=args.base_commit or "HEAD",
+                    trust_host=args.trust_host,
+                    container_image=args.container_image,
+                )
+                progress(
+                    "onboarding.local_completed",
+                    {
+                        "case_id": preparation.issue.issue_sha256[:12],
+                        "base_commit": preparation.issue.base_commit,
+                    },
+                )
+                task_path = preparation.task_path
+                artifact_root = args.artifacts or (args.workspace / "fix-runs")
+            elif is_url:
                 if args.workspace is None:
                     raise OnboardingError(
                         "--workspace is required when fix receives a GitHub Issue URL"
@@ -449,6 +554,10 @@ def main(argv: list[str] | None = None) -> int:
                 task_path = preparation.task_path
                 artifact_root = args.artifacts or (args.workspace / "fix-runs")
             else:
+                if target is None:
+                    raise OnboardingError(
+                        "fix requires Task JSON, a GitHub Issue URL, or local Issue input"
+                    )
                 if any(
                     value is not None and value is not False
                     for value in (
@@ -457,10 +566,12 @@ def main(argv: list[str] | None = None) -> int:
                         args.source_repository,
                         args.trust_host,
                         args.container_image,
+                        args.repository,
+                        args.issue_file,
                     )
                 ):
                     raise OnboardingError(
-                        "GitHub preparation options require a GitHub Issue URL target"
+                        "preparation options require a GitHub Issue URL or local Issue input"
                     )
                 task_path = Path(target)
                 artifact_root = args.artifacts or Path("artifacts/fix")

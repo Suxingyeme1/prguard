@@ -53,6 +53,24 @@ prguard review  frozen FixTask + candidate patch -> findings + optional repair
 Planner remains an internal Implementer step. The test runner is deliberately a deterministic tool,
 not another Agent.
 
+For local work, Task JSON is optional. PRGuard can freeze a clean repository and natural-language
+Issue directly:
+
+```bash
+uv run prguard fix \
+  "Fix add() so it returns the sum of both operands." \
+  --repository /path/to/project \
+  --workspace /path/to/prguard-runs/add-fix \
+  --base-commit HEAD \
+  --trust-host \
+  --provider deepseek \
+  --progress
+```
+
+Use `--issue-file issue.md` for longer requirements, or `prepare-local` to inspect the generated
+Task and Manifest before execution. The workspace must stay outside the source repository. See the
+[local onboarding guide](docs/local-onboarding.md).
+
 ## Try it offline
 
 Requirements: Git, Python 3.12, and [uv](https://docs.astral.sh/uv/). No model key or network call is
@@ -297,7 +315,7 @@ source code.
 
 | Path | Purpose |
 | --- | --- |
-| `src/prguard/onboarding` | GitHub Issue freezing, safe checkout, project-policy discovery |
+| `src/prguard/onboarding` | GitHub/local Issue freezing, safe checkout, project-policy discovery |
 | `src/prguard/implementer` | text/AST navigation, structured edits, patch policy, providers |
 | `src/prguard/fix` | Issue-to-Patch orchestration and artifacts |
 | `src/prguard/reviewer` | independent read-only Reviewer providers |
@@ -315,14 +333,14 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.10.6 completes a real green-gate Review-and-repair case. Frozen route, Review, repair,
-verification, evaluator, and Manifest records bind the exact Click candidate and delivered Patch.
-`always` remains the compatible default; selective execution stays explicit and opt-in. See the
-[v0.10.6 phase report](docs/v0.10.6-phase-report.md), the
-[controlled-repair evidence](evidence/click-controlled-repair/README.md), and
-[ADR 0022](docs/adr/0022-full-pytest-dominates-derived-replays.md). The next priority is a few more
-manually labelled shadow cases plus Issue-to-Patch onboarding polish—not a large benchmark platform
-or another Agent role.
+Version 0.11.0 adds a natural-language local repository entry while retaining the complete Click
+green-gate Review-and-repair evidence. Local and GitHub inputs now both become frozen, hash-bound
+Tasks before an Agent runs. `always` remains the compatible Review default; selective execution
+stays explicit and opt-in. See the [v0.11.0 phase report](docs/v0.11.0-phase-report.md),
+[local onboarding guide](docs/local-onboarding.md),
+[ADR 0023](docs/adr/0023-local-issues-freeze-before-agent-execution.md), and
+[controlled-repair evidence](evidence/click-controlled-repair/README.md). The next priority is
+repository-policy onboarding polish and a few more labelled shadow cases—not another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

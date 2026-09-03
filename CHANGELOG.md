@@ -3,6 +3,23 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.11.0 — 2026-09-03
+
+### Added
+
+- `prepare-local` freezes a clean local Git repository, exact Base Commit, and inline/file-backed
+  natural-language Issue into a FixTask, preparation report, and recursive Manifest;
+- `fix` accepts the same local inputs directly and continues into the existing Issue-to-Patch or
+  Issue-to-PR workflow without hand-authored JSON;
+- local materialization creates a separate detached checkout with hooks and Git user/system config
+  disabled, plus explicit host/container trust selection and deterministic policy discovery.
+
+### Security
+
+- reject dirty source repositories, preparation workspaces inside the source, symlink/non-UTF-8/NUL
+  Issue files, unresolved Base Commits, and unsafe or undiscoverable project policies;
+- retain the 50,000-byte Issue boundary and keep evaluator/Gold fields out of local input schemas.
+
 ## 0.10.6 — 2026-09-03
 
 ### Evidence
