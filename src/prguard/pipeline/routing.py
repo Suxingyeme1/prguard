@@ -854,7 +854,11 @@ def route_accepted_fix(
         related = sorted({path for impact in impacts for path in impact.related_tests})
         unchanged_reachable = sorted(set(reachable) - set(test_paths))
         unchanged_related = sorted(set(related) - set(test_paths))
-        if pytest_scope == "targeted":
+        if pytest_scope == "full":
+            covered_unchanged_tests = sorted(
+                set(unchanged_reachable) | set(unchanged_related)
+            )
+        elif pytest_scope == "targeted":
             covered_unchanged_tests = sorted(
                 path
                 for path in set(unchanged_reachable) | set(unchanged_related)

@@ -191,6 +191,16 @@ Base Commit and candidate Patch hashes. Because PrettyTable was also used to des
 activation record remains `not_ready` until a small manually labelled holdout set tests both misses
 and unnecessary Reviews. See the [v0.10.3 phase report](v0.10.3-phase-report.md).
 
+The thirteenth increment runs the first two clean real-repository holdout cases. Both Independent
+Reviews accepted with zero findings, exposing 303.6 seconds and 405,253 input/output tokens of
+review cost on those observations. The python-dotenv run also exposed contradictory v2 accounting:
+an unfiltered full pytest run passed 217 tests, but related tests were still marked uncovered.
+`review-routing-v3` records those tests as covered and changes that exact route from `review` 7/5 to
+`skip` 0/5 while Inflect and all three prior correction cases retain their decisions. The same run
+found and regression-tested eager repair-provider construction. Selective activation remains
+`not_ready` because the set is small and has no new held-out defective case. See the
+[v0.10.4 phase report](v0.10.4-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

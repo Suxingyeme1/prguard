@@ -1,0 +1,46 @@
+{
+  "schema_version": "prguard-public-artifacts-1",
+  "frozen_at": "2026-09-03",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "0c814c9ce9c3511ca8af04cdaf9880e61b6aa07f186efe44b625a1a4d990c0e9",
+      "size_bytes": 2649
+    },
+    {
+      "path": "holdout-summary.json",
+      "sha256": "db28d09784eb7421b3417201eac3ab4f68792e96087bd40ca5c40a89611f3d13",
+      "size_bytes": 3566
+    },
+    {
+      "path": "inflect-routing-v2.json",
+      "sha256": "edba91b793a1a1a7f4670a78732470f9f815f4ed72b2b978d8ac817b04b21411",
+      "size_bytes": 2265
+    },
+    {
+      "path": "inflect-routing-v3.json",
+      "sha256": "1592ce8226e03cc4994284a6178799b5c560544bf5339e3ff230ffeebc66deb8",
+      "size_bytes": 2265
+    },
+    {
+      "path": "dotenv-routing-v2.json",
+      "sha256": "479d5e64465f1a176c7476a1ae0f95a119917794114ae8bba0fb37bba45a2243",
+      "size_bytes": 1792
+    },
+    {
+      "path": "dotenv-routing-v3.json",
+      "sha256": "af1f3735224da0c921339574ecdbef8deacdeef7f7f7f44770887d642e2974ac",
+      "size_bytes": 1656
+    },
+    {
+      "path": "dotenv-evaluator-check.json",
+      "sha256": "79032635f4c156ed072ed6f2a5be297167a6efc0d8059a97662331e2dc30069f",
+      "size_bytes": 840
+    },
+    {
+      "path": "orchestration-regression.json",
+      "sha256": "e8e054ba9b266e10db47c22ca7449f6606a253bf118d5ffa11495f6b57ce95d4",
+      "size_bytes": 812
+    }
+  ]
+}

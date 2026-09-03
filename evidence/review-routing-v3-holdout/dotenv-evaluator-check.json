@@ -1,0 +1,21 @@
+{
+  "schema_version": "prguard-evaluator-check-1",
+  "frozen_at": "2026-09-03",
+  "case_id": "python-dotenv-638-source-only",
+  "repository": "https://github.com/theskumar/python-dotenv",
+  "pull_request": "https://github.com/theskumar/python-dotenv/pull/638",
+  "resolved_base_commit": "fa4e6a90b45428212452afc6ee0d5c8103b9301d",
+  "upstream_merge_commit": "3f0e3e0b461cf7127e2753efbdf896bdff31db2e",
+  "candidate_patch_sha256": "31ef7a58fcb0e4c3f9a968a8cd9f33a6456318e3801e7e30811048bd6fd3ed1a",
+  "hidden_from_agents": true,
+  "check": "Create an empty .env, wrap DotEnv.parse, call DotEnv.dict twice, and record parse call count.",
+  "base_observation": {
+    "parse_call_count": 2,
+    "issue_reproduced": true
+  },
+  "candidate_observation": {
+    "parse_call_count": 1,
+    "issue_resolved": true
+  },
+  "evaluator_label": "clean"
+}

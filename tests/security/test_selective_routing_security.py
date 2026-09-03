@@ -258,6 +258,37 @@ def test_partial_or_nonexecuting_pytest_argv_cannot_create_skip_evidence(
     }
 
 
+def test_full_pytest_covers_static_test_evidence(
+    make_repo,
+    tmp_path: Path,
+) -> None:
+    after = "def value() -> int:\n    return 1 + 0\n"
+    repo, commit = make_repo({"app.py": _APP, "tests/test_app.py": _TEST})
+    task = _task(
+        repo,
+        commit,
+        case_id="routing-full-pytest",
+        writable_path="app.py",
+        command=["pytest", "-q"],
+    )
+
+    _, routing = _route(
+        tmp_path,
+        task,
+        [_proposal(_patch("app.py", _APP, after))],
+    )
+
+    assert routing.policy_version == "review-routing-v3"
+    assert routing.pytest_scope == "full"
+    assert routing.covered_unchanged_tests == ["tests/test_app.py"]
+    assert routing.uncovered_reachable_tests == []
+    assert routing.uncovered_related_tests == []
+    assert routing.recommended_route is ReviewRoute.SKIP
+    assert "no_explicit_unchanged_test_evidence" not in {
+        factor.code for factor in routing.factors
+    }
+
+
 def test_nonstandard_git_mode_cannot_bypass_unchanged_ast(
     make_repo,
     tmp_path: Path,
@@ -421,7 +452,7 @@ def test_changed_stateful_nested_factory_routes_to_review(
     )
 
     factors = {factor.code: factor for factor in routing.factors}
-    assert routing.policy_version == "review-routing-v2"
+    assert routing.policy_version == "review-routing-v3"
     assert routing.recommended_route is ReviewRoute.REVIEW
     assert factors["stateful_nested_factory_changed"].weight == routing.threshold
     assert factors["stateful_nested_factory_changed"].evidence == [
@@ -506,7 +537,7 @@ def test_routing_artifact_tampering_is_rejected_by_recursive_manifest(
     assert report.review_routing.effective_route is ReviewRoute.SKIP
     manifest_path = Path(report.artifact_directory) / "issue-to-pr-manifest.json"
     manifest = verify_manifest(manifest_path)
-    assert "review-routing-v2" in manifest.policy_version
+    assert "review-routing-v3" in manifest.policy_version
     assert "review-routing.json" in {entry.path for entry in manifest.artifacts}
 
     routing_path = Path(report.artifact_directory) / "review-routing.json"
