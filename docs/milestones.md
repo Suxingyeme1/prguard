@@ -226,6 +226,12 @@ continues through the existing FixRunner. `prepare-local` preserves a two-stage 
 Dirty sources, workspaces inside the source, symlink/NUL Issue files, and repository hooks are
 covered by fail-closed tests. See the [v0.11.0 phase report](v0.11.0-phase-report.md).
 
+The seventeenth increment adds `inspect-policy`, a read-only checkpoint for unfamiliar local
+repositories. It resolves the clean Base Commit and explains discovery signals, exact verification
+argv, edit scopes, protected paths, and blocking reasons without executing repository code. A ready
+inferred policy includes a valid TOML candidate for human review; an unknown gate remains
+`needs_config` and is never guessed. See the [v0.11.1 phase report](v0.11.1-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

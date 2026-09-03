@@ -225,6 +225,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     inspect_symbol.add_argument("--max-depth", type=int, choices=(1, 2, 3), default=2)
     inspect_symbol.add_argument("--max-results", type=int, default=100)
+    inspect_policy = subparsers.add_parser(
+        "inspect-policy",
+        help="explain local project-policy discovery without running repository code",
+    )
+    inspect_policy.add_argument("--repository", type=Path, required=True)
+    inspect_policy.add_argument("--base-commit", default="HEAD")
+    policy_issue = inspect_policy.add_mutually_exclusive_group()
+    policy_issue.add_argument("--issue", help="optional Issue text for related-test discovery")
+    policy_issue.add_argument("--issue-file", type=Path, help="UTF-8 Issue text file")
     prepare = subparsers.add_parser(
         "prepare-github",
         help="freeze a public GitHub Issue and repository into a validated FixTask",
@@ -378,6 +387,22 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "inspect-policy":
+        from prguard.onboarding import inspect_project_policy, read_issue_file
+        from prguard.onboarding.errors import OnboardingError, ProjectDiscoveryError
+
+        try:
+            issue = read_issue_file(args.issue_file) if args.issue_file else args.issue
+            report = inspect_project_policy(
+                args.repository,
+                issue=issue,
+                base_commit=args.base_commit,
+            )
+        except (OnboardingError, ProjectDiscoveryError, ValueError) as exc:
+            print(f"policy inspection failed: {exc}", file=sys.stderr)
+            return 2
+        print(report.model_dump_json(indent=2))
+        return 0 if report.status == "ready" else 1
     if args.command == "prepare-local":
         from prguard.onboarding import prepare_local_issue, read_issue_file
         from prguard.onboarding.errors import OnboardingError

@@ -71,7 +71,9 @@ a deterministic tool, never a Test Runner Agent.
   pytest and Python source/test write scopes. Tool configuration alone is not repository policy:
   Ruff is enabled only by reviewed configuration and only as `check --no-fix`. Discovery never
   installs dependencies or invents service setup, and repository configuration cannot weaken the
-  built-in command grammar or fixed protected paths.
+  built-in command grammar or fixed protected paths. A read-only inspection checkpoint exposes the
+  resolved Base, discovery signals, exact argv, scopes, warnings, and a deterministic TOML
+  candidate; it returns `needs_config` rather than inventing a missing test command.
 - **Repository tools** expose bounded file listing, case-insensitive text search, line-range reads,
   and a lazy Python AST index for symbols, imports/re-exports, lexical references, incoming/outgoing
   calls, one-to-three-hop call-graph neighborhoods, and related/reachable-test ranking. Graph roots

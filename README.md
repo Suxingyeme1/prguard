@@ -71,6 +71,20 @@ Use `--issue-file issue.md` for longer requirements, or `prepare-local` to inspe
 Task and Manifest before execution. The workspace must stay outside the source repository. See the
 [local onboarding guide](docs/local-onboarding.md).
 
+Before running an unfamiliar project, inspect the deterministic gate and edit boundary without a
+model call or test execution:
+
+```bash
+uv run prguard inspect-policy \
+  --repository /path/to/project \
+  --issue-file /path/to/issue.md \
+  --base-commit HEAD
+```
+
+The JSON report either returns `ready` with the exact pytest/Ruff argv and a reviewable
+`.prguard.toml` candidate, or `needs_config` with a blocking reason. PRGuard does not invent a test
+command for an unsupported repository.
+
 ## Try it offline
 
 Requirements: Git, Python 3.12, and [uv](https://docs.astral.sh/uv/). No model key or network call is
@@ -333,14 +347,16 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.11.0 adds a natural-language local repository entry while retaining the complete Click
-green-gate Review-and-repair evidence. Local and GitHub inputs now both become frozen, hash-bound
-Tasks before an Agent runs. `always` remains the compatible Review default; selective execution
-stays explicit and opt-in. See the [v0.11.0 phase report](docs/v0.11.0-phase-report.md),
+Version 0.11.1 adds a read-only policy inspection checkpoint on top of the natural-language local
+repository entry while retaining the complete Click green-gate Review-and-repair evidence. Local
+and GitHub inputs both become frozen, hash-bound Tasks before an Agent runs. `always` remains the
+compatible Review default; selective execution stays explicit and opt-in. See the
+[v0.11.1 phase report](docs/v0.11.1-phase-report.md),
 [local onboarding guide](docs/local-onboarding.md),
 [ADR 0023](docs/adr/0023-local-issues-freeze-before-agent-execution.md), and
 [controlled-repair evidence](evidence/click-controlled-repair/README.md). The next priority is
-repository-policy onboarding polish and a few more labelled shadow cases—not another Agent role.
+a few more labelled shadow cases and broader Python repository-policy coverage—not another Agent
+role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

@@ -3,6 +3,21 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.11.1 — 2026-09-03
+
+### Added
+
+- `inspect-policy` explains the exact Base Commit, discovery signals, verification argv, writable
+  and protected paths, runtime scaffolds, warnings, and next actions without running repository
+  code or invoking a model;
+- ready inferred policies include a deterministic, valid `.prguard.toml` candidate that a maintainer
+  can review and commit to freeze future behavior.
+
+### Safety
+
+- unsupported repositories return structured `needs_config` evidence and never receive an invented
+  test command; invalid or unsafe repository policies are surfaced without executing them.
+
 ## 0.11.0 — 2026-09-03
 
 ### Added
