@@ -3,6 +3,19 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.10.6 — 2026-09-03
+
+### Evidence
+
+- completed a real Click #3199 controlled repair from the frozen independent P2 finding, using one
+  DeepSeek Implementer attempt with four structured edits and no Gold Patch;
+- the replacement Patch passed 1324 full-suite tests and 10 Harness-derived changed-test replays;
+- an Agent-invisible Base/Candidate/Repaired evaluator confirmed that the public
+  `Context.lookup_default()` extension point fails only on the original candidate and is restored by
+  the repair;
+- published the delivered Patch and hash bindings to the original candidate, Reviewer finding, raw
+  repair report, recursive Manifest, final verification, and cross-host archive.
+
 ## 0.10.5 — 2026-09-03
 
 ### Changed

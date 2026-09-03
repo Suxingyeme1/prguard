@@ -1,0 +1,24 @@
+{
+  "agent_visible": false,
+  "base": {
+    "extension_point_honored": true,
+    "source": "DEFAULT_MAP",
+    "value": "'extension-default@example.com'"
+  },
+  "base_commit": "cdab890e57a30a9f437b88ce9652f7bfce980c1f",
+  "candidate": {
+    "extension_point_honored": false,
+    "source": "DEFAULT",
+    "value": "Sentinel.UNSET"
+  },
+  "candidate_patch_sha256": "d35bad3b0e98b9581a2000de66c499bb84fbcf88694a2f32a5454b806dc6d7bb",
+  "case_id": "click-3145-pr-3199-controlled-repair",
+  "repair_confirmed": true,
+  "repaired": {
+    "extension_point_honored": true,
+    "source": "DEFAULT_MAP",
+    "value": "'extension-default@example.com'"
+  },
+  "repaired_patch_sha256": "222d00a86fff14b79c7125d2b058b8684025088f728d3a540cc4ee3e0e0d501c",
+  "schema_version": "prguard-evaluator-check-1"
+}

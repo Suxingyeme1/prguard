@@ -211,6 +211,14 @@ preserving the route (`review` 18/5), and keeps a clean python-dotenv #600 Patch
 Selective activation remains `not_ready` because these counts are illustrative, not calibrated.
 See the [v0.10.5 phase report](v0.10.5-phase-report.md).
 
+The fifteenth increment closes the real Click Demo B with one controlled repair. A fresh Implementer
+received the Issue, exact defective candidate, green gate evidence, and frozen Reviewer finding—but
+not the evaluator, maintainer outcome, later upstream fix, or a Gold Patch. It returned four
+structured edits that restored the public Context override path and added a regression test. A fresh
+Harness passed 1324 full-suite tests and 10 changed-test replays; the hidden evaluator changed from
+Base pass to Candidate fail to Repaired pass. The evidence includes the delivered Patch and raw
+Artifact hashes. See the [v0.10.6 phase report](v0.10.6-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

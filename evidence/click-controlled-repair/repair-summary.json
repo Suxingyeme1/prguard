@@ -1,0 +1,58 @@
+{
+  "schema_version": "prguard-controlled-repair-evidence-1",
+  "frozen_at": "2026-09-03",
+  "case_id": "click-3145-pr-3199-controlled-repair",
+  "repository": "https://github.com/pallets/click",
+  "issue": "https://github.com/pallets/click/issues/3145",
+  "candidate_pull_request": "https://github.com/pallets/click/pull/3199",
+  "base_commit": "cdab890e57a30a9f437b88ce9652f7bfce980c1f",
+  "candidate_patch_sha256": "d35bad3b0e98b9581a2000de66c499bb84fbcf88694a2f32a5454b806dc6d7bb",
+  "review_finding_artifact": "../review-routing-v4-validation/click-review-finding.json",
+  "review_finding_file_sha256": "1945a7573fa7783fdc643f7ae7e33bb4d66639befe930bce977c95ed959f7970",
+  "reviewer": {
+    "verdict": "request_changes",
+    "finding_count": 1,
+    "duration_seconds": 291.64520958065987,
+    "input_tokens": 246900,
+    "output_tokens": 13992,
+    "cached_tokens": 228480
+  },
+  "repair": {
+    "outcome": "accepted_after_repair",
+    "verdict": "accept",
+    "attempts": 1,
+    "structured_edit_count": 4,
+    "tool_call_count": 20,
+    "duration_seconds": 254.84960339963436,
+    "input_tokens": 215956,
+    "output_tokens": 14823,
+    "cached_tokens": 196992,
+    "plan": [
+      "Return None from the public Context.lookup_default method when a key is absent.",
+      "Route internal Parameter default resolution through the public overridable method.",
+      "Add a regression test proving a custom Context override is honored."
+    ]
+  },
+  "final_patch": "final.patch",
+  "final_patch_sha256": "222d00a86fff14b79c7125d2b058b8684025088f728d3a540cc4ee3e0e0d501c",
+  "verification": {
+    "full_suite": "1324 passed, 21 skipped, 1 xfailed",
+    "changed_tests": "10 passed",
+    "final_verification_manifest_file_sha256": "c8d7d7de1c41eff360413b762bb06872bf3cea29331617179372900b59670232"
+  },
+  "evaluator": {
+    "artifact": "evaluator-check.json",
+    "artifact_sha256": "6d4e4e9618a01d62781b1bee98acf1fbf46b772fe3470f04b90784cc05731a0a",
+    "agent_visible": false,
+    "base_extension_point_honored": true,
+    "candidate_extension_point_honored": false,
+    "repaired_extension_point_honored": true,
+    "repair_confirmed": true
+  },
+  "raw_artifacts": {
+    "review_repair_report_file_sha256": "c4a58b109d6a7feb64df711272ec4c365f69ab1d2d06e68ce276ec241b06eadd",
+    "review_repair_manifest_file_sha256": "d42dcdb117780b5b5fe62e11dc0f5ae220d0ed3a5cc3eed4380fe431120c1686",
+    "repair_proposal_file_sha256": "7acee6eea164956392dcf410422df485f816aa90e54e16161f5f8e6237d653d4",
+    "cross_host_archive_sha256": "a8ccd1c41606ec94e644b21bb2f605916bd1a66abf6c061ab27875e48864d3ae"
+  }
+}
