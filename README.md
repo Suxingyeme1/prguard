@@ -53,6 +53,18 @@ prguard review  frozen FixTask + candidate patch -> findings + optional repair
 Planner remains an internal Implementer step. The test runner is deliberately a deterministic tool,
 not another Agent.
 
+## See the pipeline in one command
+
+```bash
+uv run --extra demo prguard demo
+```
+
+The dependency-free terminal view creates a disposable Git repository and shows the complete
+failure-to-repair path: frozen Commit, structured Implementer edit, fixed pytest command, first
+failure, evidence feedback, successful repair, final Patch, and Manifest. It uses the real FixRunner
+and Harness but scripted model responses, so the walkthrough is stable and needs no API key. See the
+[terminal demo guide](docs/terminal-demo.md).
+
 For local work, Task JSON is optional. PRGuard can freeze a clean repository and natural-language
 Issue directly:
 
@@ -347,10 +359,9 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.11.1 adds a read-only policy inspection checkpoint on top of the natural-language local
-repository entry while retaining the complete Click green-gate Review-and-repair evidence. Local
-and GitHub inputs both become frozen, hash-bound Tasks before an Agent runs. `always` remains the
-compatible Review default; selective execution stays explicit and opt-in. See the
+Version 0.12.0 adds a one-command visual terminal walkthrough on top of the natural-language local
+repository entry and read-only policy inspection checkpoint. The complete Click green-gate
+Review-and-repair evidence remains frozen. See the [terminal demo guide](docs/terminal-demo.md),
 [v0.11.1 phase report](docs/v0.11.1-phase-report.md),
 [local onboarding guide](docs/local-onboarding.md),
 [ADR 0023](docs/adr/0023-local-issues-freeze-before-agent-execution.md), and
