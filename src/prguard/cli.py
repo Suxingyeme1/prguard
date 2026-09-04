@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import tempfile
 import threading
@@ -203,6 +204,17 @@ def review_task_from_fix_task(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="prguard")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    demo = subparsers.add_parser(
+        "demo",
+        help="run a visual key-free walkthrough of failure, repair, and delivery",
+    )
+    demo.add_argument(
+        "--output",
+        type=Path,
+        default=Path("work/prguard-demo"),
+        help="directory that receives uniquely named demo runs",
+    )
+    demo.add_argument("--no-color", action="store_true", help="disable ANSI colors")
     run = subparsers.add_parser("run", help="execute a deterministic local PR case")
     run.add_argument("case", type=Path)
     run.add_argument("--artifacts", type=Path, default=Path("artifacts"))
@@ -387,6 +399,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "demo":
+        from prguard.demo import run_terminal_demo
+
+        try:
+            run_terminal_demo(args.output, color=False if args.no_color else None)
+        except (OSError, RuntimeError, subprocess.SubprocessError, ValueError) as exc:
+            print(f"demo failed: {exc}", file=sys.stderr)
+            return 1
+        return 0
     if args.command == "inspect-policy":
         from prguard.onboarding import inspect_project_policy, read_issue_file
         from prguard.onboarding.errors import OnboardingError, ProjectDiscoveryError

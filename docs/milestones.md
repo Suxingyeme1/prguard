@@ -232,6 +232,11 @@ argv, edit scopes, protected paths, and blocking reasons without executing repos
 inferred policy includes a valid TOML candidate for human review; an unknown gate remains
 `needs_config` and is never guessed. See the [v0.11.1 phase report](v0.11.1-phase-report.md).
 
+The eighteenth increment adds a visual, dependency-light terminal demo over the real FixRunner and
+Harness. A generated repository makes the first structured edit fail one pytest assertion, feeds
+that evidence into the permitted repair, and renders the passing retry, final Patch, and Manifest
+as one readable timeline. See the [v0.12.0 phase report](v0.12.0-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

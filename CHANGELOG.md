@@ -3,6 +3,16 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.12.0 — 2026-09-04
+
+### Added
+
+- `prguard demo` runs a visual, key-free terminal walkthrough on a generated Git repository;
+- the timeline renders Base Commit freezing, Implementer proposals, fixed-argv pytest, failed-test
+  feedback, one repair, the final colorized Git Patch, and verifiable delivery paths;
+- the demo uses the production FixRunner, structured-edit materializer, Harness, and Manifest
+  verifier while substituting deterministic scripted model responses for a stable first run.
+
 ## 0.11.1 — 2026-09-03
 
 ### Added
