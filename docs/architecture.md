@@ -134,18 +134,21 @@ a deterministic tool, never a Test Runner Agent.
   is observed, an automatically derived changed-test replay cannot downgrade the overall scope to
   targeted. This is evidence accounting only; a green full suite is not treated as a correctness
   proof.
-- **Review runner** proves Base collection/non-pytest readiness, verifies the candidate, creates a
-  separate patched worktree, gives an independently scoped Reviewer only the Issue, candidate diff,
-  deterministic evidence, and bounded read tools, then computes the verdict deterministically.
-  P0-P2 findings block; P3 is non-blocking; failed verification blocks even when the Reviewer
-  misses a finding. A model result returned after the logical stage deadline is retained as
-  evidence but cannot produce an accepting verdict.
+- **Review runner** proves Base collection/non-pytest readiness, verifies the candidate, creates
+  separate unchanged-Base and exact-Candidate worktrees, and derives bounded Python AST
+  compatibility signals for changed non-test modules. It gives an independently scoped Reviewer
+  only the Issue, candidate diff, deterministic evidence/signals, and bounded read tools, then
+  computes the verdict deterministically. Compatibility signals direct attention but never block
+  by themselves. P0-P2 findings block; P3 is non-blocking; failed verification blocks even when
+  the Reviewer misses a finding. A model result returned after the logical stage deadline is
+  retained as evidence but cannot produce an accepting verdict.
 - **Review-repair runner** preserves the initial review and shows the Implementer only the original
   candidate plus structured public findings and verification evidence. Exact edits may be applied
   to an isolated patched worktree and folded by Git into one complete replacement Patch against the
   same Base Commit; a raw fallback must already be a complete replacement. A fresh Harness owns the
   final gate.
-- **Issue-to-PR runner** assigns a bounded Fix-stage budget inside one outer deadline, routes only an
+- **Issue-to-PR runner** assigns separate bounded Implementer and Reviewer read budgets inside one
+  outer deadline, routes only an
   accepted Fix, constructs the Reviewer only when the effective route is `review`, and constructs
   the repair Implementer only after a `request_changes` verdict. A selective `skip` copies the
   byte-identical verified Fix Patch to the delivery root;

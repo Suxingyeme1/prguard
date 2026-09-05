@@ -3,6 +3,41 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.13.2 — 2026-09-05
+
+### Added
+
+- Independent Review now receives bounded, deterministic Base/Candidate Python compatibility
+  signals for changed public callables, signatures, protocol methods, class bases, and `__all__`;
+- compatibility signals are persisted in JSON and Markdown Review artifacts for audit and replay.
+
+### Changed
+
+- Issue-to-PR tasks separate the Implementer read budget (24 by default) from the Independent
+  Reviewer read budget (12 by default), with distinct CLI overrides;
+- schema/Review/Review-repair/Issue-to-PR contracts advance to
+  `1.2.0`/`review-v5`/`review-repair-v7`/`issue-to-pr-v8`.
+
+### Safety
+
+- compatibility analysis is read-only, size-bounded, excludes test modules, and supplies review
+  prompts rather than automatically classifying a Patch as defective.
+
+## 0.13.1 — 2026-09-05
+
+### Changed
+
+- bounded terminal submission prevents provider read loops from consuming the final structured
+  response turn;
+- changed-test Base probes accept only pytest assertion-failure exit code 1, rejecting collection,
+  import, plugin, and syntax failures as invalid FAIL_TO_PASS evidence;
+- Reviewer guidance explicitly checks public default compatibility against the Base Commit.
+
+### Evidence
+
+- FileLock #606 passed its public gate and was accepted by the Reviewer, but failed a sealed
+  compatibility evaluator; the run is frozen as a false accept and unresolved task.
+
 ## 0.13.0 — 2026-09-04
 
 ### Added

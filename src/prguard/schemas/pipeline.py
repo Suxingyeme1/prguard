@@ -33,6 +33,7 @@ class IssueToPRTask(FixTask):
     task_timeout_seconds: float = Field(default=1200, gt=0, le=7200)
     fix_timeout_seconds: float = Field(default=600, gt=0, le=3600)
     review_timeout_seconds: float = Field(default=300, gt=0, le=3600)
+    review_max_tool_calls: int = Field(default=12, ge=1, le=100)
     review_routing_mode: ReviewRoutingMode = ReviewRoutingMode.ALWAYS
 
     @model_validator(mode="after")

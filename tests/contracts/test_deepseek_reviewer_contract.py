@@ -102,7 +102,12 @@ def test_deepseek_reviewer_has_independent_bounded_context(tmp_path: Path) -> No
     completions = FakeReviewerCompletions()
     client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
     envelope = DeepSeekReviewerProvider(client=client, model="test-model").review(
-        ReviewProviderRequest(task=task, candidate_patch=patch, verification=verification),
+        ReviewProviderRequest(
+            task=task,
+            candidate_patch=patch,
+            verification=verification,
+            compatibility_signals=("service.normalize: public implementation changed",),
+        ),
         RepositoryTools(tmp_path, task),
     )
 
@@ -119,6 +124,9 @@ def test_deepseek_reviewer_has_independent_bounded_context(tmp_path: Path) -> No
     assert "implementer" not in serialized.casefold()
     assert "gold_patch" not in serialized.casefold()
     assert "hidden" not in serialized.casefold()
+    assert public_payload["compatibility_signals"] == [
+        "service.normalize: public implementation changed"
+    ]
     assert "tool_choice" not in completions.requests[0]
     tool_names = [
         item["function"]["name"] for item in completions.requests[0]["tools"]
@@ -132,7 +140,7 @@ def test_deepseek_reviewer_has_independent_bounded_context(tmp_path: Path) -> No
     budget = json.loads(completions.requests[1]["messages"][-1]["content"])[
         "_prguard_budget"
     ]
-    assert budget["read_tool_calls_remaining"] == 23
+    assert budget["read_tool_calls_remaining"] == 11
 
 
 def test_reviewer_budget_failure_preserves_partial_evidence(tmp_path: Path) -> None:

@@ -375,9 +375,11 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.13.1 adds bounded terminal submission, rejects collection/import errors as changed-test
-FAIL_TO_PASS evidence, and makes public default compatibility an explicit Reviewer concern. The
-complete Click green-gate Review-and-repair evidence remains frozen. See the
+Version 0.13.2 gives the Independent Reviewer its own smaller read budget and supplies bounded,
+deterministic Base/Candidate Python compatibility signals before model review. Those signals are
+audited in the Review report but never become automatic defect verdicts. The complete Click
+green-gate Review-and-repair evidence remains frozen. See the
+[v0.13.2 phase report](docs/v0.13.2-phase-report.md),
 [v0.13.1 phase report](docs/v0.13.1-phase-report.md),
 [guided terminal guide](docs/local-onboarding.md),
 [v0.11.1 phase report](docs/v0.11.1-phase-report.md),
@@ -387,7 +389,8 @@ complete Click green-gate Review-and-repair evidence remains frozen. See the
 [FileLock holdout evidence](evidence/filelock-606-holdout/README.md). FileLock #606 produced an
 honest false accept: the public gate and independent Reviewer accepted a breaking default that the
 sealed evaluator rejected. The next priority is a fresh compatibility-focused holdout plus broader
-Python repository-policy coverage—not another Agent role or a rerun of the contaminated case.
+Python-version/repository-policy coverage—not another Agent role or a rerun of the contaminated
+case.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

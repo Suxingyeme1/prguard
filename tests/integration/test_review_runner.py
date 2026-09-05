@@ -166,6 +166,13 @@ def test_clean_patch_and_empty_review_accept(make_repo, tmp_path: Path) -> None:
     assert report.verdict is Verdict.ACCEPT
     assert report.verification.commands[0].passed is True
     assert report.review.submission.findings == []
+    assert any("calc.add" in signal for signal in report.compatibility_signals)
+    artifact_root = Path(report.artifact_directory)
+    serialized_report = json.loads((artifact_root / "review-report.json").read_text())
+    assert serialized_report["compatibility_signals"] == report.compatibility_signals
+    assert "Deterministic compatibility signals" in (
+        artifact_root / "review-report.md"
+    ).read_text()
 
 
 @pytest.mark.integration
@@ -350,6 +357,8 @@ def test_review_cli_reuses_frozen_fix_task_with_candidate_patch(
             "scripted",
             "--scripted-review",
             str(review_path),
+            "--max-tool-calls",
+            "7",
             "--artifacts",
             str(tmp_path / "review-from-fix-artifacts"),
         ]
@@ -359,3 +368,9 @@ def test_review_cli_reuses_frozen_fix_task_with_candidate_patch(
     assert exit_code == 0
     assert output["case_id"] == "review-from-fix-task-review"
     assert output["verdict"] == "accept"
+    frozen_task = json.loads(
+        (Path(output["artifact_directory"]) / "review-task.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert frozen_task["max_tool_calls"] == 7

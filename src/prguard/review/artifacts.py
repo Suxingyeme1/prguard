@@ -31,6 +31,9 @@ def render_review_markdown(report: ReviewReport) -> str:
         lines.append(f"  - Verify: {finding.verification}")
     if not findings:
         lines.append("- None")
+    if report.compatibility_signals:
+        lines.extend(["", "## Deterministic compatibility signals", ""])
+        lines.extend(f"- {signal}" for signal in report.compatibility_signals)
     if report.provider_failure:
         usage = report.provider_failure.token_usage
         lines.extend(

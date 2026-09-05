@@ -44,7 +44,7 @@ class ReviewTask(StrictModel):
     command_timeout_seconds: float = Field(default=120, gt=0, le=3600)
     task_timeout_seconds: float = Field(default=900, gt=0, le=7200)
     max_output_bytes: int = Field(default=200_000, ge=1024, le=10_000_000)
-    max_tool_calls: int = Field(default=24, ge=1, le=100)
+    max_tool_calls: int = Field(default=12, ge=1, le=100)
     max_file_bytes: int = Field(default=250_000, ge=1024, le=1_000_000)
     max_context_bytes: int = Field(default=500_000, ge=4096, le=5_000_000)
     container: ContainerExecutionSpec | None = None
@@ -118,6 +118,7 @@ class ReviewReport(StrictModel):
     verification: HarnessReport | None = None
     review: ReviewEnvelope | None = None
     provider_failure: ProviderFailureEvidence | None = None
+    compatibility_signals: list[str] = Field(default_factory=list, max_length=50)
     error: str | None = None
     token_usage: TokenUsage = Field(default_factory=TokenUsage)
     duration_seconds: float = Field(ge=0)

@@ -14,6 +14,7 @@ from prguard.harness.readiness import readiness_commands, readiness_failure_boun
 from prguard.implementer.errors import ImplementerError, ProviderError
 from prguard.implementer.tools import RepositoryTools
 from prguard.review.artifacts import finalize_review_artifacts
+from prguard.reviewer.compatibility import analyze_python_compatibility
 from prguard.reviewer.providers import ReviewerProvider, ReviewProviderRequest
 from prguard.schemas import (
     ProviderFailureEvidence,
@@ -41,6 +42,7 @@ class ReviewRunner:
         run_directory = self.artifact_root / run_id
         run_directory.mkdir(parents=True, exist_ok=False)
         review_worktree = run_directory / "_review_worktree"
+        base_review_worktree = run_directory / "_review_base_worktree"
         started = time.monotonic()
         deadline = started + task.task_timeout_seconds
         patch_bytes = b""
@@ -48,12 +50,14 @@ class ReviewRunner:
         verification = None
         envelope = None
         provider_failure = None
+        compatibility_signals: list[str] = []
         resolved_commit = None
         error = None
         outcome = ReviewOutcome.PREFLIGHT_FAILED
         verdict = Verdict.FAILED
         repository = GitRepository(task.repository)
         registered = False
+        base_registered = False
         try:
             patch_bytes = task.candidate_patch.expanduser().resolve().read_bytes()
             base_commands = readiness_commands(task.commands)
@@ -116,6 +120,8 @@ class ReviewRunner:
                 if remaining <= 0:
                     raise ImplementerError("task deadline expired before Reviewer call")
                 resolved_commit = repository.preflight(task.base_commit, deadline=deadline)
+                repository.add_worktree(base_review_worktree, resolved_commit, deadline=deadline)
+                base_registered = True
                 repository.add_worktree(review_worktree, resolved_commit, deadline=deadline)
                 registered = True
                 applied, patch_error = apply_patch(
@@ -123,11 +129,18 @@ class ReviewRunner:
                 )
                 if not applied:
                     raise ImplementerError(f"unable to prepare review worktree: {patch_error}")
+                compatibility_signals = analyze_python_compatibility(
+                    base_review_worktree,
+                    review_worktree,
+                    verification.changed_files,
+                    max_file_bytes=task.max_file_bytes,
+                )
                 envelope = self.provider.review(
                     ReviewProviderRequest(
                         task=task,
                         candidate_patch=patch_bytes.decode("utf-8", errors="replace"),
                         verification=verification,
+                        compatibility_signals=tuple(compatibility_signals),
                         deadline_monotonic=deadline,
                     ),
                     RepositoryTools(review_worktree, task),
@@ -163,7 +176,15 @@ class ReviewRunner:
                     error = f"cleanup failed: {exc}"
                     outcome = ReviewOutcome.POLICY_BLOCKED
                     verdict = Verdict.FAILED
+            if base_registered:
+                try:
+                    repository.remove_worktree(base_review_worktree)
+                except Exception as exc:
+                    error = f"cleanup failed: {exc}"
+                    outcome = ReviewOutcome.POLICY_BLOCKED
+                    verdict = Verdict.FAILED
             shutil.rmtree(review_worktree, ignore_errors=True)
+            shutil.rmtree(base_review_worktree, ignore_errors=True)
         report = ReviewReport(
             run_id=run_id,
             case_id=task.case_id,
@@ -174,6 +195,7 @@ class ReviewRunner:
             verification=verification,
             review=envelope,
             provider_failure=provider_failure,
+            compatibility_signals=compatibility_signals,
             error=error,
             token_usage=(
                 envelope.token_usage

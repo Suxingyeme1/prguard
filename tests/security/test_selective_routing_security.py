@@ -86,7 +86,12 @@ def _task(
 
 def _as_fix_task(task: IssueToPRTask) -> FixTask:
     payload = task.model_dump(
-        exclude={"fix_timeout_seconds", "review_timeout_seconds", "review_routing_mode"}
+        exclude={
+            "fix_timeout_seconds",
+            "review_timeout_seconds",
+            "review_max_tool_calls",
+            "review_routing_mode",
+        }
     )
     payload["task_timeout_seconds"] = task.fix_timeout_seconds
     return FixTask.model_validate(payload)

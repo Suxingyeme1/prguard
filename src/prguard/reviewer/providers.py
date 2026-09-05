@@ -37,6 +37,7 @@ class ReviewProviderRequest:
     task: ReviewTask
     candidate_patch: str
     verification: HarnessReport
+    compatibility_signals: tuple[str, ...] = ()
     deadline_monotonic: float | None = None
 
 
@@ -199,6 +200,7 @@ class DeepSeekReviewerProvider:
             "base_commit": request.task.base_commit,
             "issue": request.task.issue,
             "candidate_patch": request.candidate_patch,
+            "compatibility_signals": list(request.compatibility_signals),
             "verification": {
                 "outcome": verification.outcome.value,
                 "changed_files": verification.changed_files,

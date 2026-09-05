@@ -120,10 +120,38 @@ class RecordingReviewer:
     def __init__(self, inner: ScriptedReviewerProvider) -> None:
         self.inner = inner
         self.calls = 0
+        self.read_budgets: list[int] = []
 
     def review(self, request, tools):
         self.calls += 1
+        self.read_budgets.append(request.task.max_tool_calls)
         return self.inner.review(request, tools)
+
+
+@pytest.mark.integration
+def test_reviewer_read_budget_is_independent_from_implementer_budget(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = _repo(make_repo)
+    reviewer = RecordingReviewer(
+        ScriptedReviewerProvider(
+            ReviewerSubmission(summary="No evidence-backed defects.", findings=[])
+        )
+    )
+    task = _task(repo, commit, "independent-review-budget").model_copy(
+        update={"max_tool_calls": 23, "review_max_tool_calls": 7}
+    )
+
+    report = IssueToPRRunner(
+        tmp_path / "artifacts",
+        ScriptedProvider([_proposal(_correct_patch(), "Implement complete behavior")]),
+        reviewer,
+        ScriptedProvider([_proposal(_correct_patch(), "Must remain unused")]),
+    ).run(task)
+
+    assert report.outcome is IssueToPROutcome.ACCEPTED
+    assert reviewer.read_budgets == [7]
+    assert report.fix.attempts[0].proposal is not None
 
 
 @pytest.mark.integration
@@ -365,6 +393,8 @@ def test_fix_review_cli_scripted(make_repo, tmp_path: Path, capsys) -> None:
             "scripted",
             "--scripted-review",
             str(review_path),
+            "--review-max-tool-calls",
+            "6",
             "--review-repair-provider",
             "scripted",
             "--review-repair-proposal-sequence",
@@ -377,6 +407,13 @@ def test_fix_review_cli_scripted(make_repo, tmp_path: Path, capsys) -> None:
     assert exit_code == 0
     assert output["outcome"] == "accepted"
     assert output["review_repair"]["outcome"] == "accepted_after_repair"
+    frozen_review_tasks = list(
+        Path(output["artifact_directory"]).rglob("review-task.json")
+    )
+    assert len(frozen_review_tasks) == 1
+    assert json.loads(frozen_review_tasks[0].read_text(encoding="utf-8"))[
+        "max_tool_calls"
+    ] == 6
 
 
 @pytest.mark.integration
@@ -478,3 +515,10 @@ def test_review_policy_without_review_is_rejected(capsys) -> None:
 
     assert exit_code == 2
     assert "--review-policy requires --review" in capsys.readouterr().err
+
+
+def test_reviewer_budget_without_review_is_rejected(capsys) -> None:
+    exit_code = main(["fix", "unused.json", "--review-max-tool-calls", "7"])
+
+    assert exit_code == 2
+    assert "--review-max-tool-calls requires --review" in capsys.readouterr().err

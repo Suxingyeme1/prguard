@@ -167,7 +167,11 @@ def load_review_repair_task(path: Path) -> ReviewRepairTask:
 
 
 def review_task_from_fix_task(
-    path: Path, candidate_patch: Path, *, repair: bool
+    path: Path,
+    candidate_patch: Path,
+    *,
+    repair: bool,
+    max_tool_calls: int | None = None,
 ) -> ReviewTask | ReviewRepairTask:
     fix = load_fix_task(path)
     common: dict[str, object] = {
@@ -182,7 +186,11 @@ def review_task_from_fix_task(
         "command_timeout_seconds": fix.command_timeout_seconds,
         "task_timeout_seconds": fix.task_timeout_seconds,
         "max_output_bytes": fix.max_output_bytes,
-        "max_tool_calls": fix.max_tool_calls,
+        "max_tool_calls": (
+            max_tool_calls
+            if max_tool_calls is not None
+            else ReviewTask.model_fields["max_tool_calls"].default
+        ),
         "max_file_bytes": fix.max_file_bytes,
         "max_context_bytes": fix.max_context_bytes,
         "container": fix.container,
@@ -379,6 +387,12 @@ def build_parser() -> argparse.ArgumentParser:
     fix.add_argument("--review-provider", choices=("deepseek", "scripted"), default="deepseek")
     fix.add_argument("--review-model")
     fix.add_argument("--review-reasoning-effort", default="high")
+    fix.add_argument(
+        "--review-max-tool-calls",
+        type=int,
+        choices=range(1, 101),
+        help="Reviewer-only repository read budget (default: 12)",
+    )
     fix.add_argument("--scripted-review", type=Path)
     fix.add_argument("--review-repair-provider", choices=("deepseek", "openai", "scripted"))
     fix.add_argument("--review-repair-model")
@@ -395,6 +409,12 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--provider", choices=("deepseek", "scripted"), default="deepseek")
     review.add_argument("--model")
     review.add_argument("--reasoning-effort", default="high")
+    review.add_argument(
+        "--max-tool-calls",
+        type=int,
+        choices=range(1, 101),
+        help="Reviewer repository read budget (default: 12)",
+    )
     review.add_argument("--scripted-review", type=Path)
     review.add_argument(
         "--repair",
@@ -592,6 +612,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if args.review_policy is not None and not args.review:
                 raise ProviderError("--review-policy requires --review")
+            if args.review_max_tool_calls is not None and not args.review:
+                raise ProviderError("--review-max-tool-calls requires --review")
             target = args.task
             is_url = target is not None and target.startswith("https://github.com/")
             is_local_issue = args.repository is not None or args.issue_file is not None
@@ -685,6 +707,10 @@ def main(argv: list[str] | None = None) -> int:
             if args.review and args.review_policy is not None:
                 task = task.model_copy(
                     update={"review_routing_mode": ReviewRoutingMode(args.review_policy)}
+                )
+            if args.review and args.review_max_tool_calls is not None:
+                task = task.model_copy(
+                    update={"review_max_tool_calls": args.review_max_tool_calls}
                 )
             if args.provider == "scripted":
                 if args.proposal_sequence is None:
@@ -795,10 +821,17 @@ def main(argv: list[str] | None = None) -> int:
                 )
             if args.repair:
                 task = (
-                    review_task_from_fix_task(args.task, args.candidate_patch, repair=True)
+                    review_task_from_fix_task(
+                        args.task,
+                        args.candidate_patch,
+                        repair=True,
+                        max_tool_calls=args.max_tool_calls,
+                    )
                     if args.candidate_patch is not None
                     else load_review_repair_task(args.task)
                 )
+                if args.candidate_patch is None and args.max_tool_calls is not None:
+                    task = task.model_copy(update={"max_tool_calls": args.max_tool_calls})
                 if args.repair_provider == "scripted":
                     if args.repair_proposal_sequence is None:
                         raise ProviderError(
@@ -818,10 +851,17 @@ def main(argv: list[str] | None = None) -> int:
                 report = ReviewRepairRunner(args.artifacts, provider, implementer).run(task)
             else:
                 task = (
-                    review_task_from_fix_task(args.task, args.candidate_patch, repair=False)
+                    review_task_from_fix_task(
+                        args.task,
+                        args.candidate_patch,
+                        repair=False,
+                        max_tool_calls=args.max_tool_calls,
+                    )
                     if args.candidate_patch is not None
                     else load_review_task(args.task)
                 )
+                if args.candidate_patch is None and args.max_tool_calls is not None:
+                    task = task.model_copy(update={"max_tool_calls": args.max_tool_calls})
                 report = ReviewRunner(args.artifacts, provider).run(task)
         except ProviderError as exc:
             print(f"review configuration failed: {exc}", file=sys.stderr)

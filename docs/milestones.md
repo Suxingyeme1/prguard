@@ -253,6 +253,14 @@ rather than converted into a success claim. See the
 [v0.13.1 phase report](v0.13.1-phase-report.md) and
 [FileLock evidence](../evidence/filelock-606-holdout/README.md).
 
+The twenty-first increment converts that false accept into a general, deterministic review input
+without tuning on the contaminated case again. Independent Review now receives a read-only,
+size-bounded Base/Candidate AST comparison for changed public Python callables, default-bearing
+signatures, protocol methods, class bases, and exports. Signals are archived but do not themselves
+block a Patch. Implementer and Reviewer read budgets are now independently configured, defaulting
+to 24 and 12 calls respectively. See the [v0.13.2 phase report](v0.13.2-phase-report.md) and
+[ADR 0027](adr/0027-compatibility-signals-inform-but-do-not-decide.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

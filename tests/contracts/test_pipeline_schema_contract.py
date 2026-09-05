@@ -31,7 +31,17 @@ def test_issue_to_pr_defaults_to_compatible_always_review(tmp_path: Path) -> Non
     task = _task(tmp_path)
 
     assert task.review_routing_mode is ReviewRoutingMode.ALWAYS
-    assert ISSUE_TO_PR_WORKFLOW_VERSION == "issue-to-pr-v7"
+    assert task.max_tool_calls == 24
+    assert task.review_max_tool_calls == 12
+    assert ISSUE_TO_PR_WORKFLOW_VERSION == "issue-to-pr-v8"
+
+
+@pytest.mark.parametrize("value", [0, 101])
+def test_issue_to_pr_rejects_invalid_reviewer_read_budget(
+    tmp_path: Path, value: int
+) -> None:
+    with pytest.raises(ValidationError):
+        _task(tmp_path, review_max_tool_calls=value)
 
 
 @pytest.mark.parametrize("mode", list(ReviewRoutingMode))

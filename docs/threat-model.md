@@ -36,10 +36,11 @@ occurs in a detached worktree.
 | Reviewer anchoring on Implementer | fresh provider context excludes Implementer plan/reasoning | shared model family may have correlated blind spots |
 | Reviewer anchoring on routing heuristics | routing score, factors, and recommendation remain Harness artifacts and are excluded from Reviewer context | Reviewer still sees the same Patch and verification evidence that informed deterministic factors |
 | Reviewer false authority | findings require evidence; Harness and severity policy own verdict | plausible but false evidence still needs human review |
+| Static compatibility signal treated as a defect | Base/Candidate AST deltas are labelled attention cues, archived separately, and never block without an evidence-backed finding | dynamic behavior and noisy public-surface signals still require Reviewer/human judgment |
 | Finding-to-repair prompt injection | only validated structured fields are serialized; Implementer retains fixed instructions and bounded tools | malicious repository text can still influence both models |
 | Incremental-patch ambiguity | repair must be a complete diff against the immutable Base Commit and is applied in a fresh Harness worktree | semantic omission can still pass incomplete public tests |
 | Reviewer-triggered token loop | exactly one repair proposal and one final gate | one live repair can still be expensive |
-| Composed workflow budget exhaustion | one outer deadline plus smaller Fix and Reviewer budgets | up to three Implementer proposals remain possible across both stages |
+| Composed workflow budget exhaustion | one outer deadline plus independent Implementer and Reviewer read budgets | up to three Implementer proposals remain possible across both stages |
 | GitHub URL/metadata spoofing | canonical HTTPS Issue URLs, fixed API host, redirect denial, PR/private rejection, full commit SHA | GitHub/API availability and account compromise |
 | Repository config command injection | `.prguard.toml` commands pass the built-in pytest/Ruff argv grammar | approved pytest/Ruff code still executes repository code |
 | Environment failure misdiagnosed as Patch failure | Base pytest targets must collect before any model call | collection can pass while later runtime dependencies still fail |

@@ -107,6 +107,7 @@ def _as_fix_task(task: IssueToPRTask, timeout_seconds: float) -> FixTask:
         exclude={
             "fix_timeout_seconds",
             "review_timeout_seconds",
+            "review_max_tool_calls",
             "review_routing_mode",
         }
     )
@@ -133,7 +134,7 @@ def _as_review_repair_task(
         command_timeout_seconds=task.command_timeout_seconds,
         task_timeout_seconds=timeout_seconds,
         max_output_bytes=task.max_output_bytes,
-        max_tool_calls=task.max_tool_calls,
+        max_tool_calls=task.review_max_tool_calls,
         max_file_bytes=task.max_file_bytes,
         max_context_bytes=task.max_context_bytes,
         max_patch_bytes=task.max_patch_bytes,
