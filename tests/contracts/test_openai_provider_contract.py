@@ -215,3 +215,7 @@ def test_openai_budget_failure_preserves_partial_evidence(tmp_path: Path) -> Non
     assert [call.name for call in evidence.tool_calls] == ["list_files"]
     assert evidence.token_usage.input_tokens == 20
     assert evidence.token_usage.output_tokens == 10
+    assert evidence.provider_metadata["terminal_submission_forced"] == "true"
+    assert {
+        tool["name"] for tool in responses.requests[1]["tools"]
+    } == {"submit_edits", "submit_patch"}

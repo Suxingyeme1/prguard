@@ -1,6 +1,7 @@
 {
   "schema_version": "prguard-heldout-case-1",
   "frozen_at": "2026-09-04",
+  "evaluated_at": "2026-09-05",
   "repository": "https://github.com/tox-dev/filelock",
   "issue": "https://github.com/tox-dev/filelock/issues/606",
   "upstream_base_commit": "94a80aa72b07bf810e5e7fed4b89eed137e8a9f9",
@@ -31,9 +32,56 @@
     "raw_manifest_verified": true
   },
   "live_implementer": {
-    "status": "pending",
-    "reason": "no_reachable_authorized_provider_runtime",
+    "status": "completed_controlled_resume",
+    "provider": "deepseek-v4-pro",
+    "original_candidate_run_id": "ee59d76c-7835-479c-babe-428871acbe5d",
+    "repair_run_id": "e2e2901f-c9dd-4d85-b350-e69866381c68",
+    "attempt_0_source": "exact_replay_of_frozen_live_candidate",
+    "attempt_1_source": "live_provider_repair",
+    "attempt_0_outcome": "policy_blocked_changed_tests_base_probe_invalid",
+    "attempt_1_outcome": "passed_public_gate",
+    "candidate_patch_sha256": "d0dbf284a49644f6ad2f4633e6a6e5b01c58acd095d018eaf7444144f5116986",
+    "fix_manifest_sha256": "3d25cf45181f37593147bcd4840e85732fdadd3a3e556eaf98fcade7e7dbfff1",
+    "fix_manifest_verified": true,
+    "base_probe": {
+      "exit_code": 1,
+      "failed": 8,
+      "passed": 16
+    },
+    "candidate_gate": {
+      "passed": 563,
+      "skipped": 33,
+      "warnings": 6,
+      "changed_tests_passed": 24
+    },
+    "duration_seconds": 333.266173,
+    "input_tokens": 232637,
+    "output_tokens": 18727,
+    "cached_tokens": 180224,
     "accepted_patch_claimed": false
   },
-  "claim_boundary": "Frozen held-out preparation and deterministic Base readiness only; not live-model Issue resolution evidence."
+  "independent_reviewer": {
+    "status": "reviewed",
+    "run_id": "1d3c2885-e795-45de-9fbf-dd99ee073b73",
+    "read_budget": 12,
+    "verdict": "accept",
+    "finding_count": 2,
+    "blocking_finding_count": 0,
+    "review_manifest_sha256": "1866137be85848fe4972a385448af460c2e4c2666467acfb7588bb7b272d8ce7",
+    "review_manifest_verified": true,
+    "terminal_protocol_recoveries": 1,
+    "duration_seconds": 172.8929043750004,
+    "input_tokens": 94360,
+    "output_tokens": 6156,
+    "cached_tokens": 67840
+  },
+  "sealed_evaluator": {
+    "attached_after_fix_and_review": true,
+    "outcome": "failed",
+    "failure_stage": "test_collection",
+    "failure_reason": "candidate omitted the public opt-in policy API and changed the legacy default behavior",
+    "task_resolved": false,
+    "reviewer_false_accept": true
+  },
+  "claim_boundary": "Live DeepSeek Fix and independent Review were executed and hash-verified, but the sealed evaluator rejected the candidate; this is false-accept evidence, not Task Resolution success."
 }

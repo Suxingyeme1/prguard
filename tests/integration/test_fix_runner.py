@@ -226,6 +226,133 @@ class RecordingProvider:
 
 
 @pytest.mark.integration
+def test_fix_repairs_one_structured_edit_conflict(
+    materialized_fix_cases: dict[str, Path], tmp_path: Path
+) -> None:
+    case = materialized_fix_cases["direct-success"]
+    task = load_fix_task(case).model_copy(update={"max_repair_attempts": 1})
+    rejected = ImplementerProposal.model_validate(
+        {
+            "plan": ["Replace the normalization expression."],
+            "summary": "First targeting attempt.",
+            "edits": [
+                {
+                    "operation": "replace_text",
+                    "path": "slug.py",
+                    "old_text": "    return missing_expression\n",
+                    "new_text": '    return "-".join(value.strip().lower().split())\n',
+                }
+            ],
+            "tests_changed": False,
+        }
+    )
+    corrected = ImplementerProposal.model_validate(
+        {
+            "plan": ["Re-read and target the exact normalization expression."],
+            "summary": "Corrected targeting attempt.",
+            "edits": [
+                {
+                    "operation": "replace_text",
+                    "path": "slug.py",
+                    "old_text": '    return value.strip().lower().replace(" ", "-")\n',
+                    "new_text": '    return "-".join(value.strip().lower().split())\n',
+                }
+            ],
+            "tests_changed": False,
+        }
+    )
+    provider = RecordingProvider(ScriptedProvider([rejected, corrected]))
+
+    report = FixRunner(tmp_path / "edit-conflict-artifacts", provider).run(task)
+
+    assert report.outcome is FixOutcome.ACCEPTED
+    assert len(report.attempts) == 2
+    assert "found 0 matches" in report.attempts[0].error
+    feedback = json.loads(provider.requests[1].feedback)
+    assert feedback["outcome"] == "proposal_edit_conflict"
+    assert feedback["previous_proposal"]["edits"][0]["path"] == "slug.py"
+    assert "gold_patch" not in provider.requests[1].feedback
+
+
+@pytest.mark.integration
+def test_fix_repairs_invalid_changed_test_base_evidence(make_repo, tmp_path: Path) -> None:
+    repo, commit = make_repo(
+        {
+            "src/app.py": "def value():\n    return 1\n",
+            "tests/test_existing.py": "def test_existing():\n    assert True\n",
+        }
+    )
+    command = ["pytest", "-q", "tests/test_existing.py"]
+    task = FixTask(
+        case_id="repair-invalid-base-test-evidence",
+        repository=repo,
+        base_commit=commit,
+        issue="Return two and add regression coverage.",
+        commands=[CommandSpec(argv=command, kind="pytest")],
+        allowed_commands=[command],
+        writable_paths=["src/**", "tests/**"],
+        max_repair_attempts=1,
+    )
+    invalid = ImplementerProposal.model_validate(
+        {
+            "plan": ["Change value and add a test."],
+            "summary": "The test imports a candidate-only symbol.",
+            "edits": [
+                {
+                    "operation": "replace_text",
+                    "path": "src/app.py",
+                    "old_text": "def value():\n    return 1\n",
+                    "new_text": "def value():\n    return 2\n\nNEW_API = 2\n",
+                },
+                {
+                    "operation": "create_file",
+                    "path": "tests/test_generated.py",
+                    "content": (
+                        "from app import NEW_API\n\n"
+                        "def test_new_api():\n    assert NEW_API == 2\n"
+                    ),
+                },
+            ],
+            "tests_changed": True,
+        }
+    )
+    corrected = ImplementerProposal.model_validate(
+        {
+            "plan": ["Change value and test the existing public function."],
+            "summary": "The corrected test collects on Base and fails its assertion.",
+            "edits": [
+                {
+                    "operation": "replace_text",
+                    "path": "src/app.py",
+                    "old_text": "def value():\n    return 1\n",
+                    "new_text": "def value():\n    return 2\n",
+                },
+                {
+                    "operation": "create_file",
+                    "path": "tests/test_generated.py",
+                    "content": (
+                        "from app import value\n\n"
+                        "def test_value():\n    assert value() == 2\n"
+                    ),
+                },
+            ],
+            "tests_changed": True,
+        }
+    )
+    provider = RecordingProvider(ScriptedProvider([invalid, corrected]))
+
+    report = FixRunner(tmp_path / "base-evidence-repair", provider).run(task)
+
+    assert report.outcome is FixOutcome.ACCEPTED
+    assert len(report.attempts) == 2
+    assert report.attempts[0].verification.outcome is RunOutcome.POLICY_BLOCKED
+    feedback = json.loads(provider.requests[1].feedback)
+    assert feedback["policy_violations"][0]["code"] == "changed_tests_base_probe_invalid"
+    assert feedback["changed_test_base_results"][0]["exit_code"] == 2
+    assert report.attempts[1].verification.changed_test_base_results[0].exit_code == 1
+
+
+@pytest.mark.integration
 def test_repair_receives_only_structured_failure_evidence(
     materialized_fix_cases: dict[str, Path], tmp_path: Path
 ) -> None:

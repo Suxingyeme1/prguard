@@ -375,15 +375,19 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.13.0 adds a guided real-repository terminal entry, hash-guarded range/symbol editing, and
-a Base-probe requirement for executable Agent-authored tests. The complete Click green-gate
-Review-and-repair evidence remains frozen. See the [guided terminal guide](docs/local-onboarding.md),
+Version 0.13.1 adds bounded terminal submission, rejects collection/import errors as changed-test
+FAIL_TO_PASS evidence, and makes public default compatibility an explicit Reviewer concern. The
+complete Click green-gate Review-and-repair evidence remains frozen. See the
+[v0.13.1 phase report](docs/v0.13.1-phase-report.md),
+[guided terminal guide](docs/local-onboarding.md),
 [v0.11.1 phase report](docs/v0.11.1-phase-report.md),
 [local onboarding guide](docs/local-onboarding.md),
 [ADR 0023](docs/adr/0023-local-issues-freeze-before-agent-execution.md), and
-[controlled-repair evidence](evidence/click-controlled-repair/README.md). The next priority is
-one live FileLock holdout run when an authorized provider is reachable, followed by a few more
-labelled shadow cases and broader Python repository-policy coverage—not another Agent role.
+[controlled-repair evidence](evidence/click-controlled-repair/README.md), and
+[FileLock holdout evidence](evidence/filelock-606-holdout/README.md). FileLock #606 produced an
+honest false accept: the public gate and independent Reviewer accepted a breaking default that the
+sealed evaluator rejected. The next priority is a fresh compatibility-focused holdout plus broader
+Python repository-policy coverage—not another Agent role or a rerun of the contaminated case.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

@@ -405,6 +405,7 @@ _SUBMIT_EDITS: dict[str, object] = {
 }
 
 _TOOLS: list[dict[str, object]] = [*_READ_TOOLS, _SUBMIT_EDITS, _SUBMIT_PATCH]
+_TERMINAL_TOOLS: list[dict[str, object]] = [_SUBMIT_EDITS, _SUBMIT_PATCH]
 
 _INSTRUCTIONS = """You are PRGuard's single Implementer for a real local repository.
 Inspect the repository using the bounded text and Python AST navigation tools. Use AST symbol,
@@ -596,7 +597,13 @@ class OpenAIResponsesProvider:
             "api": "responses",
             "reasoning_effort": self.reasoning_effort,
         }
-        for _turn in range(request.task.max_tool_calls + 1):
+        # One extra response is reserved after the read budget becomes exhausted. The
+        # initial response does not necessarily consume a read call, so keep one turn
+        # of headroom beyond that terminal-only response.
+        for _turn in range(request.task.max_tool_calls + 2):
+            terminal_only = len(calls) >= request.task.max_tool_calls
+            if terminal_only:
+                provider_metadata["terminal_submission_forced"] = "true"
             try:
                 timeout = None
                 if request.deadline_monotonic is not None:
@@ -605,7 +612,7 @@ class OpenAIResponsesProvider:
                     model=self.model,
                     instructions=_INSTRUCTIONS,
                     input=input_messages,
-                    tools=_TOOLS,
+                    tools=_TERMINAL_TOOLS if terminal_only else _TOOLS,
                     reasoning={"effort": self.reasoning_effort},
                     store=False,
                     timeout=timeout,
@@ -810,7 +817,11 @@ class DeepSeekChatProvider:
             "reasoning_effort": self.reasoning_effort,
             "thinking": "enabled",
         }
-        for _turn in range(request.task.max_tool_calls + 1):
+        # See the Responses adapter above: the final turn exposes submission tools only.
+        for _turn in range(request.task.max_tool_calls + 2):
+            terminal_only = len(calls) >= request.task.max_tool_calls
+            if terminal_only:
+                provider_metadata["terminal_submission_forced"] = "true"
             timeout = None
             if request.deadline_monotonic is not None:
                 timeout = max(0.1, request.deadline_monotonic - time.monotonic())
@@ -818,7 +829,7 @@ class DeepSeekChatProvider:
                 response = self.client.chat.completions.create(  # type: ignore[attr-defined]
                     model=self.model,
                     messages=messages,
-                    tools=_chat_tools(),
+                    tools=_chat_tools(_TERMINAL_TOOLS if terminal_only else _TOOLS),
                     reasoning_effort=self.reasoning_effort,
                     extra_body={"thinking": {"type": "enabled"}},
                     timeout=timeout,

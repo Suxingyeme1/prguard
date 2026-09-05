@@ -187,6 +187,42 @@ def test_deepseek_budget_failure_preserves_partial_evidence(tmp_path: Path) -> N
     assert evidence.token_usage.input_tokens == 22
     assert evidence.token_usage.output_tokens == 14
     assert evidence.provider_metadata["finish_reason"] == "tool_calls"
+    assert evidence.provider_metadata["terminal_submission_forced"] == "true"
+    terminal_names = {
+        tool["function"]["name"] for tool in completions.requests[1]["tools"]
+    }
+    assert terminal_names == {"submit_edits", "submit_patch"}
+
+
+def test_deepseek_final_turn_exposes_only_terminal_submission_tools(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    patch = (
+        "diff --git a/app.py b/app.py\n--- a/app.py\n+++ b/app.py\n"
+        "@@ -1 +1 @@\n-VALUE = 1\n+VALUE = 2\n"
+    )
+    completions = FakeChatCompletions(patch)
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    task = FixTask(
+        case_id="deepseek-terminal-submission",
+        repository=tmp_path,
+        base_commit="a" * 40,
+        issue="Set VALUE to two.",
+        commands=[CommandSpec(argv=["pytest", "-q"], kind="pytest")],
+        allowed_commands=[["pytest", "-q"]],
+        writable_paths=["*.py"],
+        max_tool_calls=1,
+    )
+
+    envelope = DeepSeekChatProvider(client=client, model="test-model").propose(
+        ProviderRequest(task=task, attempt=0), RepositoryTools(tmp_path, task)
+    )
+
+    assert envelope.tool_calls[-1].name == "submit_patch"
+    terminal_names = {
+        tool["function"]["name"] for tool in completions.requests[1]["tools"]
+    }
+    assert terminal_names == {"submit_edits", "submit_patch"}
+    assert envelope.provider_metadata["terminal_submission_forced"] == "true"
 
 
 def test_deepseek_adapter_rejects_unsupported_reasoning_effort() -> None:

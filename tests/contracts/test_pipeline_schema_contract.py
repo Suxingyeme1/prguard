@@ -31,7 +31,7 @@ def test_issue_to_pr_defaults_to_compatible_always_review(tmp_path: Path) -> Non
     task = _task(tmp_path)
 
     assert task.review_routing_mode is ReviewRoutingMode.ALWAYS
-    assert ISSUE_TO_PR_WORKFLOW_VERSION == "issue-to-pr-v6"
+    assert ISSUE_TO_PR_WORKFLOW_VERSION == "issue-to-pr-v7"
 
 
 @pytest.mark.parametrize("mode", list(ReviewRoutingMode))

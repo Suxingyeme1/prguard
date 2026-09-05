@@ -16,7 +16,12 @@ from prguard.harness.errors import HarnessError
 from prguard.harness.git import GitRepository
 from prguard.harness.readiness import readiness_commands, readiness_failure_boundary
 from prguard.implementer.edits import materialize_proposal_patch
-from prguard.implementer.errors import ImplementerError, PatchPolicyError, ProviderError
+from prguard.implementer.errors import (
+    EditConflictError,
+    ImplementerError,
+    PatchPolicyError,
+    ProviderError,
+)
 from prguard.implementer.providers import ImplementerProvider, ProviderRequest
 from prguard.implementer.tools import RepositoryTools
 from prguard.schemas import (
@@ -32,6 +37,10 @@ from prguard.schemas import (
 )
 
 FixProgressCallback = Callable[[str, dict[str, object]], None]
+_REPAIRABLE_VERIFICATION_POLICY_CODES = {
+    "changed_tests_pass_on_base",
+    "changed_tests_base_probe_invalid",
+}
 
 
 def _verification_feedback(attempt: FixAttempt, previous_patch: str) -> str:
@@ -43,6 +52,17 @@ def _verification_feedback(attempt: FixAttempt, previous_patch: str) -> str:
         "outcome": report.outcome.value,
         "changed_files": report.changed_files,
         "policy_violations": [item.model_dump(mode="json") for item in report.policy_violations],
+        "changed_test_base_results": [
+            {
+                "kind": result.kind,
+                "argv": result.argv,
+                "exit_code": result.exit_code,
+                "timed_out": result.timed_out,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+            }
+            for result in report.changed_test_base_results
+        ],
         "commands": [
             {
                 "kind": result.kind,
@@ -55,6 +75,25 @@ def _verification_feedback(attempt: FixAttempt, previous_patch: str) -> str:
             for result in report.commands
             if not result.passed
         ],
+    }
+    return json.dumps(payload, ensure_ascii=False)
+
+
+def _repairable_verification_policy(report) -> bool:
+    codes = {item.code for item in report.policy_violations}
+    return bool(codes) and codes <= _REPAIRABLE_VERIFICATION_POLICY_CODES
+
+
+def _edit_conflict_feedback(attempt: FixAttempt, error: EditConflictError) -> str:
+    assert attempt.proposal is not None
+    payload = {
+        "previous_proposal": attempt.proposal.proposal.model_dump(mode="json"),
+        "outcome": "proposal_edit_conflict",
+        "error": str(error),
+        "instruction": (
+            "Inspect the rejected target, then submit one corrected complete proposal "
+            "against the same Base Commit. All original policy limits still apply."
+        ),
     }
     return json.dumps(payload, ensure_ascii=False)
 
@@ -224,6 +263,17 @@ class FixRunner:
                         break
                     if verification.outcome == RunOutcome.POLICY_BLOCKED:
                         outcome = FixOutcome.POLICY_BLOCKED
+                        if (
+                            attempt_index < task.max_repair_attempts
+                            and _repairable_verification_policy(verification)
+                        ):
+                            feedback = _verification_feedback(attempt, generated_patch)
+                            self._emit(
+                                "repair.requested",
+                                attempt=attempt_index + 1,
+                                failure="candidate_test_evidence_invalid",
+                            )
+                            continue
                         break
                     if verification.outcome is RunOutcome.PREFLIGHT_FAILED:
                         outcome = FixOutcome.PREFLIGHT_FAILED
@@ -239,6 +289,23 @@ class FixRunner:
                             attempt=attempt_index + 1,
                             failure=verification.outcome.value,
                         )
+                except EditConflictError as exc:
+                    attempt.error = str(exc)
+                    self._emit(
+                        "attempt.failed",
+                        attempt=attempt_index,
+                        error_type=type(exc).__name__,
+                    )
+                    outcome = FixOutcome.POLICY_BLOCKED
+                    if attempt_index < task.max_repair_attempts:
+                        feedback = _edit_conflict_feedback(attempt, exc)
+                        self._emit(
+                            "repair.requested",
+                            attempt=attempt_index + 1,
+                            failure="proposal_edit_conflict",
+                        )
+                        continue
+                    break
                 except ImplementerError as exc:
                     attempt.error = str(exc)
                     if isinstance(exc, ProviderError) and isinstance(

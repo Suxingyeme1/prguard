@@ -244,6 +244,15 @@ FAIL_TO_PASS behavior. FileLock #606 is frozen as a new holdout shape; its 539-t
 ready, while the live provider outcome remains honestly pending. See the
 [v0.13.0 phase report](v0.13.0-phase-report.md).
 
+The twentieth increment executes the frozen FileLock #606 holdout with a live DeepSeek Implementer
+and independent Reviewer. It hardens terminal submission, distinguishes pytest assertion failures
+from collection/import errors in Base probes, and adds an explicit compatibility-default review
+check. The candidate passed 563 public tests and the Reviewer accepted it, but the sealed evaluator
+rejected its breaking default behavior. That false accept is preserved as unresolved-task evidence
+rather than converted into a success claim. See the
+[v0.13.1 phase report](v0.13.1-phase-report.md) and
+[FileLock evidence](../evidence/filelock-606-holdout/README.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

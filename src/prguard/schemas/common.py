@@ -11,13 +11,13 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 SCHEMA_VERSION = "1.1.0"
-HARNESS_VERSION = "0.2.0"
+HARNESS_VERSION = "0.2.1"
 POLICY_VERSION = "argv-v3"
-FIX_WORKFLOW_VERSION = "fix-v4"
-ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v6"
+FIX_WORKFLOW_VERSION = "fix-v5"
+ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v7"
 PATCH_POLICY_VERSION = "patch-v2"
-REVIEW_WORKFLOW_VERSION = "review-v3"
-REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v5"
+REVIEW_WORKFLOW_VERSION = "review-v4"
+REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v6"
 REVIEW_ROUTING_POLICY_VERSION = "review-routing-v4"
 
 

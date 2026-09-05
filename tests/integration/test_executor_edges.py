@@ -327,6 +327,57 @@ def test_agent_authored_test_that_already_passes_on_base_is_blocked(
 
 
 @pytest.mark.integration
+def test_agent_authored_test_collection_error_is_not_fail_to_pass(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo(
+        {
+            "src/app.py": "VALUE = 1\n",
+            "tests/test_existing.py": "def test_existing():\n    assert True\n",
+        }
+    )
+    patch = tmp_path / "candidate-only-import.patch"
+    patch.write_text(
+        "diff --git a/src/app.py b/src/app.py\n"
+        "--- a/src/app.py\n"
+        "+++ b/src/app.py\n"
+        "@@ -1 +1,2 @@\n"
+        " VALUE = 1\n"
+        "+NEW_API = 2\n"
+        "diff --git a/tests/test_generated.py b/tests/test_generated.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_generated.py\n"
+        "@@ -0,0 +1,4 @@\n"
+        "+from app import NEW_API\n"
+        "+\n"
+        "+def test_new_api():\n"
+        "+    assert NEW_API == 2\n",
+        encoding="utf-8",
+    )
+    command = ["pytest", "-q", "tests/test_existing.py"]
+    task = Task(
+        case_id="generated-test-collection-error",
+        repository=repo,
+        base_commit=commit,
+        issue="Do not accept collection failure as regression evidence.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+        require_changed_tests_fail_on_base=True,
+    )
+
+    report = VerificationHarness(tmp_path / "collection-error-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.POLICY_BLOCKED
+    assert report.changed_test_base_results[0].exit_code == 2
+    assert [violation.code for violation in report.policy_violations] == [
+        "changed_tests_base_probe_invalid"
+    ]
+    assert report.commands == []
+
+
+@pytest.mark.integration
 def test_changed_python_tests_require_declared_pytest_capability(make_repo, tmp_path: Path) -> None:
     repo, commit = make_repo({"clean.py": "VALUE = 1\n"})
     patch = tmp_path / "unverified-test.patch"

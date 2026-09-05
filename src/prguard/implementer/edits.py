@@ -9,7 +9,11 @@ import shutil
 from pathlib import Path
 
 from prguard.harness.git import GitRepository, final_diff
-from prguard.implementer.errors import PatchPolicyError, RepositoryAccessError
+from prguard.implementer.errors import (
+    EditConflictError,
+    PatchPolicyError,
+    RepositoryAccessError,
+)
 from prguard.implementer.tools import (
     _is_probably_binary,
     _safe_relative,
@@ -69,7 +73,7 @@ def _write_bounded_text(path: Path, content: str, task: FixTask) -> None:
 def _line_segment(content: str, start_line: int, end_line: int) -> tuple[str, str, str]:
     lines = content.splitlines(keepends=True)
     if start_line > len(lines) or end_line > len(lines):
-        raise PatchPolicyError(
+        raise EditConflictError(
             f"line edit range {start_line}-{end_line} exceeds {len(lines)} source lines"
         )
     start = start_line - 1
@@ -79,7 +83,7 @@ def _line_segment(content: str, start_line: int, end_line: int) -> tuple[str, st
 def _verify_segment_hash(segment: str, expected: str, *, description: str) -> None:
     actual = hashlib.sha256(segment.encode("utf-8")).hexdigest()
     if actual != expected:
-        raise PatchPolicyError(
+        raise EditConflictError(
             f"{description} content hash changed; read the current source before editing"
         )
 
@@ -122,7 +126,9 @@ def _python_symbol_range(content: str, path: str, symbol: str) -> tuple[int, int
     try:
         tree = ast.parse(content, filename=path)
     except SyntaxError as exc:
-        raise PatchPolicyError(f"cannot edit symbols in invalid Python source: {path}") from exc
+        raise EditConflictError(
+            f"cannot edit symbols in invalid Python source: {path}"
+        ) from exc
     visitor = _DefinitionRanges()
     visitor.visit(tree)
     module = _module_name(path)
@@ -132,7 +138,7 @@ def _python_symbol_range(content: str, path: str, symbol: str) -> tuple[int, int
         if symbol == name or (module and symbol == f"{module}.{name}")
     ]
     if len(matches) != 1:
-        raise PatchPolicyError(
+        raise EditConflictError(
             f"replace_python_symbol requires one exact symbol in {path}; found {len(matches)}"
         )
     return matches[0]
@@ -164,7 +170,7 @@ def apply_structured_edits(worktree: Path, task: FixTask, edits: list[TextEdit])
     for edit, (relative, candidate) in zip(edits, validated, strict=True):
         if isinstance(edit, CreateFileEdit):
             if relative in created or candidate.exists() or candidate.is_symlink():
-                raise PatchPolicyError("create_file path must not already exist")
+                raise EditConflictError("create_file path must not already exist")
             _write_bounded_text(candidate, edit.content, task)
             created.add(relative)
             continue
@@ -174,13 +180,13 @@ def apply_structured_edits(worktree: Path, task: FixTask, edits: list[TextEdit])
             content = _read_editable_text(candidate, task)
             occurrences = content.count(edit.old_text)
             if occurrences != 1:
-                raise PatchPolicyError(
+                raise EditConflictError(
                     "replace_text old_text must match exactly once; "
                     f"found {occurrences} matches in {relative}"
                 )
             updated = content.replace(edit.old_text, edit.new_text, 1)
             if updated == content:
-                raise PatchPolicyError("replace_text must change file content")
+                raise EditConflictError("replace_text must change file content")
             _write_bounded_text(candidate, updated, task)
             continue
         if isinstance(edit, ReplaceLinesEdit):
@@ -197,7 +203,7 @@ def apply_structured_edits(worktree: Path, task: FixTask, edits: list[TextEdit])
             )
             updated = f"{before}{edit.new_text}{after}"
             if updated == content:
-                raise PatchPolicyError("replace_lines must change file content")
+                raise EditConflictError("replace_lines must change file content")
             _write_bounded_text(candidate, updated, task)
             continue
         if isinstance(edit, ReplacePythonSymbolEdit):
@@ -215,11 +221,11 @@ def apply_structured_edits(worktree: Path, task: FixTask, edits: list[TextEdit])
             )
             updated = f"{before}{edit.new_text}{after}"
             if updated == content:
-                raise PatchPolicyError("replace_python_symbol must change file content")
+                raise EditConflictError("replace_python_symbol must change file content")
             try:
                 ast.parse(updated, filename=relative)
             except SyntaxError as exc:
-                raise PatchPolicyError(
+                raise EditConflictError(
                     "replace_python_symbol produced invalid Python syntax"
                 ) from exc
             _write_bounded_text(candidate, updated, task)

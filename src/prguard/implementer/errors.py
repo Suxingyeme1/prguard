@@ -17,6 +17,10 @@ class PatchPolicyError(ImplementerError):
     """A proposed patch exceeds the task edit policy."""
 
 
+class EditConflictError(PatchPolicyError):
+    """A bounded structured edit no longer identifies exactly the inspected source."""
+
+
 class ProviderError(ImplementerError):
     """A model provider failed to return a valid proposal."""
 

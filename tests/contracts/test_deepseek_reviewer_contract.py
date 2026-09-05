@@ -111,6 +111,9 @@ def test_deepseek_reviewer_has_independent_bounded_context(tmp_path: Path) -> No
     assert envelope.token_usage.input_tokens == 20
     assert envelope.provider_metadata["context_scope"] == "independent-review-v1"
     first_messages = completions.requests[0]["messages"]
+    assert "compare changed public signatures and default behavior" in first_messages[0][
+        "content"
+    ]
     public_payload = json.loads(first_messages[1]["content"])
     serialized = json.dumps(public_payload)
     assert "implementer" not in serialized.casefold()
@@ -156,7 +159,7 @@ def test_reviewer_budget_failure_preserves_partial_evidence(tmp_path: Path) -> N
     completions = FakeReviewerCompletions(never_submit=True)
     client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
 
-    with pytest.raises(ProviderError, match="read-tool budget") as captured:
+    with pytest.raises(ProviderError, match="terminal submission budget") as captured:
         DeepSeekReviewerProvider(client=client, model="test-model").review(
             ReviewProviderRequest(
                 task=task,
@@ -168,6 +171,74 @@ def test_reviewer_budget_failure_preserves_partial_evidence(tmp_path: Path) -> N
 
     evidence = captured.value.evidence
     assert evidence.provider == "deepseek-reviewer"
-    assert [call.name for call in evidence.tool_calls] == ["read_file"]
-    assert evidence.token_usage.input_tokens == 20
+    assert [call.name for call in evidence.tool_calls] == [
+        "read_file",
+        "read_file",
+        "read_file",
+    ]
+    assert evidence.tool_calls[1].succeeded is False
+    assert evidence.tool_calls[2].succeeded is False
+    assert evidence.token_usage.input_tokens == 30
     assert evidence.provider_metadata["context_scope"] == "independent-review-v1"
+    assert evidence.provider_metadata["terminal_submission_forced"] == "true"
+    assert evidence.provider_metadata["terminal_protocol_violations"] == "2"
+    terminal_tool_names = [
+        item["function"]["name"] for item in completions.requests[1]["tools"]
+    ]
+    assert terminal_tool_names == ["submit_review"]
+    assert completions.requests[1]["tool_choice"] == {
+        "type": "function",
+        "function": {"name": "submit_review"},
+    }
+    assert completions.requests[1]["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert "reasoning_effort" not in completions.requests[1]
+    assert "read-tool budget is exhausted" in completions.requests[1]["messages"][-1][
+        "content"
+    ]
+
+
+def test_reviewer_gets_terminal_submission_turn_after_final_read(tmp_path: Path) -> None:
+    (tmp_path / "service.py").write_text("VALUE = 1\n", encoding="utf-8")
+    task = ReviewTask(
+        case_id="reviewer-terminal-turn",
+        repository=tmp_path,
+        base_commit="a" * 40,
+        issue="Review the candidate.",
+        candidate_patch=tmp_path / "candidate.patch",
+        max_tool_calls=1,
+    )
+    now = datetime.now(UTC)
+    verification = HarnessReport(
+        run_id="verification",
+        case_id=task.case_id,
+        resolved_base_commit=task.base_commit,
+        outcome=RunOutcome.PASSED,
+        started_at=now,
+        finished_at=now,
+        duration_seconds=0,
+        patch=PatchApplicationResult(attempted=True, applied=True),
+    )
+    completions = FakeReviewerCompletions()
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+
+    envelope = DeepSeekReviewerProvider(client=client, model="test-model").review(
+        ReviewProviderRequest(
+            task=task,
+            candidate_patch="candidate",
+            verification=verification,
+        ),
+        RepositoryTools(tmp_path, task),
+    )
+
+    assert [call.name for call in envelope.tool_calls] == ["read_file", "submit_review"]
+    assert envelope.provider_metadata["terminal_submission_forced"] == "true"
+    terminal_tool_names = [
+        item["function"]["name"] for item in completions.requests[1]["tools"]
+    ]
+    assert terminal_tool_names == ["submit_review"]
+    assert completions.requests[1]["tool_choice"] == {
+        "type": "function",
+        "function": {"name": "submit_review"},
+    }
+    assert completions.requests[1]["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert "reasoning_effort" not in completions.requests[1]

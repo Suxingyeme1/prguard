@@ -138,6 +138,7 @@ _SUBMIT_REVIEW = {
 }
 
 _REVIEW_TOOLS = [*_READ_TOOLS, _SUBMIT_REVIEW]
+_REVIEW_TERMINAL_TOOLS = [_SUBMIT_REVIEW]
 
 _REVIEW_INSTRUCTIONS = """You are PRGuard's Independent Reviewer in a fresh context.
 Review the candidate patch against the Issue, patched source, public tests, and deterministic
@@ -147,7 +148,11 @@ or exposed by the patch. Every finding must name a repository-relative file, the
 line/symbol, concrete evidence, and a reproducible verification condition. Use P0 for catastrophic,
 P1 for high-impact, P2 for ordinary blocking correctness/security/regression defects, and P3 for
 non-blocking concerns. Do not invent a finding merely because tests fail: link the failure to
-source.
+source. Before accepting, compare changed public signatures and default behavior with the Base:
+an Issue asking for a new capability does not by itself authorize changing existing callers'
+defaults. Check whether an opt-in mode or compatibility path is required, and whether tests cover
+both legacy defaults and the requested behavior. Treat an unrequested breaking default as a
+blocking API-contract or regression finding even when new tests and the existing suite pass.
 Call submit_review once; submit an empty findings list when no evidence-backed defect exists.
 """
 
@@ -217,7 +222,23 @@ class DeepSeekReviewerProvider:
             "context_scope": "independent-review-v1",
         }
         last_response_id: str | None = None
-        for _turn in range(request.task.max_tool_calls + 1):
+        terminal_prompt_added = False
+        for _turn in range(request.task.max_tool_calls + 2):
+            terminal_only = len(calls) >= request.task.max_tool_calls
+            if terminal_only:
+                metadata["terminal_submission_forced"] = "true"
+                metadata["terminal_thinking"] = "disabled"
+                if not terminal_prompt_added:
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "The read-tool budget is exhausted. Do not request more source. "
+                                "Use the evidence already gathered and call submit_review now."
+                            ),
+                        }
+                    )
+                    terminal_prompt_added = True
             timeout = None
             if request.deadline_monotonic is not None:
                 timeout = max(0.1, request.deadline_monotonic - time.monotonic())
@@ -225,9 +246,23 @@ class DeepSeekReviewerProvider:
                 response = self.client.chat.completions.create(  # type: ignore[attr-defined]
                     model=self.model,
                     messages=messages,
-                    tools=_chat_tools(_REVIEW_TOOLS),
-                    reasoning_effort=self.reasoning_effort,
-                    extra_body={"thinking": {"type": "enabled"}},
+                    tools=_chat_tools(
+                        _REVIEW_TERMINAL_TOOLS if terminal_only else _REVIEW_TOOLS
+                    ),
+                    **(
+                        {
+                            "tool_choice": {
+                                "type": "function",
+                                "function": {"name": "submit_review"},
+                            },
+                            "extra_body": {"thinking": {"type": "disabled"}},
+                        }
+                        if terminal_only
+                        else {
+                            "reasoning_effort": self.reasoning_effort,
+                            "extra_body": {"thinking": {"type": "enabled"}},
+                        }
+                    ),
                     timeout=timeout,
                 )
             except Exception as exc:
@@ -282,15 +317,32 @@ class DeepSeekReviewerProvider:
                 name = item.function.name
                 try:
                     if name != "submit_review" and len(calls) >= request.task.max_tool_calls:
-                        raise _failure_error(
-                            "Reviewer read-tool budget exhausted; expected terminal submission",
-                            provider=self.name,
-                            model=self.model,
-                            calls=calls,
-                            usage=usage,
-                            response_id=last_response_id,
-                            provider_metadata=metadata,
+                        error = (
+                            "Reviewer read-tool budget exhausted; call submit_review "
+                            "without requesting more source"
                         )
+                        serialized = json.dumps({"error": error}, ensure_ascii=False)
+                        calls.append(
+                            AgentToolCall(
+                                sequence=len(calls),
+                                name=name,
+                                arguments={},
+                                succeeded=False,
+                                output_bytes=len(serialized.encode()),
+                                error=error,
+                            )
+                        )
+                        metadata["terminal_protocol_violations"] = str(
+                            int(metadata.get("terminal_protocol_violations", "0")) + 1
+                        )
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": item.id,
+                                "content": serialized,
+                            }
+                        )
+                        continue
                     arguments = json.loads(item.function.arguments)
                     if name == "submit_review":
                         submission = ReviewerSubmission.model_validate(arguments)
@@ -357,8 +409,13 @@ class DeepSeekReviewerProvider:
                 messages.append(
                     {"role": "tool", "tool_call_id": item.id, "content": serialized}
                 )
+        terminal_error = (
+            "Reviewer terminal submission budget exhausted"
+            if terminal_prompt_added
+            else "Reviewer response-turn budget exhausted"
+        )
         raise _failure_error(
-            "Reviewer response-turn budget exhausted",
+            terminal_error,
             provider=self.name,
             model=self.model,
             calls=calls,

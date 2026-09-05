@@ -408,6 +408,18 @@ class VerificationHarness:
                                     paths=probed_tests,
                                 )
                             )
+                        elif base_result.exit_code != 1:
+                            violations.append(
+                                PolicyViolation(
+                                    code="changed_tests_base_probe_invalid",
+                                    message=(
+                                        "Agent-authored tests must collect on Base and fail as "
+                                        "tests; collection/import errors are not FAIL_TO_PASS "
+                                        "evidence"
+                                    ),
+                                    paths=probed_tests,
+                                )
+                            )
                         else:
                             trace(
                                 "changed_tests.base_probe_failed_as_expected",
