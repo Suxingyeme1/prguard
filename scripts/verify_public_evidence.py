@@ -79,6 +79,7 @@ def main() -> int:
         evidence / "review-routing-v3-holdout",
         evidence / "review-routing-v4-validation",
         evidence / "click-controlled-repair",
+        evidence / "filelock-606-holdout",
     ]
     count = sum(verify_evidence(root) for root in roots)
     print(f"public evidence verified: {count} artifacts")

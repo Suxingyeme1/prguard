@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -30,7 +31,9 @@ def test_list_search_and_bounded_read(tmp_path: Path) -> None:
     assert tools.list_files("src/**", 10)["files"] == ["src/service.py"]
     match = tools.search_text("strip", "src/**", 10)["matches"][0]
     assert match["line"] == 2
-    assert "2:     return value.strip()" in tools.read_file("src/service.py", 2, 2)["content"]
+    result = tools.read_file("src/service.py", 2, 2)
+    assert "2:     return value.strip()" in result["content"]
+    assert result["content_sha256"] == hashlib.sha256(b"    return value.strip()\n").hexdigest()
 
 
 def test_recursive_glob_also_matches_root_files(tmp_path: Path) -> None:

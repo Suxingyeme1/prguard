@@ -77,12 +77,62 @@ class ReplaceTextEdit(StrictModel):
     @classmethod
     def relative_path(cls, value: str) -> str:
         path = Path(value)
-        if (
-            path.is_absolute()
-            or ".." in path.parts
-            or any(char in value for char in "\r\n\x00")
-        ):
+        if path.is_absolute() or ".." in path.parts or any(char in value for char in "\r\n\x00"):
             raise ValueError("edit path must be safe and repository-relative")
+        return value
+
+
+class ReplaceLinesEdit(StrictModel):
+    """Replace one explicit inclusive line range guarded by its exact content hash."""
+
+    operation: Literal["replace_lines"]
+    path: str = Field(min_length=1, max_length=1000)
+    start_line: int = Field(ge=1)
+    end_line: int = Field(ge=1)
+    expected_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    new_text: str = Field(max_length=200_000)
+
+    @field_validator("path")
+    @classmethod
+    def relative_path(cls, value: str) -> str:
+        path = Path(value)
+        if path.is_absolute() or ".." in path.parts or any(char in value for char in "\r\n\x00"):
+            raise ValueError("edit path must be safe and repository-relative")
+        return value
+
+    @model_validator(mode="after")
+    def bounded_range(self) -> ReplaceLinesEdit:
+        if self.end_line < self.start_line:
+            raise ValueError("end_line must be greater than or equal to start_line")
+        if self.end_line - self.start_line > 1000:
+            raise ValueError("line edit cannot exceed 1001 lines")
+        return self
+
+
+class ReplacePythonSymbolEdit(StrictModel):
+    """Replace one unambiguous Python definition guarded by its exact content hash."""
+
+    operation: Literal["replace_python_symbol"]
+    path: str = Field(min_length=1, max_length=1000)
+    symbol: str = Field(min_length=1, max_length=500)
+    expected_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    new_text: str = Field(max_length=200_000)
+
+    @field_validator("path")
+    @classmethod
+    def relative_path(cls, value: str) -> str:
+        path = Path(value)
+        if path.is_absolute() or ".." in path.parts or any(char in value for char in "\r\n\x00"):
+            raise ValueError("edit path must be safe and repository-relative")
+        if path.suffix != ".py":
+            raise ValueError("replace_python_symbol requires a Python source path")
+        return value
+
+    @field_validator("symbol")
+    @classmethod
+    def safe_symbol(cls, value: str) -> str:
+        if any(char in value for char in "\r\n\x00"):
+            raise ValueError("Python symbol contains unsafe characters")
         return value
 
 
@@ -95,16 +145,15 @@ class CreateFileEdit(StrictModel):
     @classmethod
     def relative_path(cls, value: str) -> str:
         path = Path(value)
-        if (
-            path.is_absolute()
-            or ".." in path.parts
-            or any(char in value for char in "\r\n\x00")
-        ):
+        if path.is_absolute() or ".." in path.parts or any(char in value for char in "\r\n\x00"):
             raise ValueError("edit path must be safe and repository-relative")
         return value
 
 
-TextEdit = Annotated[ReplaceTextEdit | CreateFileEdit, Field(discriminator="operation")]
+TextEdit = Annotated[
+    ReplaceTextEdit | ReplaceLinesEdit | ReplacePythonSymbolEdit | CreateFileEdit,
+    Field(discriminator="operation"),
+]
 
 
 class ImplementerProposal(StrictModel):

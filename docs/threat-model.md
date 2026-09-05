@@ -25,8 +25,9 @@ occurs in a detached worktree.
 | Malicious Issue/prompt injection | fixed instructions plus bounded text/AST tools and declarative edits | model can still propose a malicious semantic change |
 | AST/call-graph overclaim | results label bounded static analysis and each resolution type; graph traversal is capped at three hops and ambiguous roots return no edges | dynamic dispatch, reflection, and generated code remain unresolved |
 | Agent adds a test outside the selected pytest target | Harness derives an argv for changed Python test modules; absent pytest capability blocks | unconventional/non-Python test layouts need reviewed project configuration |
-| Overbroad model edit | exact replacements are checked and Git-authored diffs are policy-gated in isolated worktrees | configured writable globs may be too broad |
-| Ambiguous text replacement | `old_text` must occur exactly once; create targets must not exist | a unique match can still be semantically wrong |
+| Agent adds a vacuous passing regression test | executable changed Python tests are copied onto a fresh Base worktree without candidate source and must fail there | a failing test can still assert the wrong behavior; evaluator/human review remains necessary |
+| Overbroad model edit | exact/hash-guarded replacements are checked and Git-authored diffs are policy-gated in isolated worktrees | configured writable globs may be too broad |
+| Ambiguous text replacement | exact text must occur once, or the Agent must bind a line range/Python symbol to bytes returned by a read; create targets must not exist | stable hashes prevent stale targeting, not semantic mistakes |
 | Patch parser smuggling | standard file headers must agree; rename/copy/binary patches rejected | Git parser differentials remain a review target |
 | Unbounded repair loop | at most one replacement patch | one repair can still consume substantial tokens |
 | Provider data exposure | only tool-returned repository bytes are sent | external provider receives those selected bytes |

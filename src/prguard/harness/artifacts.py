@@ -46,12 +46,37 @@ def render_markdown(report: HarnessReport) -> str:
         f"- Base commit: `{report.resolved_base_commit or 'unresolved'}`",
         f"- Duration: {report.duration_seconds:.3f}s",
         f"- Patch applied: {report.patch.applied}",
-        "",
-        "## Verification",
-        "",
-        "| # | Kind | Command | Exit | Timeout | Passed | Duration |",
-        "|---:|---|---|---:|---|---|---:|",
     ]
+    if report.changed_test_base_results:
+        lines.extend(
+            [
+                "",
+                "## Changed-test Base probe",
+                "",
+                "Agent-authored tests must fail against the unchanged Base before they can join "
+                "the candidate gate.",
+                "",
+                "| # | Kind | Command | Exit | Timeout | Failed on Base | Duration |",
+                "|---:|---|---|---:|---|---|---:|",
+            ]
+        )
+        for result in report.changed_test_base_results:
+            command = " ".join(result.argv).replace("|", "\\|")
+            lines.append(
+                f"| {result.command_index} | {result.kind} | `{command}` | "
+                f"{result.exit_code if result.exit_code is not None else '-'} | "
+                f"{result.timed_out} | {not result.passed} | "
+                f"{result.duration_seconds:.3f}s |"
+            )
+    lines.extend(
+        [
+            "",
+            "## Candidate verification",
+            "",
+            "| # | Kind | Command | Exit | Timeout | Passed | Duration |",
+            "|---:|---|---|---:|---|---|---:|",
+        ]
+    )
     for result in report.commands:
         command = " ".join(result.argv).replace("|", "\\|")
         lines.append(

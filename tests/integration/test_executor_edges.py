@@ -56,9 +56,7 @@ def test_ruff_result_is_structured(make_repo, tmp_path: Path) -> None:
 
 
 @pytest.mark.integration
-def test_verification_command_cannot_modify_candidate_worktree(
-    make_repo, tmp_path: Path
-) -> None:
+def test_verification_command_cannot_modify_candidate_worktree(make_repo, tmp_path: Path) -> None:
     repo, commit = make_repo(
         {
             "value.py": "VALUE = 1\n",
@@ -89,9 +87,7 @@ def test_verification_command_cannot_modify_candidate_worktree(
 
     assert report.outcome is RunOutcome.POLICY_BLOCKED
     violation = next(
-        item
-        for item in report.policy_violations
-        if item.code == "verification_modified_worktree"
+        item for item in report.policy_violations if item.code == "verification_modified_worktree"
     )
     assert violation.paths == ["value.py"]
 
@@ -102,9 +98,7 @@ def test_pytest_imports_repository_src_layout(make_repo, tmp_path: Path) -> None
         {
             "src/example_pkg/__init__.py": "VALUE = 42\n",
             "tests/test_src_layout.py": (
-                "from example_pkg import VALUE\n\n"
-                "def test_value():\n"
-                "    assert VALUE == 42\n"
+                "from example_pkg import VALUE\n\ndef test_value():\n    assert VALUE == 42\n"
             ),
         }
     )
@@ -172,9 +166,7 @@ def test_changed_python_tests_are_added_to_the_deterministic_gate(
     make_repo,
     tmp_path: Path,
 ) -> None:
-    repo, commit = make_repo(
-        {"tests/test_existing.py": "def test_existing():\n    assert True\n"}
-    )
+    repo, commit = make_repo({"tests/test_existing.py": "def test_existing():\n    assert True\n"})
     patch = tmp_path / f"generated-{assertion}.patch"
     patch.write_text(
         "diff --git a/tests/test_generated.py b/tests/test_generated.py\n"
@@ -207,9 +199,135 @@ def test_changed_python_tests_are_added_to_the_deterministic_gate(
 
 
 @pytest.mark.integration
-def test_changed_python_tests_require_declared_pytest_capability(
+def test_agent_authored_test_must_fail_on_base_before_candidate_gate(
     make_repo, tmp_path: Path
 ) -> None:
+    repo, commit = make_repo(
+        {
+            "src/calc.py": "def add(left, right):\n    return left - right\n",
+            "tests/test_existing.py": "def test_existing():\n    assert True\n",
+        }
+    )
+    patch = tmp_path / "fail-to-pass.patch"
+    patch.write_text(
+        "diff --git a/src/calc.py b/src/calc.py\n"
+        "--- a/src/calc.py\n"
+        "+++ b/src/calc.py\n"
+        "@@ -1,2 +1,2 @@\n"
+        " def add(left, right):\n"
+        "-    return left - right\n"
+        "+    return left + right\n"
+        "diff --git a/tests/test_generated.py b/tests/test_generated.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_generated.py\n"
+        "@@ -0,0 +1,5 @@\n"
+        "+from calc import add\n"
+        "+\n"
+        "+\n"
+        "+def test_add_regression():\n"
+        "+    assert add(2, 3) == 5\n",
+        encoding="utf-8",
+    )
+    command = ["pytest", "-q", "tests/test_existing.py"]
+    task = Task(
+        case_id="generated-test-fail-to-pass",
+        repository=repo,
+        base_commit=commit,
+        issue="Fix add and prove the regression.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+        require_changed_tests_fail_on_base=True,
+    )
+
+    report = VerificationHarness(tmp_path / "fail-to-pass-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.PASSED
+    assert len(report.changed_test_base_results) == 1
+    assert report.changed_test_base_results[0].kind == "pytest_changed_tests_base"
+    assert report.changed_test_base_results[0].passed is False
+    assert report.commands[-1].kind == "pytest_changed_tests"
+    assert report.commands[-1].passed is True
+    assert any(
+        event.kind == "changed_tests.base_probe_failed_as_expected" for event in report.trace_events
+    )
+
+
+@pytest.mark.integration
+def test_comment_only_test_change_does_not_require_fail_to_pass(make_repo, tmp_path: Path) -> None:
+    before = "def test_existing():\n    assert True\n"
+    repo, commit = make_repo({"tests/test_existing.py": before})
+    patch = tmp_path / "comment-only.patch"
+    patch.write_text(
+        "diff --git a/tests/test_existing.py b/tests/test_existing.py\n"
+        "--- a/tests/test_existing.py\n"
+        "+++ b/tests/test_existing.py\n"
+        "@@ -1,2 +1,3 @@\n"
+        " def test_existing():\n"
+        "     assert True\n"
+        "+# Coverage note only.\n",
+        encoding="utf-8",
+    )
+    command = ["pytest", "-q", "tests/test_existing.py"]
+    task = Task(
+        case_id="comment-only-test-change",
+        repository=repo,
+        base_commit=commit,
+        issue="Document the existing regression coverage.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+        require_changed_tests_fail_on_base=True,
+    )
+
+    report = VerificationHarness(tmp_path / "comment-only-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.PASSED
+    assert report.changed_test_base_results == []
+    assert any(event.kind == "changed_tests.base_probe_skipped" for event in report.trace_events)
+
+
+@pytest.mark.integration
+def test_agent_authored_test_that_already_passes_on_base_is_blocked(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo({"tests/test_existing.py": "def test_existing():\n    assert True\n"})
+    patch = tmp_path / "always-green.patch"
+    patch.write_text(
+        "diff --git a/tests/test_generated.py b/tests/test_generated.py\n"
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_generated.py\n"
+        "@@ -0,0 +1,2 @@\n"
+        "+def test_generated():\n"
+        "+    assert True\n",
+        encoding="utf-8",
+    )
+    command = ["pytest", "-q", "tests/test_existing.py"]
+    task = Task(
+        case_id="generated-test-already-green",
+        repository=repo,
+        base_commit=commit,
+        issue="Reject a test that proves no behavior change.",
+        candidate_patch=patch,
+        commands=[CommandSpec(argv=command)],
+        allowed_commands=[command],
+        require_changed_tests_fail_on_base=True,
+    )
+
+    report = VerificationHarness(tmp_path / "already-green-artifacts").run(task)
+
+    assert report.outcome is RunOutcome.POLICY_BLOCKED
+    assert report.changed_test_base_results[0].passed is True
+    assert report.commands == []
+    assert [violation.code for violation in report.policy_violations] == [
+        "changed_tests_pass_on_base"
+    ]
+
+
+@pytest.mark.integration
+def test_changed_python_tests_require_declared_pytest_capability(make_repo, tmp_path: Path) -> None:
     repo, commit = make_repo({"clean.py": "VALUE = 1\n"})
     patch = tmp_path / "unverified-test.patch"
     patch.write_text(

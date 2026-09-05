@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import time
+from functools import partial
 from pathlib import Path
 from typing import ClassVar
 
@@ -97,8 +98,7 @@ class _ProgressReporter:
             return f"attempt {attempt}{' (repair)' if data.get('repair') else ''}"
         if event == "proposal.completed":
             return (
-                f"{data.get('tool_calls', 0)} tool calls, "
-                f"{data.get('patch_bytes', 0)} Patch bytes"
+                f"{data.get('tool_calls', 0)} tool calls, {data.get('patch_bytes', 0)} Patch bytes"
             )
         if event == "verification.completed":
             return str(data.get("outcome", "unknown"))
@@ -215,6 +215,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="directory that receives uniquely named demo runs",
     )
     demo.add_argument("--no-color", action="store_true", help="disable ANSI colors")
+    start = subparsers.add_parser(
+        "start",
+        help="open a guided local Issue-to-Patch terminal session",
+    )
+    start.add_argument("--repository", type=Path, default=Path.cwd())
+    start.add_argument("--issue", help="natural-language Issue; prompts when omitted")
+    start.add_argument("--base-commit", default="HEAD")
+    start.add_argument("--workspace", type=Path)
+    start_boundary = start.add_mutually_exclusive_group()
+    start_boundary.add_argument("--trust-host", action="store_true")
+    start_boundary.add_argument("--container-image")
+    start.add_argument("--provider", choices=("deepseek", "openai", "scripted"), default="openai")
+    start.add_argument("--model")
+    start.add_argument("--reasoning-effort")
+    start.add_argument("--proposal-sequence", type=Path)
+    start.add_argument(
+        "--yes",
+        action="store_true",
+        help="skip final approval; still requires an explicit execution boundary",
+    )
+    start.add_argument("--no-color", action="store_true", help="disable ANSI colors")
     run = subparsers.add_parser("run", help="execute a deterministic local PR case")
     run.add_argument("case", type=Path)
     run.add_argument("--artifacts", type=Path, default=Path("artifacts"))
@@ -333,9 +354,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="run artifact root (defaults to WORKSPACE/fix-runs or artifacts/fix)",
     )
-    fix.add_argument(
-        "--provider", choices=("deepseek", "openai", "scripted"), default="openai"
-    )
+    fix.add_argument("--provider", choices=("deepseek", "openai", "scripted"), default="openai")
     fix.add_argument("--model")
     fix.add_argument("--reasoning-effort")
     fix.add_argument(
@@ -357,15 +376,11 @@ def build_parser() -> argparse.ArgumentParser:
             "a recommendation but still reviews, selective may skip only low-risk patches"
         ),
     )
-    fix.add_argument(
-        "--review-provider", choices=("deepseek", "scripted"), default="deepseek"
-    )
+    fix.add_argument("--review-provider", choices=("deepseek", "scripted"), default="deepseek")
     fix.add_argument("--review-model")
     fix.add_argument("--review-reasoning-effort", default="high")
     fix.add_argument("--scripted-review", type=Path)
-    fix.add_argument(
-        "--review-repair-provider", choices=("deepseek", "openai", "scripted")
-    )
+    fix.add_argument("--review-repair-provider", choices=("deepseek", "openai", "scripted"))
     fix.add_argument("--review-repair-model")
     fix.add_argument("--review-repair-reasoning-effort")
     fix.add_argument("--review-repair-proposal-sequence", type=Path)
@@ -408,6 +423,55 @@ def main(argv: list[str] | None = None) -> int:
             print(f"demo failed: {exc}", file=sys.stderr)
             return 1
         return 0
+    if args.command == "start":
+        from prguard.implementer.errors import ProviderError
+        from prguard.implementer.providers import (
+            DeepSeekChatProvider,
+            OpenAIResponsesProvider,
+            ScriptedProvider,
+        )
+        from prguard.interactive import run_interactive_fix
+        from prguard.onboarding.errors import OnboardingError
+
+        try:
+            if args.provider == "scripted":
+                if args.proposal_sequence is None:
+                    raise ProviderError("--proposal-sequence is required for scripted provider")
+                provider = partial(ScriptedProvider.from_file, args.proposal_sequence)
+            elif args.provider == "deepseek":
+                provider = partial(
+                    DeepSeekChatProvider,
+                    model=args.model or DeepSeekChatProvider.default_model,
+                    reasoning_effort=args.reasoning_effort or "high",
+                )
+            else:
+                provider = partial(
+                    OpenAIResponsesProvider,
+                    model=args.model or "gpt-5.6-terra",
+                    reasoning_effort=args.reasoning_effort or "medium",
+                )
+            report = run_interactive_fix(
+                repository=args.repository,
+                provider=provider,
+                issue=args.issue,
+                base_commit=args.base_commit,
+                workspace=args.workspace,
+                trust_host=args.trust_host,
+                container_image=args.container_image,
+                assume_yes=args.yes,
+                color=False if args.no_color else None,
+            )
+        except (
+            EOFError,
+            KeyboardInterrupt,
+            OnboardingError,
+            ProviderError,
+            OSError,
+            ValueError,
+        ) as exc:
+            print(f"interactive session failed: {exc}", file=sys.stderr)
+            return 2
+        return 0 if report.outcome == FixOutcome.ACCEPTED else 1
     if args.command == "inspect-policy":
         from prguard.onboarding import inspect_project_policy, read_issue_file
         from prguard.onboarding.errors import OnboardingError, ProjectDiscoveryError
@@ -539,17 +603,13 @@ def main(argv: list[str] | None = None) -> int:
                 if args.repository is None:
                     raise OnboardingError("--issue-file requires --repository")
                 if target is not None and args.issue_file is not None:
-                    raise OnboardingError(
-                        "choose positional Issue text or --issue-file, not both"
-                    )
+                    raise OnboardingError("choose positional Issue text or --issue-file, not both")
                 if target is None and args.issue_file is None:
                     raise OnboardingError(
                         "local repository mode requires positional Issue text or --issue-file"
                     )
                 if args.workspace is None:
-                    raise OnboardingError(
-                        "--workspace is required when fix receives a local Issue"
-                    )
+                    raise OnboardingError("--workspace is required when fix receives a local Issue")
                 if args.source_repository is not None:
                     raise OnboardingError(
                         "--source-repository is only valid for a GitHub Issue URL"
@@ -621,16 +681,10 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 task_path = Path(target)
                 artifact_root = args.artifacts or Path("artifacts/fix")
-            task = (
-                load_issue_to_pr_task(task_path)
-                if args.review
-                else load_fix_task(task_path)
-            )
+            task = load_issue_to_pr_task(task_path) if args.review else load_fix_task(task_path)
             if args.review and args.review_policy is not None:
                 task = task.model_copy(
-                    update={
-                        "review_routing_mode": ReviewRoutingMode(args.review_policy)
-                    }
+                    update={"review_routing_mode": ReviewRoutingMode(args.review_policy)}
                 )
             if args.provider == "scripted":
                 if args.proposal_sequence is None:
@@ -654,6 +708,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
                 if args.review_provider == "scripted":
+
                     def reviewer_source():
                         if args.scripted_review is None:
                             raise ProviderError(
@@ -661,25 +716,24 @@ def main(argv: list[str] | None = None) -> int:
                             )
                         return ScriptedReviewerProvider.from_file(args.scripted_review)
                 else:
+
                     def reviewer_source():
                         return DeepSeekReviewerProvider(
-                            model=(
-                                args.review_model
-                                or DeepSeekReviewerProvider.default_model
-                            ),
+                            model=(args.review_model or DeepSeekReviewerProvider.default_model),
                             reasoning_effort=args.review_reasoning_effort,
                         )
+
                 repair_provider_name = args.review_repair_provider or args.provider
                 if repair_provider_name == "scripted":
+
                     def repair_source():
                         if args.review_repair_proposal_sequence is None:
                             raise ProviderError(
                                 "--review-repair-proposal-sequence is required for scripted repair"
                             )
-                        return ScriptedProvider.from_file(
-                            args.review_repair_proposal_sequence
-                        )
+                        return ScriptedProvider.from_file(args.review_repair_proposal_sequence)
                 elif repair_provider_name == "deepseek":
+
                     def repair_source():
                         return DeepSeekChatProvider(
                             model=(
@@ -694,19 +748,17 @@ def main(argv: list[str] | None = None) -> int:
                             ),
                         )
                 else:
+
                     def repair_source():
                         return OpenAIResponsesProvider(
-                            model=(
-                                args.review_repair_model
-                                or args.model
-                                or "gpt-5.6-terra"
-                            ),
+                            model=(args.review_repair_model or args.model or "gpt-5.6-terra"),
                             reasoning_effort=(
                                 args.review_repair_reasoning_effort
                                 or args.reasoning_effort
                                 or "medium"
                             ),
                         )
+
                 report = IssueToPRRunner(
                     artifact_root, provider, reviewer_source, repair_source
                 ).run(task)
@@ -743,9 +795,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             if args.repair:
                 task = (
-                    review_task_from_fix_task(
-                        args.task, args.candidate_patch, repair=True
-                    )
+                    review_task_from_fix_task(args.task, args.candidate_patch, repair=True)
                     if args.candidate_patch is not None
                     else load_review_repair_task(args.task)
                 )
@@ -768,9 +818,7 @@ def main(argv: list[str] | None = None) -> int:
                 report = ReviewRepairRunner(args.artifacts, provider, implementer).run(task)
             else:
                 task = (
-                    review_task_from_fix_task(
-                        args.task, args.candidate_patch, repair=False
-                    )
+                    review_task_from_fix_task(args.task, args.candidate_patch, repair=False)
                     if args.candidate_patch is not None
                     else load_review_task(args.task)
                 )
@@ -780,10 +828,15 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(report.model_dump_json(indent=2))
         if args.repair:
-            return 0 if report.outcome in {
-                ReviewRepairOutcome.ACCEPTED_WITHOUT_REPAIR,
-                ReviewRepairOutcome.ACCEPTED_AFTER_REPAIR,
-            } else 1
+            return (
+                0
+                if report.outcome
+                in {
+                    ReviewRepairOutcome.ACCEPTED_WITHOUT_REPAIR,
+                    ReviewRepairOutcome.ACCEPTED_AFTER_REPAIR,
+                }
+                else 1
+            )
         return 0 if report.outcome == ReviewOutcome.REVIEWED else 1
     try:
         manifest = verify_manifest(args.manifest)

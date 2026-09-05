@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import shutil
 import time
@@ -33,13 +34,15 @@ from prguard.schemas import (
     RunOutcome,
     Task,
     TraceEvent,
+    VerificationResult,
 )
 
 
 def _is_pytest_command(command: CommandSpec) -> bool:
     argv = command.argv
     return argv[0] == "pytest" or (
-        len(argv) >= 3 and argv[0] in {"python", "python3", "python3.12"}
+        len(argv) >= 3
+        and argv[0] in {"python", "python3", "python3.12"}
         and argv[1:3] == ["-m", "pytest"]
     )
 
@@ -55,6 +58,33 @@ def _changed_python_tests(paths: list[str]) -> list[str]:
         if (in_test_root or len(path.parts) == 1) and conventional_name:
             tests.append(path.as_posix())
     return sorted(tests)
+
+
+def _changed_python_test_support(paths: list[str]) -> list[str]:
+    """Return changed Python files under test roots, including conftest helpers."""
+
+    return sorted(
+        value
+        for value in paths
+        if PurePosixPath(value).suffix == ".py"
+        and bool({"test", "tests"} & set(PurePosixPath(value).parts[:-1]))
+    )
+
+
+def _has_executable_python_change(base: Path, candidate: Path) -> bool:
+    """Distinguish Python behavior changes from comments and formatting only."""
+
+    if not base.is_file():
+        return True
+    try:
+        base_tree = ast.parse(base.read_text(encoding="utf-8"))
+        candidate_tree = ast.parse(candidate.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, SyntaxError):
+        # Fail closed: an unreadable or invalid changed test still needs a Base probe.
+        return True
+    return ast.dump(base_tree, include_attributes=False) != ast.dump(
+        candidate_tree, include_attributes=False
+    )
 
 
 def _generated_test_command(
@@ -107,9 +137,7 @@ def _materialize_runtime_files(worktree: Path, task: Task) -> dict[str, str]:
     return fingerprints
 
 
-def _runtime_file_violations(
-    worktree: Path, fingerprints: dict[str, str]
-) -> list[PolicyViolation]:
+def _runtime_file_violations(worktree: Path, fingerprints: dict[str, str]) -> list[PolicyViolation]:
     modified: list[str] = []
     for relative, expected in fingerprints.items():
         candidate = worktree / relative
@@ -130,6 +158,139 @@ def _runtime_file_violations(
     ]
 
 
+def _run_changed_test_base_probe(
+    *,
+    repository: GitRepository,
+    run_directory: Path,
+    candidate_worktree: Path,
+    resolved_commit: str,
+    task: Task,
+    changed_paths: list[str],
+    changed_tests: list[str],
+    deadline: float,
+) -> tuple[VerificationResult | None, list[PolicyViolation], list[str]]:
+    """Run Agent-authored tests on Base while withholding candidate source changes."""
+
+    probe_worktree = run_directory / "changed-test-base-worktree"
+    probe_runtime = run_directory / "changed-test-base-runtime"
+    (probe_runtime / "home").mkdir(parents=True)
+    (probe_runtime / "tmp").mkdir(parents=True)
+    registered = False
+    violations: list[PolicyViolation] = []
+    result: VerificationResult | None = None
+    excluded = {
+        "worktree",
+        "runtime",
+        probe_worktree.name,
+        probe_runtime.name,
+    }
+    audit_before = snapshot_tree(run_directory, excluded_names=excluded)
+    source_before = snapshot_tree(repository.path, excluded_names={".git"})
+    try:
+        repository.add_worktree(probe_worktree, resolved_commit, deadline=deadline)
+        registered = True
+        probed_tests = [
+            relative
+            for relative in changed_tests
+            if _has_executable_python_change(
+                probe_worktree / relative, candidate_worktree / relative
+            )
+        ]
+        if not probed_tests:
+            return None, violations, []
+        invalid: list[str] = []
+        for relative in _changed_python_test_support(changed_paths):
+            source = candidate_worktree / relative
+            destination = probe_worktree / relative
+            if source.is_symlink() or not source.is_file():
+                invalid.append(relative)
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, destination)
+        if invalid:
+            violations.append(
+                PolicyViolation(
+                    code="changed_test_not_regular",
+                    message="changed Python tests must be regular files for the Base probe",
+                    paths=invalid,
+                )
+            )
+            return None, violations, probed_tests
+
+        runtime_fingerprints = _materialize_runtime_files(probe_worktree, task)
+        expected_diff = final_diff(
+            probe_worktree,
+            resolved_commit,
+            deadline=deadline,
+            excluded_paths=sorted(runtime_fingerprints),
+        )
+        command = CommandSpec(
+            argv=["pytest", "-q", *probed_tests],
+            kind="pytest_changed_tests_base",
+        )
+        executor = CommandExecutor(
+            worktree=probe_worktree,
+            runtime_directory=probe_runtime,
+            policy=CommandPolicy([command.argv]),
+            default_timeout=task.command_timeout_seconds,
+            max_output_bytes=task.max_output_bytes,
+            task_deadline=deadline,
+            container=task.container,
+        )
+        result = executor.execute(0, command)
+        actual_diff = final_diff(
+            probe_worktree,
+            resolved_commit,
+            deadline=deadline,
+            excluded_paths=sorted(runtime_fingerprints),
+        )
+        if actual_diff != expected_diff:
+            violations.append(
+                PolicyViolation(
+                    code="changed_test_base_probe_modified_worktree",
+                    message="the changed-test Base probe modified its worktree",
+                    paths=changed_files(probe_worktree),
+                )
+            )
+        violations.extend(_runtime_file_violations(probe_worktree, runtime_fingerprints))
+    finally:
+        audit_after = snapshot_tree(run_directory, excluded_names=excluded)
+        outside_changes = snapshot_changes(audit_before, audit_after)
+        if outside_changes:
+            violations.append(
+                PolicyViolation(
+                    code="changed_test_base_probe_outside_write",
+                    message="the changed-test Base probe wrote outside managed paths",
+                    paths=outside_changes,
+                )
+            )
+            remove_owned_audit_paths(run_directory, outside_changes)
+        source_after = snapshot_tree(repository.path, excluded_names={".git"})
+        source_changes = snapshot_changes(source_before, source_after)
+        if source_changes:
+            violations.append(
+                PolicyViolation(
+                    code="changed_test_base_probe_modified_source",
+                    message="the changed-test Base probe modified the source checkout",
+                    paths=source_changes,
+                )
+            )
+        if registered:
+            try:
+                repository.remove_worktree(probe_worktree)
+            except HarnessError as exc:
+                violations.append(
+                    PolicyViolation(
+                        code="changed_test_base_probe_cleanup_failed",
+                        message=str(exc),
+                        paths=[probe_worktree.name],
+                    )
+                )
+        shutil.rmtree(probe_worktree, ignore_errors=True)
+        shutil.rmtree(probe_runtime, ignore_errors=True)
+    return result, violations, probed_tests
+
+
 class VerificationHarness:
     def __init__(self, artifact_root: Path) -> None:
         self.store = ArtifactStore(artifact_root)
@@ -146,6 +307,7 @@ class VerificationHarness:
         deadline = started + task.task_timeout_seconds
         traces: list[TraceEvent] = []
         results = []
+        changed_test_base_results = []
         violations: list[PolicyViolation] = []
         patch_result = PatchApplicationResult(attempted=False, applied=False)
         resolved_commit: str | None = None
@@ -198,17 +360,70 @@ class VerificationHarness:
 
             if patch_result.applied:
                 changed = changed_files(worktree)
-                violations.extend(
-                    protected_path_violations(worktree, changed, effective_protected)
-                )
+                violations.extend(protected_path_violations(worktree, changed, effective_protected))
                 changed_test_command, changed_test_violation = _generated_test_command(
                     task.commands, changed
                 )
                 if changed_test_violation is not None:
                     violations.append(changed_test_violation)
+                base_probe_outcome: RunOutcome | None = None
+                changed_tests = _changed_python_tests(changed)
+                if not violations and task.require_changed_tests_fail_on_base and changed_tests:
+                    trace(
+                        "changed_tests.base_probe_started",
+                        "running changed tests against the unchanged Base",
+                        paths=changed_tests,
+                    )
+                    base_result, base_violations, probed_tests = _run_changed_test_base_probe(
+                        repository=repository,
+                        run_directory=run_directory,
+                        candidate_worktree=worktree,
+                        resolved_commit=resolved_commit,
+                        task=task,
+                        changed_paths=changed,
+                        changed_tests=changed_tests,
+                        deadline=deadline,
+                    )
+                    violations.extend(base_violations)
+                    if not probed_tests:
+                        trace(
+                            "changed_tests.base_probe_skipped",
+                            "changed test files contain no executable Python changes",
+                            paths=changed_tests,
+                        )
+                    if base_result is not None:
+                        changed_test_base_results.append(base_result)
+                        if base_result.timed_out:
+                            base_probe_outcome = RunOutcome.TIMED_OUT
+                        elif base_result.infrastructure_error:
+                            base_probe_outcome = RunOutcome.PREFLIGHT_FAILED
+                        elif base_result.passed:
+                            violations.append(
+                                PolicyViolation(
+                                    code="changed_tests_pass_on_base",
+                                    message=(
+                                        "Agent-authored tests do not demonstrate "
+                                        "FAIL_TO_PASS behavior"
+                                    ),
+                                    paths=probed_tests,
+                                )
+                            )
+                        else:
+                            trace(
+                                "changed_tests.base_probe_failed_as_expected",
+                                "changed tests fail against Base and may join the gate",
+                                exit_code=base_result.exit_code,
+                            )
                 if violations:
                     outcome = RunOutcome.POLICY_BLOCKED
                     trace("policy.blocked", "pre-command policy check failed")
+                elif base_probe_outcome is not None:
+                    outcome = base_probe_outcome
+                    trace(
+                        "changed_tests.base_probe_stopped",
+                        "changed-test Base probe could not establish FAIL_TO_PASS",
+                        outcome=outcome.value,
+                    )
                 else:
                     runtime_fingerprints = _materialize_runtime_files(worktree, task)
                     if runtime_fingerprints:
@@ -295,9 +510,7 @@ class VerificationHarness:
                     violations.extend(
                         protected_path_violations(worktree, changed, effective_protected)
                     )
-                    violations.extend(
-                        _runtime_file_violations(worktree, runtime_fingerprints)
-                    )
+                    violations.extend(_runtime_file_violations(worktree, runtime_fingerprints))
                     audit_after = snapshot_tree(
                         run_directory, excluded_names={"worktree", "runtime"}
                     )
@@ -373,6 +586,7 @@ class VerificationHarness:
             finished_at=finished_at,
             duration_seconds=time.monotonic() - started,
             patch=patch_result,
+            changed_test_base_results=changed_test_base_results,
             commands=results,
             changed_files=changed,
             policy_violations=violations,

@@ -33,6 +33,8 @@ from prguard.schemas.fix import (
     ImplementerProposal,
     ProposalEnvelope,
     ProviderFailureEvidence,
+    ReplaceLinesEdit,
+    ReplacePythonSymbolEdit,
     ReplaceTextEdit,
     TextEdit,
 )
@@ -110,6 +112,8 @@ __all__ = [
     "ProjectPolicyInspection",
     "ProposalEnvelope",
     "ProviderFailureEvidence",
+    "ReplaceLinesEdit",
+    "ReplacePythonSymbolEdit",
     "ReplaceTextEdit",
     "ReviewEnvelope",
     "ReviewFinding",

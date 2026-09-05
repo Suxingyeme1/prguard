@@ -69,6 +69,14 @@ For local work, Task JSON is optional. PRGuard can freeze a clean repository and
 Issue directly:
 
 ```bash
+uv run prguard start --repository /path/to/project
+```
+
+The guided terminal asks for the Issue, shows the requested and resolved Git version, previews the
+exact verification commands and edit/protected scopes, requires an explicit host/container choice,
+and starts only after confirmation. For automation, the equivalent non-interactive entry is:
+
+```bash
 uv run prguard fix \
   "Fix add() so it returns the sum of both operands." \
   --repository /path/to/project \
@@ -207,7 +215,8 @@ uv run pytest -q
   scope, and declared Hatch VCS runtime-file discovery; lint gates are explicit policy;
 - bounded text tools plus Python AST symbol/import/reference, direct-call queries, one-to-three-hop
   static call-graph tracing, and related/reachable-test navigation;
-- exact `replace_text`/`create_file` submissions applied locally, with Git-authored Patch output;
+- exact text, hash-guarded line-range/Python-symbol, and bounded file-creation edits applied
+  locally, with Git-authored Patch output;
 - compatibility unified-diff proposals with writable/protected path, file-count, and byte limits;
 - detached Git worktree execution at an exact base commit;
 - strict `pytest` and non-mutating `ruff check --no-fix` argv grammars with `shell=False`;
@@ -215,6 +224,8 @@ uv run pytest -q
 - zero-token pytest collection and non-pytest Base-gate readiness checks before Implementer calls;
 - Harness-derived `pytest -q <changed-test-files...>` execution after Patch application; changing
   tests without a declared pytest capability is policy-blocked;
+- candidate-authored executable test changes must fail against a fresh unchanged Base worktree
+  before joining the final gate; AST-equivalent comment/format-only changes are not misclassified;
 - optional digest-pinned container verification with no network, read-only mounts, and resource
   limits;
 - structured pytest/ruff results, policy decisions, review findings, and trace events;
@@ -304,6 +315,11 @@ Base/Candidate/Repaired evaluator confirmed the public Context override works be
 fails on it, and works again after repair. No evaluator, maintainer outcome, later upstream fix, or
 Gold Patch was visible to the repair Agent.
 
+The [FileLock #606 holdout](evidence/filelock-606-holdout/README.md) adds a fourth repository shape
+without inflating the success count: policy discovery and the clean 539-test Base gate are frozen,
+while the live Implementer outcome remains explicitly pending. The upstream repair and evaluator
+material are not part of the Agent-facing task or public evidence package.
+
 ## Live model run
 
 Install the optional provider dependency and keep the API key in the process environment:
@@ -359,15 +375,15 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.12.0 adds a one-command visual terminal walkthrough on top of the natural-language local
-repository entry and read-only policy inspection checkpoint. The complete Click green-gate
-Review-and-repair evidence remains frozen. See the [terminal demo guide](docs/terminal-demo.md),
+Version 0.13.0 adds a guided real-repository terminal entry, hash-guarded range/symbol editing, and
+a Base-probe requirement for executable Agent-authored tests. The complete Click green-gate
+Review-and-repair evidence remains frozen. See the [guided terminal guide](docs/local-onboarding.md),
 [v0.11.1 phase report](docs/v0.11.1-phase-report.md),
 [local onboarding guide](docs/local-onboarding.md),
 [ADR 0023](docs/adr/0023-local-issues-freeze-before-agent-execution.md), and
 [controlled-repair evidence](evidence/click-controlled-repair/README.md). The next priority is
-a few more labelled shadow cases and broader Python repository-policy coverage—not another Agent
-role.
+one live FileLock holdout run when an authorized provider is reachable, followed by a few more
+labelled shadow cases and broader Python repository-policy coverage—not another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

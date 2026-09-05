@@ -237,6 +237,13 @@ Harness. A generated repository makes the first structured edit fail one pytest 
 that evidence into the permitted repair, and renders the passing retry, final Patch, and Manifest
 as one readable timeline. See the [v0.12.0 phase report](v0.12.0-phase-report.md).
 
+The nineteenth increment adds a guided terminal entry for real local repositories while preserving
+the frozen Task boundary. It also adds hash-guarded line-range and Python-symbol edits for repeated
+source text, plus a fresh-Base probe that requires executable Agent-authored tests to demonstrate
+FAIL_TO_PASS behavior. FileLock #606 is frozen as a new holdout shape; its 539-test Base gate is
+ready, while the live provider outcome remains honestly pending. See the
+[v0.13.0 phase report](v0.13.0-phase-report.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

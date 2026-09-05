@@ -40,6 +40,14 @@ executed even when the frozen base command targets a narrower existing file. Suc
 Harness-derived from Git's changed-file set and retained in the report. A task without a declared
 pytest capability cannot claim test-backed success after changing Python tests.
 
+For Agent-generated or modified executable Python tests, execution on Candidate is not enough. The
+Harness copies those test files and changed test support onto a fresh unchanged Base worktree,
+withholds candidate source changes, and requires the tests to fail there before they may join the
+Candidate gate. A test that already passes is policy-blocked as missing FAIL_TO_PASS evidence.
+Python files whose parsed AST is unchanged—comments and formatting only—skip this requirement but
+still run under the declared Candidate gate. This test is evidence of a reproduced behavior change,
+not proof that the assertion expresses the correct product contract.
+
 The initial scorecard is deliberately compact: task resolution, fail-to-pass/pass-to-pass,
 regression-free rate, Review Finding precision/recall, false block, token use, elapsed time, and
 repair rounds. Keep frozen manifests and raw artifacts. Add confidence intervals or paired tests

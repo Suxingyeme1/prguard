@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 import io
 import os
 import re
@@ -155,8 +156,10 @@ class RepositoryTools:
         data = candidate.read_bytes()
         if _is_probably_binary(data):
             raise RepositoryAccessError("binary files are not readable")
-        lines = data.decode("utf-8", errors="replace").splitlines()
-        selected = lines[start_line - 1 : end_line]
+        text = data.decode("utf-8", errors="replace")
+        raw_lines = text.splitlines(keepends=True)
+        selected_raw = "".join(raw_lines[start_line - 1 : end_line])
+        selected = selected_raw.splitlines()
         content = "\n".join(f"{start_line + index}: {line}" for index, line in enumerate(selected))
         return self._charge(
             {
@@ -164,7 +167,8 @@ class RepositoryTools:
                 "start_line": start_line,
                 "end_line": start_line + len(selected) - 1,
                 "content": content,
-                "truncated": end_line < len(lines),
+                "content_sha256": hashlib.sha256(selected_raw.encode("utf-8")).hexdigest(),
+                "truncated": end_line < len(raw_lines),
             }
         )  # type: ignore[return-value]
 
@@ -255,9 +259,7 @@ class RepositoryTools:
     ) -> dict[str, object]:
         self._validate_ast_query(symbol, max_results)
         if direction not in {"callers", "callees", "both"}:
-            raise RepositoryAccessError(
-                "call graph direction must be callers, callees, or both"
-            )
+            raise RepositoryAccessError("call graph direction must be callers, callees, or both")
         if max_depth < 1 or max_depth > 3:
             raise RepositoryAccessError("call graph max_depth must be between 1 and 3")
         return self._charge(  # type: ignore[return-value]

@@ -34,6 +34,7 @@ class Task(StrictModel):
     command_timeout_seconds: float = Field(default=120, gt=0, le=3600)
     task_timeout_seconds: float = Field(default=600, gt=0, le=7200)
     max_output_bytes: int = Field(default=200_000, ge=1024, le=10_000_000)
+    require_changed_tests_fail_on_base: bool = False
     container: ContainerExecutionSpec | None = None
     runtime_files: list[RuntimeFileSpec] = Field(default_factory=list, max_length=16)
 

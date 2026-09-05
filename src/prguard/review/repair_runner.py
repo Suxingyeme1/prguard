@@ -201,9 +201,7 @@ class ReviewRepairRunner:
                         f"unable to prepare controlled-repair worktree: {patch_error}"
                     )
                 fix_task = _as_fix_task(task, resolved_commit)
-                implementer = (
-                    self.implementer() if callable(self.implementer) else self.implementer
-                )
+                implementer = self.implementer() if callable(self.implementer) else self.implementer
                 repair_proposal = implementer.propose(
                     ProviderRequest(
                         task=fix_task,
@@ -255,6 +253,7 @@ class ReviewRepairRunner:
                     command_timeout_seconds=task.command_timeout_seconds,
                     task_timeout_seconds=remaining,
                     max_output_bytes=task.max_output_bytes,
+                    require_changed_tests_fail_on_base=True,
                     container=task.container,
                     runtime_files=task.runtime_files,
                 )
@@ -275,10 +274,7 @@ class ReviewRepairRunner:
                 outcome = ReviewRepairOutcome.REVIEW_FAILED
         except (OSError, ValueError, ImplementerError, HarnessError) as exc:
             error = str(exc)
-            if (
-                isinstance(exc, ProviderError)
-                and isinstance(exc.evidence, ProviderFailureEvidence)
-            ):
+            if isinstance(exc, ProviderError) and isinstance(exc.evidence, ProviderFailureEvidence):
                 repair_provider_failure = exc.evidence
                 _add_usage(token_usage, exc.evidence.token_usage)
             if isinstance(exc, PatchPolicyError):

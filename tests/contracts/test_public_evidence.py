@@ -63,6 +63,11 @@ def test_public_click_controlled_repair_artifact_hashes() -> None:
     assert verify_evidence(root) == 4
 
 
+def test_public_filelock_holdout_artifact_hashes() -> None:
+    root = Path(__file__).resolve().parents[2] / "evidence" / "filelock-606-holdout"
+    assert verify_evidence(root) == 2
+
+
 def test_public_evidence_rejects_hash_mismatch(tmp_path: Path) -> None:
     (tmp_path / "sample.patch").write_text("diff", encoding="utf-8")
     (tmp_path / "manifest.json").write_text(

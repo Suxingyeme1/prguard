@@ -3,6 +3,25 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.13.0 — 2026-09-04
+
+### Added
+
+- `prguard start` provides a guided terminal entry for natural-language local Issues, with frozen
+  Commit and deterministic policy preview plus explicit host/container approval;
+- structured edits can target SHA-256-bound line ranges and unambiguous Python definitions, so
+  repeated text no longer forces a raw Patch fallback;
+- candidate workflows require executable changed Python tests to fail on a fresh unchanged Base
+  before Candidate verification, while AST-equivalent comment/format-only changes are exempt;
+- FileLock #606 is frozen as a held-out real-repository case with a verified 539-test Base gate and
+  an explicitly pending live-provider outcome.
+
+### Changed
+
+- schema/harness/Fix/Review/Review-repair/Issue-to-PR contracts advance to
+  `1.1.0`/`0.2.0`/`fix-v4`/`review-v3`/`review-repair-v5`/`issue-to-pr-v6`;
+- guided sessions defer provider construction until after policy preview and approval.
+
 ## 0.12.0 — 2026-09-04
 
 ### Added

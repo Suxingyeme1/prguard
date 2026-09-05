@@ -54,6 +54,7 @@ class HarnessReport(StrictModel):
     finished_at: datetime
     duration_seconds: float = Field(ge=0)
     patch: PatchApplicationResult
+    changed_test_base_results: list[VerificationResult] = Field(default_factory=list)
     commands: list[VerificationResult] = Field(default_factory=list)
     changed_files: list[str] = Field(default_factory=list)
     policy_violations: list[PolicyViolation] = Field(default_factory=list)

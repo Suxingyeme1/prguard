@@ -272,40 +272,42 @@ _READ_TOOLS: list[dict[str, object]] = [
 ]
 
 _SUBMIT_PATCH: dict[str, object] = {
-        "type": "function",
-        "name": "submit_patch",
-        "description": (
-            "Submit the complete standard Git unified diff against the base commit and an "
-            "auditable plan. The patch must use diff --git, --- a/path, +++ b/path, and @@ hunk "
-            "headers. Do not use Markdown fences or *** Begin Patch markers. Call exactly once "
-            "after inspecting relevant source and tests."
-        ),
-        "strict": True,
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "plan": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 1,
-                    "maxItems": 12,
-                },
-                "summary": {"type": "string"},
-                "patch": {"type": "string"},
-                "tests_changed": {"type": "boolean"},
+    "type": "function",
+    "name": "submit_patch",
+    "description": (
+        "Submit the complete standard Git unified diff against the base commit and an "
+        "auditable plan. The patch must use diff --git, --- a/path, +++ b/path, and @@ hunk "
+        "headers. Do not use Markdown fences or *** Begin Patch markers. Call exactly once "
+        "after inspecting relevant source and tests."
+    ),
+    "strict": True,
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "plan": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1,
+                "maxItems": 12,
             },
-            "required": ["plan", "summary", "patch", "tests_changed"],
-            "additionalProperties": False,
+            "summary": {"type": "string"},
+            "patch": {"type": "string"},
+            "tests_changed": {"type": "boolean"},
         },
+        "required": ["plan", "summary", "patch", "tests_changed"],
+        "additionalProperties": False,
+    },
 }
 
 _SUBMIT_EDITS: dict[str, object] = {
     "type": "function",
     "name": "submit_edits",
     "description": (
-        "Submit exact structured text replacements or new files. PRGuard applies them in an "
+        "Submit bounded structured edits or new files. PRGuard applies them in an "
         "isolated worktree and asks Git to generate the final Patch. Prefer this over manually "
-        "constructing a unified diff. Each replace_text old_text must match exactly once."
+        "constructing a unified diff. Use replace_text for unique source, replace_lines for an "
+        "explicit read_file range, and replace_python_symbol for an exact AST definition. "
+        "Copy content_sha256 from the corresponding read_file result into hash-guarded edits."
     ),
     "strict": True,
     "parameters": {
@@ -338,6 +340,53 @@ _SUBMIT_EDITS: dict[str, object] = {
                         {
                             "type": "object",
                             "properties": {
+                                "operation": {"type": "string", "enum": ["replace_lines"]},
+                                "path": {"type": "string"},
+                                "start_line": {"type": "integer", "minimum": 1},
+                                "end_line": {"type": "integer", "minimum": 1},
+                                "expected_sha256": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{64}$",
+                                },
+                                "new_text": {"type": "string"},
+                            },
+                            "required": [
+                                "operation",
+                                "path",
+                                "start_line",
+                                "end_line",
+                                "expected_sha256",
+                                "new_text",
+                            ],
+                            "additionalProperties": False,
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "operation": {
+                                    "type": "string",
+                                    "enum": ["replace_python_symbol"],
+                                },
+                                "path": {"type": "string"},
+                                "symbol": {"type": "string"},
+                                "expected_sha256": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{64}$",
+                                },
+                                "new_text": {"type": "string"},
+                            },
+                            "required": [
+                                "operation",
+                                "path",
+                                "symbol",
+                                "expected_sha256",
+                                "new_text",
+                            ],
+                            "additionalProperties": False,
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
                                 "operation": {"type": "string", "enum": ["create_file"]},
                                 "path": {"type": "string"},
                                 "content": {"type": "string"},
@@ -361,9 +410,10 @@ _INSTRUCTIONS = """You are PRGuard's single Implementer for a real local reposit
 Inspect the repository using the bounded text and Python AST navigation tools. Use AST symbol,
 import, bounded call-graph, reference, and related-test results as static evidence, then read the
 relevant lines.
-Form an internal plan, then prefer submit_edits with exact old/new text operations. PRGuard will
+Form an internal plan, then prefer submit_edits with exact or hash-guarded operations. PRGuard will
 apply those edits locally and ask Git to generate the Patch. submit_patch remains a compatibility
-fallback when the required change cannot be represented safely as exact text edits.
+fallback when the required change cannot be represented safely. If repeated source text is
+ambiguous, use a read_file line range or an exact Python symbol plus its returned content_sha256.
 Do not modify protected paths, do not invent source you have not read, and do not request or emit
 shell commands. Preserve existing behavior and add or modify public tests only when necessary.
 If verification feedback is present, return a corrected complete proposal against the same base
@@ -481,9 +531,7 @@ def _call_read_tool(
     raise ProviderError(f"unknown Implementer tool: {name}")
 
 
-def _serialize_tool_result(
-    result: dict[str, object], *, used: int, budget: int
-) -> str:
+def _serialize_tool_result(result: dict[str, object], *, used: int, budget: int) -> str:
     """Attach deterministic convergence feedback without exposing extra repository data."""
 
     remaining = max(0, budget - used)
@@ -693,7 +741,6 @@ class OpenAIResponsesProvider:
             response_id=last_response_id,
             provider_metadata=provider_metadata,
         )
-
 
 
 class DeepSeekChatProvider:
@@ -910,9 +957,7 @@ class DeepSeekChatProvider:
                             error=str(exc),
                         )
                     )
-                messages.append(
-                    {"role": "tool", "tool_call_id": item.id, "content": serialized}
-                )
+                messages.append({"role": "tool", "tool_call_id": item.id, "content": serialized})
         raise _failure_error(
             "Implementer response-turn budget exhausted",
             provider=self.name,

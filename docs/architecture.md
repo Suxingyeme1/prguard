@@ -90,10 +90,12 @@ a deterministic tool, never a Test Runner Agent.
   calls have an explicit remaining budget and one terminal-only submission slot. A failed provider
   call retains non-secret partial tool, response, and Token evidence without storing hidden model
   reasoning.
-- **Structured edit engine** accepts exact single-match `replace_text` and bounded `create_file`
-  operations. It validates paths and payloads, applies them in a separate detached worktree, and
-  asks Git to generate the Base-Commit-relative Patch. Raw unified diffs remain a compatibility
-  fallback.
+- **Structured edit engine** accepts exact single-match `replace_text`, hash-guarded inclusive line
+  ranges, hash-guarded unambiguous Python definitions, and bounded `create_file` operations. The
+  hashes bind an edit to bytes returned by the read tool, so repeated text can be changed without
+  silently selecting the wrong occurrence. It validates paths and payloads, applies them in a
+  separate detached worktree, syntax-checks Python symbol replacements, and asks Git to generate
+  the Base-Commit-relative Patch. Raw unified diffs remain a compatibility fallback.
 - **Patch policy** validates every generated or fallback diff against writable/protected globs,
   patch bytes, changed-file count, and consistent file headers.
 - **Fix runner** creates a read-only discovery worktree, requests a proposal, materializes
@@ -106,7 +108,14 @@ a deterministic tool, never a Test Runner Agent.
 - **Changed-test gate** recognizes added or modified conventionally named Python test modules from
   Git's changed-file set. If the Task declares pytest, uncovered changed tests receive one
   Harness-authored `pytest -q` argv; if no pytest capability exists, execution is policy-blocked.
-  The derived argv is reported and replayed, and still passes the fixed no-shell grammar.
+  Candidate workflows additionally copy executable changed tests—not candidate source—onto a fresh
+  Base worktree and require that probe to fail before final verification. Python AST equivalence
+  skips comment/format-only changes. The derived argv and Base-probe result are reported and
+  replayed, and still pass the fixed no-shell grammar.
+- **Guided terminal entry** gathers ordinary Issue text, resolves and previews the immutable Base,
+  shows discovered commands and edit/protected scopes, requires a human host/container decision,
+  and invokes the same local preparation plus FixRunner path as the automation-oriented CLI. It is
+  a presentation layer, not a second orchestration implementation.
 - **Reviewer router** runs only after an accepted Fix and before Independent Review. It binds the
   resolved Base Commit and final Patch hash to the verified Fix and Verification Manifests, then
   derives versioned risk factors from Patch scope, prior repair, test/gate and sensitive-path

@@ -68,9 +68,7 @@ def test_issue_aware_discovery_targets_related_test_and_hatch_vcs_scaffold(
     (source / "__init__.py").write_text(
         "from ._version import __version__\nfrom .filesize import naturalsize\n"
     )
-    (source / "filesize.py").write_text(
-        "def naturalsize(value):\n    return str(value)\n"
-    )
+    (source / "filesize.py").write_text("def naturalsize(value):\n    return str(value)\n")
     tests = tmp_path / "tests"
     tests.mkdir()
     (tests / "test_filesize.py").write_text(
@@ -93,6 +91,7 @@ def test_issue_aware_discovery_targets_related_test_and_hatch_vcs_scaffold(
     ]
     assert policy.runtime_files[0].path == "src/humanize/_version.py"
     assert '__version__ = "0.0.0"' in policy.runtime_files[0].content
+    assert "version = __version__" in policy.runtime_files[0].content
     assert "src/humanize/_version.py" in policy.protected_paths
     assert any("Issue-related" in warning for warning in policy.warnings)
 
@@ -102,8 +101,7 @@ def test_issue_discovery_indexes_realistic_large_python_module(tmp_path: Path) -
     source.mkdir(parents=True)
     (source / "__init__.py").write_text("from .large import target\n")
     (source / "large.py").write_text(
-        ("# module implementation padding\n" * 4_500)
-        + "\ndef target():\n    return 'fixed'\n"
+        ("# module implementation padding\n" * 4_500) + "\ndef target():\n    return 'fixed'\n"
     )
     tests = tmp_path / "tests"
     tests.mkdir()
@@ -113,9 +111,7 @@ def test_issue_discovery_indexes_realistic_large_python_module(tmp_path: Path) -
     (tests / "test_target.py").write_text(
         "from package.large import target\n\ndef test_target():\n    assert target()\n"
     )
-    (tmp_path / "pyproject.toml").write_text(
-        "[tool.pytest.ini_options]\ntestpaths = ['tests']\n"
-    )
+    (tmp_path / "pyproject.toml").write_text("[tool.pytest.ini_options]\ntestpaths = ['tests']\n")
 
     policy = discover_project_policy(tmp_path, issue="`target()` should return fixed.")
 

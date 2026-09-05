@@ -118,9 +118,7 @@ class FixRunner:
                     container=task.container,
                     runtime_files=task.runtime_files,
                 )
-                readiness = VerificationHarness(run_directory / "readiness").run(
-                    readiness_task
-                )
+                readiness = VerificationHarness(run_directory / "readiness").run(readiness_task)
                 self._emit("readiness.completed", outcome=readiness.outcome.value)
                 if readiness.outcome is not RunOutcome.PASSED:
                     boundary = readiness_failure_boundary(readiness)
@@ -203,6 +201,7 @@ class FixRunner:
                         command_timeout_seconds=task.command_timeout_seconds,
                         task_timeout_seconds=remaining,
                         max_output_bytes=task.max_output_bytes,
+                        require_changed_tests_fail_on_base=True,
                         container=task.container,
                         runtime_files=task.runtime_files,
                     )
@@ -242,9 +241,8 @@ class FixRunner:
                         )
                 except ImplementerError as exc:
                     attempt.error = str(exc)
-                    if (
-                        isinstance(exc, ProviderError)
-                        and isinstance(exc.evidence, ProviderFailureEvidence)
+                    if isinstance(exc, ProviderError) and isinstance(
+                        exc.evidence, ProviderFailureEvidence
                     ):
                         attempt.provider_failure = exc.evidence
                         failure_usage = exc.evidence.token_usage

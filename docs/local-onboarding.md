@@ -29,6 +29,17 @@ allowlisted gate explicitly instead of guessing one.
 Keep the PRGuard workspace outside the source repository:
 
 ```bash
+uv run prguard start --repository /path/to/project
+```
+
+The guided entry accepts multiline natural-language Issue text, resolves and displays the frozen
+Commit, previews the exact command/edit policy, asks whether trusted code may run on the host or
+requires a digest-pinned container, and starts only after `run` confirmation. It uses the same
+preparation and FixRunner path described below.
+
+For scripts or users who already know the boundary, use the non-interactive form:
+
+```bash
 uv run prguard fix \
   "Fix add() so it returns the sum of both operands." \
   --repository /path/to/project \
