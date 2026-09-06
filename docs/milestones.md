@@ -273,6 +273,12 @@ Live resolution remains pending. See the [v0.13.3 phase report](v0.13.3-phase-re
 [ADR 0028](adr/0028-operator-policy-is-explicit-frozen-and-non-overriding.md), and
 [ADR 0029](adr/0029-verification-artifacts-record-runtime-identity.md).
 
+The twenty-third increment improves the product-facing terminal delivery without changing Agent
+authority. Guided `start` now renders each attempt's deterministic verification and runtime, a
+bounded colorized Patch preview, Artifact/Manifest locations, and a copyable Git apply-check
+command. Untrusted repository/model control characters are neutralized before terminal rendering;
+the full Patch remains the hash-bound file rather than terminal text.
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

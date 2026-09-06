@@ -3,6 +3,16 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.13.4 — 2026-09-06
+
+### Changed
+
+- guided `prguard start` delivery now shows per-attempt verification summaries, recorded Python
+  runtime, a bounded colorized final-Patch preview, duration/token totals, and a copyable
+  `git apply --check` command against the source checkout;
+- full Patch and Manifest paths remain visible when the terminal preview is truncated;
+- repository/model text is stripped of terminal control characters before preview rendering.
+
 ## 0.13.3 — 2026-09-06
 
 ### Added

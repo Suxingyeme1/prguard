@@ -411,10 +411,12 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.13.3 adds reviewed local policy files for immutable upstream repositories, model-free
-`gate` replay, nested Python test-root discovery, and runtime-attributed command artifacts. A fresh
-Locust #3207 holdout is frozen with passing public gates on CPython 3.12/3.13 and a sealed
-version-specific evaluator; no live task-resolution result is claimed yet. See the
+Version 0.13.4 makes the guided terminal delivery directly reviewable with per-attempt verification,
+runtime, bounded Patch preview, and copyable Git validation output. Version 0.13.3 added reviewed
+local policy files for immutable upstream repositories, model-free `gate` replay, nested Python
+test-root discovery, and runtime-attributed command artifacts. A fresh Locust #3207 holdout is
+frozen with passing public gates on CPython 3.12/3.13 and a sealed version-specific evaluator; no
+live task-resolution result is claimed yet. See the
 [v0.13.3 phase report](docs/v0.13.3-phase-report.md),
 [v0.13.2 phase report](docs/v0.13.2-phase-report.md),
 [v0.13.1 phase report](docs/v0.13.1-phase-report.md),

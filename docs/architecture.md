@@ -67,6 +67,9 @@ a deterministic tool, never a Test Runner Agent.
   resolves `HEAD` or a requested revision, and materializes a separate detached checkout with hooks
   and user/system Git configuration disabled. Inline text and regular UTF-8 Issue files both become
   the same SHA-256-bound FixTask; the workspace must remain outside the source repository.
+- **Guided terminal delivery** previews the frozen policy before execution and renders per-attempt
+  gate/runtime evidence plus a bounded final diff afterward. Repository/model control characters
+  are neutralized before display; the complete Patch and Manifest remain file artifacts.
 - **Project profile discovery** accepts a strict reviewed repository `.prguard.toml`, an explicitly
   selected local operator policy, or conservatively detects pytest and Python source/test write
   scopes. One unique nested `test`/`tests` root can be selected within bounded depth/file limits;

@@ -49,7 +49,10 @@ uv run prguard start --repository /path/to/project
 The guided entry accepts multiline natural-language Issue text, resolves and displays the frozen
 Commit, previews the exact command/edit policy, asks whether trusted code may run on the host or
 requires a digest-pinned container, and starts only after `run` confirmation. It uses the same
-preparation and FixRunner path described below.
+preparation and FixRunner path described below. Delivery displays each attempt's verification
+summary and runtime, a bounded colorized final-Patch preview, the full Artifact/Manifest paths, and
+a copyable `git apply --check` command. Review the Patch before applying it; the source checkout
+must be at the displayed Base Commit for that validation to succeed.
 
 For scripts or users who already know the boundary, use the non-interactive form:
 

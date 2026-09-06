@@ -6,7 +6,7 @@ import pytest
 
 from prguard.cli import main
 from prguard.harness import verify_manifest
-from prguard.interactive import run_interactive_fix
+from prguard.interactive import InteractiveTerminal, run_interactive_fix
 from prguard.onboarding.errors import OnboardingError
 
 _FILES = {
@@ -78,6 +78,12 @@ def test_start_cli_previews_policy_and_runs_real_fix_pipeline(
     assert "$ pytest" in captured.out
     assert "HOST · repository tests run with the current user" in captured.out
     assert "Implementer" in captured.out
+    assert "VERIFICATION" in captured.out
+    assert "1 passed" in captured.out
+    assert "PATCH PREVIEW" in captured.out
+    assert "+    return left + right" in captured.out
+    assert f"git -C {repository}" in captured.out
+    assert "apply --check" in captured.out
     assert "ACCEPTED" in captured.out
     manifests = list((workspace / "fix-runs").glob("*/fix-manifest.json"))
     assert len(manifests) == 1
@@ -136,3 +142,7 @@ def test_cancelled_start_does_not_construct_provider(make_repo) -> None:
         )
 
     assert provider_calls == 0
+
+
+def test_terminal_preview_replaces_untrusted_control_characters() -> None:
+    assert InteractiveTerminal._terminal_safe("safe\x1b]2;owned\x07") == "safe�]2;owned�"
