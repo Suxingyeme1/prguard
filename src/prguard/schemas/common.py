@@ -10,8 +10,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = "1.2.0"
-HARNESS_VERSION = "0.2.1"
+SCHEMA_VERSION = "1.3.0"
+HARNESS_VERSION = "0.3.0"
 POLICY_VERSION = "argv-v3"
 FIX_WORKFLOW_VERSION = "fix-v5"
 ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v8"
@@ -55,6 +55,18 @@ class RunOutcome(StrEnum):
 class ExecutionBackend(StrEnum):
     HOST = "host"
     CONTAINER = "container"
+
+
+class RuntimeIdentity(StrictModel):
+    """Non-secret Python runtime identity captured by the deterministic executor."""
+
+    implementation: str = Field(min_length=1, max_length=80)
+    version: str = Field(min_length=1, max_length=80)
+    cache_tag: str | None = Field(default=None, max_length=120)
+    platform: str = Field(min_length=1, max_length=120)
+    architecture: str = Field(min_length=1, max_length=120)
+    executable_name: str = Field(min_length=1, max_length=120)
+    provenance: Literal["host_process", "container_process"]
 
 
 class ContainerExecutionSpec(StrictModel):

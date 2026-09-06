@@ -11,7 +11,11 @@ from prguard.harness.artifacts import canonical_json, sha256_bytes
 from prguard.onboarding.errors import OnboardingError
 from prguard.onboarding.github import GitHubClient, parse_github_issue_url
 from prguard.onboarding.materialize import materialize_public_checkout
-from prguard.onboarding.profile import discover_project_policy, load_project_config
+from prguard.onboarding.profile import (
+    discover_project_policy,
+    load_operator_project_config,
+    load_project_config,
+)
 from prguard.schemas import (
     ArtifactEntry,
     ContainerExecutionSpec,
@@ -40,6 +44,7 @@ def prepare_github_issue(
     client: GitHubClient | None = None,
     materializer: Materializer = materialize_public_checkout,
     source_repository: Path | None = None,
+    policy_file: Path | None = None,
 ) -> TaskPreparationReport:
     if trust_host == bool(container_image):
         raise OnboardingError(
@@ -47,6 +52,9 @@ def prepare_github_issue(
         )
     reference = parse_github_issue_url(issue_url)
     snapshot = (client or GitHubClient()).fetch_issue(reference, base_commit=base_commit)
+    operator_config = (
+        load_operator_project_config(policy_file) if policy_file is not None else None
+    )
     output_directory = output_directory.expanduser().resolve()
     output_directory.mkdir(parents=True, exist_ok=False)
     try:
@@ -62,7 +70,11 @@ def prepare_github_issue(
             raise OnboardingError(
                 "source_repository cannot be combined with a custom materializer"
             )
-        policy = discover_project_policy(checkout, issue=snapshot.issue_text)
+        policy = discover_project_policy(
+            checkout,
+            issue=snapshot.issue_text,
+            operator_config=operator_config,
+        )
         container = (
             ContainerExecutionSpec(image=container_image)
             if container_image is not None
@@ -87,7 +99,18 @@ def prepare_github_issue(
         artifact_directory.mkdir()
         task_path = artifact_directory / "task.json"
         task_path.write_bytes(canonical_json(task.model_dump(mode="json")))
-        _, config_path = load_project_config(checkout)
+        _, repository_config_path = load_project_config(checkout)
+        config_path = (
+            policy_file.expanduser().resolve()
+            if policy_file is not None
+            else repository_config_path
+        )
+        policy_artifact = None
+        if operator_config is not None:
+            policy_artifact = artifact_directory / "operator-policy.json"
+            policy_artifact.write_bytes(
+                canonical_json(operator_config.model_dump(mode="json"))
+            )
         warnings = list(policy.warnings)
         if snapshot.archived:
             warnings.append("The GitHub repository is archived.")
@@ -99,6 +122,10 @@ def prepare_github_issue(
         if source_repository is not None:
             warnings.append(
                 "A same-origin local repository was used as the frozen Git object cache."
+            )
+        if operator_config is not None:
+            warnings.append(
+                "An operator-supplied policy was validated and frozen in preparation artifacts."
             )
         if trust_host:
             warnings.append(
@@ -122,7 +149,9 @@ def prepare_github_issue(
         report_path = artifact_directory / "preparation-report.json"
         report_path.write_bytes(canonical_json(report.model_dump(mode="json")))
         entries: list[ArtifactEntry] = []
-        for path in (task_path, report_path):
+        for path in (task_path, report_path, policy_artifact):
+            if path is None:
+                continue
             payload = path.read_bytes()
             entries.append(
                 ArtifactEntry(

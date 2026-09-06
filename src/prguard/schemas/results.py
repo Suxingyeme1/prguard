@@ -15,6 +15,7 @@ from prguard.schemas.common import (
     ExecutionBackend,
     PolicyViolation,
     RunOutcome,
+    RuntimeIdentity,
     StrictModel,
     TraceEvent,
 )
@@ -40,6 +41,7 @@ class VerificationResult(StrictModel):
     stderr_truncated: bool = False
     execution_backend: ExecutionBackend = ExecutionBackend.HOST
     container_image: str | None = None
+    runtime: RuntimeIdentity | None = None
     infrastructure_error: bool = False
     passed: bool
 

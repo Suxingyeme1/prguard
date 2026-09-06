@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
+import platform
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 from contextlib import suppress
@@ -17,15 +20,52 @@ from prguard.schemas import (
     CommandSpec,
     ContainerExecutionSpec,
     ExecutionBackend,
+    RuntimeIdentity,
     VerificationResult,
 )
 
 _CONTAINER_STARTUP_MARKER = "__PRGUARD_CONTAINER_PYTHON_STARTED__\n"
+_CONTAINER_RUNTIME_MARKER = "__PRGUARD_CONTAINER_RUNTIME__="
 _CONTAINER_STARTUP_WRAPPER = (
-    "import os,sys;"
+    "import json,os,platform,sys;"
     f"os.write(2,{_CONTAINER_STARTUP_MARKER.encode()!r});"
+    "identity={'implementation':sys.implementation.name,"
+    "'version':platform.python_version(),"
+    "'cache_tag':sys.implementation.cache_tag,"
+    "'platform':sys.platform,"
+    "'architecture':platform.machine() or 'unknown',"
+    "'executable_name':os.path.basename(sys.executable),"
+    "'provenance':'container_process'};"
+    f"os.write(2,({_CONTAINER_RUNTIME_MARKER!r}+json.dumps(identity,sort_keys=True,"
+    "separators=(',',':'))+'\\n').encode());"
     "os.execv(sys.executable,[sys.executable,*sys.argv[1:]])"
 )
+
+
+def _host_runtime_identity() -> RuntimeIdentity:
+    return RuntimeIdentity(
+        implementation=sys.implementation.name,
+        version=platform.python_version(),
+        cache_tag=sys.implementation.cache_tag,
+        platform=sys.platform,
+        architecture=platform.machine() or "unknown",
+        executable_name=os.path.basename(sys.executable),
+        provenance="host_process",
+    )
+
+
+def _extract_container_runtime(stderr: str) -> tuple[str, RuntimeIdentity | None]:
+    lines = stderr.splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        if not line.startswith(_CONTAINER_RUNTIME_MARKER):
+            continue
+        raw = line[len(_CONTAINER_RUNTIME_MARKER) :].rstrip("\r\n")
+        try:
+            identity = RuntimeIdentity.model_validate(json.loads(raw))
+        except (json.JSONDecodeError, ValueError):
+            return stderr, None
+        return "".join([*lines[:index], *lines[index + 1 :]]), identity
+    return stderr, None
 
 
 def _read_bounded(path: Path, limit: int) -> tuple[str, bool]:
@@ -165,11 +205,13 @@ class CommandExecutor:
         if self.container is None:
             effective_argv = self.policy.authorize(spec.argv)
             backend = ExecutionBackend.HOST
+            runtime_identity = _host_runtime_identity()
         else:
             effective_argv = self.policy.authorize_container(
                 spec.argv, self.container.python_executable
             )
             backend = ExecutionBackend.CONTAINER
+            runtime_identity = None
         remaining = self.task_deadline - time.monotonic()
         requested_timeout = spec.timeout_seconds or self.default_timeout
         timeout = max(0.0, min(requested_timeout, remaining))
@@ -185,9 +227,15 @@ class CommandExecutor:
                 passed=False,
                 execution_backend=backend,
                 container_image=self.container.image if self.container else None,
+                runtime=runtime_identity,
             )
         env = {
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "PATH": os.pathsep.join(
+                [
+                    os.fspath(Path(sys.executable).absolute().parent),
+                    os.environ.get("PATH", "/usr/bin:/bin"),
+                ]
+            ),
             "HOME": os.fspath(self.runtime_directory / "home"),
             "TMPDIR": os.fspath(self.runtime_directory / "tmp"),
             "LC_ALL": "C.UTF-8",
@@ -252,10 +300,15 @@ class CommandExecutor:
         container_started = _CONTAINER_STARTUP_MARKER in stderr
         if container_started:
             stderr = stderr.replace(_CONTAINER_STARTUP_MARKER, "", 1)
+            stderr, runtime_identity = _extract_container_runtime(stderr)
         infrastructure_error = (
             backend is ExecutionBackend.CONTAINER
             and not timed_out
-            and (exit_code in {125, 126, 127} or not container_started)
+            and (
+                exit_code in {125, 126, 127}
+                or not container_started
+                or runtime_identity is None
+            )
         )
         return VerificationResult(
             command_index=index,
@@ -270,6 +323,7 @@ class CommandExecutor:
             stderr_truncated=stderr_truncated,
             execution_backend=backend,
             container_image=self.container.image if self.container else None,
+            runtime=runtime_identity,
             infrastructure_error=infrastructure_error,
             passed=not timed_out and not infrastructure_error and exit_code == 0,
         )

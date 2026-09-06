@@ -25,6 +25,7 @@ from prguard.harness.policy import (
     remove_owned_audit_paths,
     snapshot_changes,
     snapshot_tree,
+    writable_path_violations,
 )
 from prguard.schemas import (
     CommandSpec,
@@ -361,6 +362,7 @@ class VerificationHarness:
             if patch_result.applied:
                 changed = changed_files(worktree)
                 violations.extend(protected_path_violations(worktree, changed, effective_protected))
+                violations.extend(writable_path_violations(changed, task.writable_paths))
                 changed_test_command, changed_test_violation = _generated_test_command(
                     task.commands, changed
                 )

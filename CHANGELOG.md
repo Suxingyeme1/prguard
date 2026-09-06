@@ -3,6 +3,34 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.13.3 — 2026-09-06
+
+### Added
+
+- `prguard gate` replays a frozen FixTask and optional Candidate Patch through the deterministic
+  Harness without calling an Implementer or Reviewer;
+- reviewed external `--policy-file` support for local/GitHub preparation, inspection, guided start,
+  and one-command Fix flows;
+- bounded discovery of one unique nested Python `test`/`tests` root;
+- Python implementation, version, cache tag, platform, architecture, executable, and provenance in
+  every verification-command artifact.
+
+### Safety
+
+- external policies use the strict repository-policy schema and command grammar, are canonicalized
+  into the preparation Manifest, and cannot override repository-owned `.prguard.toml` files;
+- model-free and workflow Candidate gates independently block changes outside the frozen writable
+  scope, even when tests would otherwise pass;
+- Issue-related test targeting no longer treats arbitrary traceback calls as requested symbols;
+- missing or malformed container runtime identity fails closed as infrastructure failure.
+
+### Evidence
+
+- Locust #3207 is frozen at an exact Commit with a reviewed public gate that passes under recorded
+  CPython 3.12.13 and 3.13.12 environments;
+- a network-free compatibility evaluator was sealed by SHA-256 before any live Agent call. Live
+  Implementer and Independent Reviewer outcomes remain pending and are not counted as resolution.
+
 ## 0.13.2 — 2026-09-05
 
 ### Added

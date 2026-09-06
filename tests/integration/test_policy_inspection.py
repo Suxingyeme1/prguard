@@ -101,3 +101,52 @@ def test_policy_inspection_never_executes_test_code(make_repo, tmp_path: Path) -
 
     assert report.status == "ready"
     assert not marker.exists()
+
+
+def test_policy_inspection_explains_nested_test_root(make_repo) -> None:
+    repository, _ = make_repo(
+        {
+            "package/__init__.py": "VALUE = 1\n",
+            "package/test/test_package.py": "def test_package():\n    assert True\n",
+        }
+    )
+
+    report = inspect_project_policy(repository)
+
+    assert report.status == "ready"
+    assert report.commands[0].argv == ["pytest", "-q", "package/test"]
+    assert any("unique nested Python test root detected" in item for item in report.signals)
+
+
+def test_policy_inspection_reports_explicit_operator_policy_path(
+    make_repo, tmp_path: Path, capsys
+) -> None:
+    repository, _ = make_repo(
+        {
+            "src/pkg/__init__.py": "VALUE = 1\n",
+            "tests/test_pkg.py": "def test_pkg():\n    assert True\n",
+        }
+    )
+    policy = tmp_path / "reviewed.toml"
+    policy.write_text(
+        "version = 1\n"
+        "verification_commands = [['pytest', '-q', 'tests/test_pkg.py']]\n"
+        "writable_paths = ['src/**', 'tests/**']\n",
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "inspect-policy",
+            "--repository",
+            str(repository),
+            "--policy-file",
+            str(policy),
+        ]
+    )
+
+    report = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert report["policy_source"] == "operator_config"
+    assert report["config_path"] == str(policy.resolve())
+    assert "operator policy supplied explicitly" in report["signals"]

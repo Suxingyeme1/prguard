@@ -436,6 +436,7 @@ def test_fix_cli_accepts_github_issue_url_and_preserves_preparation_workspace(
             "trust_host": True,
             "container_image": None,
             "source_repository": None,
+            "policy_file": None,
         }
     ]
     assert Path(output["artifact_directory"]).is_relative_to(workspace / "fix-runs")

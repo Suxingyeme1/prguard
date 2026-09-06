@@ -115,6 +115,29 @@ def protected_path_violations(
     return violations
 
 
+def writable_path_violations(
+    paths: list[str], patterns: list[str]
+) -> list[PolicyViolation]:
+    """Reject Candidate changes outside an explicitly declared writable boundary."""
+
+    if not patterns:
+        return []
+    outside = sorted(
+        path
+        for path in paths
+        if not any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+    )
+    if not outside:
+        return []
+    return [
+        PolicyViolation(
+            code="outside_writable_scope",
+            message="candidate changes include paths outside the declared writable scope",
+            paths=outside,
+        )
+    ]
+
+
 @dataclass(frozen=True)
 class FileFingerprint:
     kind: str

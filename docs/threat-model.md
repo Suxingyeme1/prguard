@@ -26,7 +26,7 @@ occurs in a detached worktree.
 | AST/call-graph overclaim | results label bounded static analysis and each resolution type; graph traversal is capped at three hops and ambiguous roots return no edges | dynamic dispatch, reflection, and generated code remain unresolved |
 | Agent adds a test outside the selected pytest target | Harness derives an argv for changed Python test modules; absent pytest capability blocks | unconventional/non-Python test layouts need reviewed project configuration |
 | Agent adds a vacuous passing regression test | executable changed Python tests are copied onto a fresh Base worktree without candidate source and must fail there | a failing test can still assert the wrong behavior; evaluator/human review remains necessary |
-| Overbroad model edit | exact/hash-guarded replacements are checked and Git-authored diffs are policy-gated in isolated worktrees | configured writable globs may be too broad |
+| Overbroad model or external Candidate edit | exact/hash-guarded replacements are checked, and the Harness independently enforces frozen writable/protected globs in isolated worktrees | configured writable globs may be too broad |
 | Ambiguous text replacement | exact text must occur once, or the Agent must bind a line range/Python symbol to bytes returned by a read; create targets must not exist | stable hashes prevent stale targeting, not semantic mistakes |
 | Patch parser smuggling | standard file headers must agree; rename/copy/binary patches rejected | Git parser differentials remain a review target |
 | Unbounded repair loop | at most one replacement patch | one repair can still consume substantial tokens |
@@ -43,6 +43,7 @@ occurs in a detached worktree.
 | Composed workflow budget exhaustion | one outer deadline plus independent Implementer and Reviewer read budgets | up to three Implementer proposals remain possible across both stages |
 | GitHub URL/metadata spoofing | canonical HTTPS Issue URLs, fixed API host, redirect denial, PR/private rejection, full commit SHA | GitHub/API availability and account compromise |
 | Repository config command injection | `.prguard.toml` commands pass the built-in pytest/Ruff argv grammar | approved pytest/Ruff code still executes repository code |
+| Operator policy silently replaces repository policy | explicit local policy is schema/argv validated, hash-frozen, and rejected when `.prguard.toml` already exists | the operator can still choose a weak but syntactically safe gate |
 | Environment failure misdiagnosed as Patch failure | Base pytest targets must collect before any model call | collection can pass while later runtime dependencies still fail |
 | Unhealthy quality gate blamed on Candidate | declared non-pytest gates must pass at Base Commit before any model call | pytest assertion baselines still need evaluator interpretation |
 | Linter/test mutates Candidate during verification | Ruff requires `check --no-fix`; before/after Candidate diffs must match | hostile code can still write outside a host worktree before audit detects it |
@@ -55,6 +56,7 @@ occurs in a detached worktree.
 | Evaluator labels leak into Agent context | evaluator schemas live outside `prguard.schemas`; Fix/Review tasks reject extra fields; labels are attached only after execution | a human can still accidentally paste evaluator knowledge into Issue text or source fixtures |
 | Scorecard joins evidence from different Patches | evaluator inputs hash-bind candidate Patch, route, and Reviewer manifest, then require identical Base Commit and candidate Patch SHA-256 | SHA-256 records are not signed and evaluator dispositions still require human judgment |
 | Existing test pass is treated as permanent clean evidence | evaluator labels may be revised only by a hash-bound post-run check replayed on Base and Candidate; raw prior gate evidence is retained | newly proposed checks still require independent human validation and can overfit one case |
+| Version-specific result lacks runtime provenance | each command records host/container Python identity; missing container identity is infrastructure failure | host evidence is not remotely attested and separate environments must still be provisioned correctly |
 
 ## Explicit non-guarantees
 

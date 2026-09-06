@@ -6,6 +6,7 @@ from prguard.onboarding.prepare import prepare_github_issue
 from prguard.onboarding.profile import (
     discover_project_policy,
     inspect_project_policy,
+    load_operator_project_config,
     load_project_config,
     render_project_config,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "GitHubClient",
     "discover_project_policy",
     "inspect_project_policy",
+    "load_operator_project_config",
     "load_project_config",
     "parse_github_issue_url",
     "prepare_github_issue",

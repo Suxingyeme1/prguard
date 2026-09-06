@@ -103,7 +103,19 @@ uv run prguard inspect-policy \
 
 The JSON report either returns `ready` with the exact pytest/Ruff argv and a reviewable
 `.prguard.toml` candidate, or `needs_config` with a blocking reason. PRGuard does not invent a test
-command for an unsupported repository.
+command for an unsupported repository. For an upstream repository that cannot be modified, pass a
+reviewed local policy without hand-editing Task JSON:
+
+```bash
+uv run prguard inspect-policy \
+  --repository /path/to/project \
+  --issue-file /path/to/issue.md \
+  --policy-file /path/to/prguard-policy.toml
+```
+
+The same `--policy-file` works with `start`, `fix`, `prepare-local`, and `prepare-github`. Its
+validated values are frozen into the preparation Manifest, and it cannot override a repository's
+own `.prguard.toml`.
 
 ## Try it offline
 
@@ -199,20 +211,37 @@ uv run prguard inspect-symbol work/humanize-366/artifacts/task.json \
 The command creates a short-lived detached worktree and returns bounded static nodes, edges,
 resolution evidence, and reachable/related public tests as JSON.
 
+Run only the deterministic gate—without calling either Agent—and record the actual Python runtime:
+
+```bash
+python3.12 -m prguard.cli gate work/locust-3207/artifacts/task.json \
+  --candidate-patch path/to/candidate.patch \
+  --artifacts work/gates/python312
+
+python3.13 -m prguard.cli gate work/locust-3207/artifacts/task.json \
+  --candidate-patch path/to/candidate.patch \
+  --artifacts work/gates/python313
+```
+
+Each result carries implementation, version, cache tag, platform, architecture, and
+host/container provenance. PRGuard records those lanes independently; it does not silently create
+environments or install target dependencies.
+
 Run the complete quality gate:
 
 ```bash
 uv sync --extra dev --extra agent --no-editable --reinstall-package prguard
-uv run ruff check --no-fix src tests scripts
-uv run pytest -q
+uv run --no-sync ruff check --no-fix src tests scripts
+uv run --no-sync pytest -q
 ```
 
 ## What is implemented
 
 - public GitHub Issue onboarding, exact commit resolution, safe checkout, and replayable preparation
   artifacts;
-- reviewed `.prguard.toml` profiles plus conservative pytest, Issue-related public-test, source
-  scope, and declared Hatch VCS runtime-file discovery; lint gates are explicit policy;
+- reviewed repository `.prguard.toml` or explicit local `--policy-file` profiles plus conservative
+  pytest, unique nested-test-root, Issue-related public-test, source-scope, and declared Hatch VCS
+  runtime-file discovery; lint gates are explicit policy;
 - bounded text tools plus Python AST symbol/import/reference, direct-call queries, one-to-three-hop
   static call-graph tracing, and related/reachable-test navigation;
 - exact text, hash-guarded line-range/Python-symbol, and bounded file-creation edits applied
@@ -221,6 +250,7 @@ uv run pytest -q
 - detached Git worktree execution at an exact base commit;
 - strict `pytest` and non-mutating `ruff check --no-fix` argv grammars with `shell=False`;
 - per-command, per-stage, and total-run deadlines with bounded captured output;
+- model-free `gate` replay from a frozen FixTask, with runtime identity in every command artifact;
 - zero-token pytest collection and non-pytest Base-gate readiness checks before Implementer calls;
 - Harness-derived `pytest -q <changed-test-files...>` execution after Patch application; changing
   tests without a declared pytest capability is policy-blocked;
@@ -266,6 +296,12 @@ The v0.8.2 [call-graph check](evidence/call-graph-hardening/README.md) determini
 same frozen PrettyTable source from `from_html` to upstream callers, downstream dependencies, and
 three reachable tests. It demonstrates bounded static navigation without executing repository code;
 it does not claim runtime-complete dispatch resolution.
+
+The fresh [Locust #3207 holdout](evidence/locust-3207-holdout/README.md) exercises a non-standard
+test tree and a Python-version-specific failure. A reviewed operator policy is frozen without
+changing upstream source; the same public gate passes under recorded CPython 3.12 and 3.13
+runtimes, while a pre-run sealed evaluator commitment distinguishes the failing 3.13 Base. The live
+Implementer and Reviewer observations remain pending.
 
 A small [Reviewer value check](evidence/reviewer-value/README.md) now records three confirmed
 incremental findings plus clean-review cost. The blocking real-repository finding is on the exact PrettyTable Patch
@@ -375,10 +411,11 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.13.2 gives the Independent Reviewer its own smaller read budget and supplies bounded,
-deterministic Base/Candidate Python compatibility signals before model review. Those signals are
-audited in the Review report but never become automatic defect verdicts. The complete Click
-green-gate Review-and-repair evidence remains frozen. See the
+Version 0.13.3 adds reviewed local policy files for immutable upstream repositories, model-free
+`gate` replay, nested Python test-root discovery, and runtime-attributed command artifacts. A fresh
+Locust #3207 holdout is frozen with passing public gates on CPython 3.12/3.13 and a sealed
+version-specific evaluator; no live task-resolution result is claimed yet. See the
+[v0.13.3 phase report](docs/v0.13.3-phase-report.md),
 [v0.13.2 phase report](docs/v0.13.2-phase-report.md),
 [v0.13.1 phase report](docs/v0.13.1-phase-report.md),
 [guided terminal guide](docs/local-onboarding.md),
@@ -386,11 +423,9 @@ green-gate Review-and-repair evidence remains frozen. See the
 [local onboarding guide](docs/local-onboarding.md),
 [ADR 0023](docs/adr/0023-local-issues-freeze-before-agent-execution.md), and
 [controlled-repair evidence](evidence/click-controlled-repair/README.md), and
-[FileLock holdout evidence](evidence/filelock-606-holdout/README.md). FileLock #606 produced an
-honest false accept: the public gate and independent Reviewer accepted a breaking default that the
-sealed evaluator rejected. The next priority is a fresh compatibility-focused holdout plus broader
-Python-version/repository-policy coverage—not another Agent role or a rerun of the contaminated
-case.
+[FileLock holdout evidence](evidence/filelock-606-holdout/README.md). FileLock #606 remains an
+honest false accept and is not reused to claim improvement. The next priority is the uncontaminated
+Locust live Implementer/Reviewer/evaluator sequence—not another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

@@ -67,12 +67,15 @@ a deterministic tool, never a Test Runner Agent.
   resolves `HEAD` or a requested revision, and materializes a separate detached checkout with hooks
   and user/system Git configuration disabled. Inline text and regular UTF-8 Issue files both become
   the same SHA-256-bound FixTask; the workspace must remain outside the source repository.
-- **Project profile discovery** accepts a strict reviewed `.prguard.toml` or conservatively detects
-  pytest and Python source/test write scopes. Tool configuration alone is not repository policy:
-  Ruff is enabled only by reviewed configuration and only as `check --no-fix`. Discovery never
-  installs dependencies or invents service setup, and repository configuration cannot weaken the
-  built-in command grammar or fixed protected paths. A read-only inspection checkpoint exposes the
-  resolved Base, discovery signals, exact argv, scopes, warnings, and a deterministic TOML
+- **Project profile discovery** accepts a strict reviewed repository `.prguard.toml`, an explicitly
+  selected local operator policy, or conservatively detects pytest and Python source/test write
+  scopes. One unique nested `test`/`tests` root can be selected within bounded depth/file limits;
+  multiple plausible roots fail closed. Tool configuration alone is not repository policy: Ruff is
+  enabled only by reviewed configuration and only as `check --no-fix`. Discovery never installs
+  dependencies or invents service setup. Both configuration sources remain inside the built-in
+  command grammar and fixed protected paths, and operator policy cannot override repository policy.
+  Preparation canonicalizes operator values into its Manifest. A read-only inspection checkpoint
+  exposes the resolved Base, policy source, exact argv, scopes, warnings, and a deterministic TOML
   candidate; it returns `needs_config` rather than inventing a missing test command.
 - **Repository tools** expose bounded file listing, case-insensitive text search, line-range reads,
   and a lazy Python AST index for symbols, imports/re-exports, lexical references, incoming/outgoing
@@ -161,12 +164,19 @@ a deterministic tool, never a Test Runner Agent.
   `ruff check --no-fix`, directly or through `python -m`. User-declared commands require exact Task
   allowlisting. The sole derived form is a Harness-authored pytest command whose paths come from
   Git's bounded changed-test set; it is grammar-validated and retained in command/trace artifacts.
+- **Gate CLI** converts an existing frozen FixTask into a model-free Harness run with an optional
+  candidate Patch. It reuses the exact command, path, timeout, container, and runtime-scaffold
+  boundary, enabling CI or a developer to replay one Patch under separate installed interpreters.
+  The Harness independently blocks Candidate files outside the frozen writable scope; it does not
+  rely on the Implementer's earlier proposal validation.
 - **Executor** uses `shell=False`, process groups, sanitized environment, output files, and two
   deadlines (command and task). Its default host backend keeps the deterministic Python import path
-  limited to the detached worktree's `src/` directory and repository root. Its explicit container
+  limited to the detached worktree's `src/` directory and repository root, while prepending the
+  active interpreter's script directory for matching console entry points. Its explicit container
   backend uses a digest-pinned image, no network, a non-root user, read-only root/worktree mounts,
   dropped capabilities, tmpfs HOME/TMP, and CPU/memory/PID limits. Both retain the original
-  allowlisted argv in the report.
+  allowlisted argv and Python implementation/version/platform identity in the report; a container
+  that cannot report its runtime identity is classified as infrastructure failure.
 - **Deadline enforcement** checks remaining time before provider calls and again after each provider
   returns. The latter prevents a late SDK response from being accepted. Network-client cancellation
   is best-effort, so a stalled SDK may still delay process return even though the run ultimately

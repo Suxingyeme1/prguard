@@ -26,6 +26,9 @@ def test_exhausted_task_deadline_prevents_process_launch(tmp_path: Path) -> None
     assert result.timed_out is True
     assert result.exit_code is None
     assert "task deadline" in result.stderr
+    assert result.runtime is not None
+    assert result.runtime.version == ".".join(str(value) for value in sys.version_info[:3])
+    assert result.runtime.provenance == "host_process"
 
 
 def test_successful_host_command_terminates_background_children(tmp_path: Path) -> None:
@@ -108,8 +111,18 @@ def test_container_argv_is_digest_pinned_and_fail_closed(tmp_path: Path) -> None
     assert all(token not in argv for token in ["sh", "bash"])
 
 
-def _fake_docker(tmp_path: Path) -> Path:
+def _fake_docker(tmp_path: Path, *, include_runtime: bool = True) -> Path:
     executable = tmp_path / "docker"
+    runtime_marker = (
+        "sys.stderr.write('__PRGUARD_CONTAINER_RUNTIME__=' + json.dumps({\n"
+        "    'implementation': 'cpython', 'version': '3.12.9',\n"
+        "    'cache_tag': 'cpython-312', 'platform': 'linux',\n"
+        "    'architecture': 'x86_64', 'executable_name': 'python3',\n"
+        "    'provenance': 'container_process',\n"
+        "}, sort_keys=True, separators=(',', ':')) + '\\n')\n"
+        if include_runtime
+        else ""
+    )
     executable.write_text(
         f"#!{sys.executable}\n"
         "import json, os, pathlib, sys, time\n"
@@ -122,6 +135,7 @@ def _fake_docker(tmp_path: Path) -> Path:
         "cidfile.write_text('fake-container-id')\n"
         "(tmp / 'docker-argv.json').write_text(json.dumps(args))\n"
         "sys.stderr.write('__PRGUARD_CONTAINER_PYTHON_STARTED__\\n')\n"
+        f"{runtime_marker}"
         "sys.stderr.flush()\n"
         "if (tmp / 'sleep').exists():\n"
         "    time.sleep(10)\n"
@@ -133,11 +147,13 @@ def _fake_docker(tmp_path: Path) -> Path:
     return executable
 
 
-def _container_executor(tmp_path: Path, monkeypatch) -> CommandExecutor:
+def _container_executor(
+    tmp_path: Path, monkeypatch, *, include_runtime: bool = True
+) -> CommandExecutor:
     runtime = tmp_path / "runtime"
     (runtime / "home").mkdir(parents=True)
     (runtime / "tmp").mkdir()
-    _fake_docker(tmp_path)
+    _fake_docker(tmp_path, include_runtime=include_runtime)
     monkeypatch.setenv("PATH", os.fspath(tmp_path))
     command = ["pytest", "-q"]
     return CommandExecutor(
@@ -159,6 +175,9 @@ def test_container_executor_preserves_reported_argv(tmp_path: Path, monkeypatch)
     assert result.passed is True
     assert result.execution_backend is ExecutionBackend.CONTAINER
     assert result.container_image == "sha256:" + "a" * 64
+    assert result.runtime is not None
+    assert result.runtime.version == "3.12.9"
+    assert result.runtime.provenance == "container_process"
     assert result.argv == ["pytest", "-q"]
     assert result.stderr == ""
     assert launched[launched.index("--network") + 1] == "none"
@@ -190,3 +209,15 @@ def test_container_test_failure_after_startup_is_not_infrastructure(
     assert result.exit_code == 1
     assert result.passed is False
     assert result.infrastructure_error is False
+
+
+def test_container_runtime_marker_is_required_after_python_startup(
+    tmp_path: Path, monkeypatch
+) -> None:
+    executor = _container_executor(tmp_path, monkeypatch, include_runtime=False)
+
+    result = executor.execute(0, CommandSpec(argv=["pytest", "-q"]))
+
+    assert result.passed is False
+    assert result.infrastructure_error is True
+    assert result.runtime is None

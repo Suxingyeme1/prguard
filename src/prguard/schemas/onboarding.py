@@ -81,7 +81,7 @@ class DiscoveredProjectPolicy(StrictModel):
     commands: list[CommandSpec] = Field(min_length=1, max_length=32)
     writable_paths: list[str] = Field(min_length=1, max_length=128)
     protected_paths: list[str] = Field(min_length=1, max_length=128)
-    source: Literal["repository_config", "deterministic_discovery"]
+    source: Literal["repository_config", "operator_config", "deterministic_discovery"]
     warnings: list[str] = Field(default_factory=list)
     command_timeout_seconds: float = Field(default=120, gt=0, le=3600)
     task_timeout_seconds: float = Field(default=900, gt=0, le=7200)
@@ -95,7 +95,9 @@ class ProjectPolicyInspection(StrictModel):
     base_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
     status: Literal["ready", "needs_config"]
     config_path: Path | None = None
-    policy_source: Literal["repository_config", "deterministic_discovery"] | None = None
+    policy_source: Literal[
+        "repository_config", "operator_config", "deterministic_discovery"
+    ] | None = None
     commands: list[CommandSpec] = Field(default_factory=list, max_length=32)
     writable_paths: list[str] = Field(default_factory=list, max_length=128)
     protected_paths: list[str] = Field(default_factory=list, max_length=256)
@@ -112,7 +114,7 @@ class TaskPreparationReport(StrictModel):
     checkout: Path
     task_path: Path
     config_path: Path | None = None
-    policy_source: Literal["repository_config", "deterministic_discovery"]
+    policy_source: Literal["repository_config", "operator_config", "deterministic_discovery"]
     execution_backend: Literal["host", "container"]
     container: ContainerExecutionSpec | None = None
     commands: list[CommandSpec]
@@ -127,7 +129,7 @@ class LocalTaskPreparationReport(StrictModel):
     checkout: Path
     task_path: Path
     config_path: Path | None = None
-    policy_source: Literal["repository_config", "deterministic_discovery"]
+    policy_source: Literal["repository_config", "operator_config", "deterministic_discovery"]
     execution_backend: Literal["host", "container"]
     container: ContainerExecutionSpec | None = None
     commands: list[CommandSpec]

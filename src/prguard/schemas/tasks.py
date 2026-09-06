@@ -30,6 +30,7 @@ class Task(StrictModel):
     candidate_patch: Path | None = None
     commands: list[CommandSpec] = Field(default_factory=list, max_length=32)
     allowed_commands: list[list[str]] = Field(default_factory=list, max_length=32)
+    writable_paths: list[str] = Field(default_factory=list, max_length=128)
     protected_paths: list[str] = Field(default_factory=list, max_length=128)
     command_timeout_seconds: float = Field(default=120, gt=0, le=3600)
     task_timeout_seconds: float = Field(default=600, gt=0, le=7200)
@@ -38,13 +39,13 @@ class Task(StrictModel):
     container: ContainerExecutionSpec | None = None
     runtime_files: list[RuntimeFileSpec] = Field(default_factory=list, max_length=16)
 
-    @field_validator("protected_paths")
+    @field_validator("writable_paths", "protected_paths")
     @classmethod
-    def relative_protected_paths(cls, values: list[str]) -> list[str]:
+    def relative_policy_paths(cls, values: list[str]) -> list[str]:
         for value in values:
             path = Path(value)
-            if path.is_absolute() or ".." in path.parts:
-                raise ValueError("protected paths must be repository-relative")
+            if path.is_absolute() or ".." in path.parts or not value.strip():
+                raise ValueError("policy paths must be non-empty and repository-relative")
         return values
 
     def public_context(self) -> dict[str, object]:

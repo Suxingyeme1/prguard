@@ -27,6 +27,7 @@ from prguard.schemas import (
     ReviewTask,
     RunOutcome,
     Task,
+    TaskMode,
 )
 
 
@@ -131,6 +132,36 @@ def load_fix_task(path: Path) -> FixTask:
     return FixTask.model_validate(payload)
 
 
+def verification_task_from_fix_task(
+    path: Path,
+    *,
+    candidate_patch: Path | None = None,
+) -> Task:
+    """Reuse one frozen Fix boundary for a model-free deterministic gate."""
+
+    fix = load_fix_task(path)
+    return Task(
+        case_id=f"{fix.case_id}-gate",
+        mode=TaskMode.ISSUE_TO_PR,
+        repository=fix.repository,
+        base_commit=fix.base_commit,
+        issue=fix.issue,
+        candidate_patch=(
+            candidate_patch.expanduser().resolve() if candidate_patch is not None else None
+        ),
+        commands=fix.commands,
+        allowed_commands=fix.allowed_commands,
+        writable_paths=fix.writable_paths,
+        protected_paths=fix.protected_paths,
+        command_timeout_seconds=fix.command_timeout_seconds,
+        task_timeout_seconds=fix.task_timeout_seconds,
+        max_output_bytes=fix.max_output_bytes,
+        require_changed_tests_fail_on_base=candidate_patch is not None,
+        container=fix.container,
+        runtime_files=fix.runtime_files,
+    )
+
+
 def load_issue_to_pr_task(path: Path) -> IssueToPRTask:
     path = path.expanduser().resolve()
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -231,6 +262,11 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument("--issue", help="natural-language Issue; prompts when omitted")
     start.add_argument("--base-commit", default="HEAD")
     start.add_argument("--workspace", type=Path)
+    start.add_argument(
+        "--policy-file",
+        type=Path,
+        help="reviewed local PRGuard TOML policy; cannot override repository .prguard.toml",
+    )
     start_boundary = start.add_mutually_exclusive_group()
     start_boundary.add_argument("--trust-host", action="store_true")
     start_boundary.add_argument("--container-image")
@@ -247,6 +283,13 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="execute a deterministic local PR case")
     run.add_argument("case", type=Path)
     run.add_argument("--artifacts", type=Path, default=Path("artifacts"))
+    gate = subparsers.add_parser(
+        "gate",
+        help="run a frozen FixTask gate without calling an Implementer or Reviewer",
+    )
+    gate.add_argument("task", type=Path)
+    gate.add_argument("--candidate-patch", type=Path)
+    gate.add_argument("--artifacts", type=Path, default=Path("artifacts/gate"))
     verify = subparsers.add_parser(
         "verify-manifest", help="verify artifact hashes without execution"
     )
@@ -272,6 +315,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     inspect_policy.add_argument("--repository", type=Path, required=True)
     inspect_policy.add_argument("--base-commit", default="HEAD")
+    inspect_policy.add_argument("--policy-file", type=Path)
     policy_issue = inspect_policy.add_mutually_exclusive_group()
     policy_issue.add_argument("--issue", help="optional Issue text for related-test discovery")
     policy_issue.add_argument("--issue-file", type=Path, help="UTF-8 Issue text file")
@@ -282,6 +326,7 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("issue_url")
     prepare.add_argument("--output", type=Path, required=True)
     prepare.add_argument("--base-commit")
+    prepare.add_argument("--policy-file", type=Path)
     prepare.add_argument(
         "--source-repository",
         type=Path,
@@ -307,6 +352,7 @@ def build_parser() -> argparse.ArgumentParser:
     local_issue.add_argument("--issue-file", type=Path, help="UTF-8 Issue text file")
     prepare_local.add_argument("--output", type=Path, required=True)
     prepare_local.add_argument("--base-commit", default="HEAD")
+    prepare_local.add_argument("--policy-file", type=Path)
     local_execution = prepare_local.add_mutually_exclusive_group(required=True)
     local_execution.add_argument(
         "--trust-host",
@@ -342,6 +388,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="new preparation workspace required for GitHub or local Issue input",
     )
     fix.add_argument("--base-commit")
+    fix.add_argument(
+        "--policy-file",
+        type=Path,
+        help="reviewed local PRGuard TOML policy for GitHub/local Issue preparation",
+    )
     fix.add_argument(
         "--source-repository",
         type=Path,
@@ -480,6 +531,7 @@ def main(argv: list[str] | None = None) -> int:
                 container_image=args.container_image,
                 assume_yes=args.yes,
                 color=False if args.no_color else None,
+                policy_file=args.policy_file,
             )
         except (
             EOFError,
@@ -493,15 +545,26 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         return 0 if report.outcome == FixOutcome.ACCEPTED else 1
     if args.command == "inspect-policy":
-        from prguard.onboarding import inspect_project_policy, read_issue_file
+        from prguard.onboarding import (
+            inspect_project_policy,
+            load_operator_project_config,
+            read_issue_file,
+        )
         from prguard.onboarding.errors import OnboardingError, ProjectDiscoveryError
 
         try:
             issue = read_issue_file(args.issue_file) if args.issue_file else args.issue
+            operator_config = (
+                load_operator_project_config(args.policy_file)
+                if args.policy_file is not None
+                else None
+            )
             report = inspect_project_policy(
                 args.repository,
                 issue=issue,
                 base_commit=args.base_commit,
+                operator_config=operator_config,
+                operator_config_path=args.policy_file,
             )
         except (OnboardingError, ProjectDiscoveryError, ValueError) as exc:
             print(f"policy inspection failed: {exc}", file=sys.stderr)
@@ -521,6 +584,7 @@ def main(argv: list[str] | None = None) -> int:
                 base_commit=args.base_commit,
                 trust_host=args.trust_host,
                 container_image=args.container_image,
+                policy_file=args.policy_file,
             )
         except (OnboardingError, ValueError) as exc:
             print(f"local task preparation failed: {exc}", file=sys.stderr)
@@ -539,6 +603,7 @@ def main(argv: list[str] | None = None) -> int:
                 trust_host=args.trust_host,
                 container_image=args.container_image,
                 source_repository=args.source_repository,
+                policy_file=args.policy_file,
             )
         except (OnboardingError, ValueError) as exc:
             print(f"GitHub task preparation failed: {exc}", file=sys.stderr)
@@ -547,6 +612,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "run":
         task = load_task(args.case)
+        report = VerificationHarness(args.artifacts).run(task)
+        print(report.model_dump_json(indent=2))
+        return 0 if report.outcome == RunOutcome.PASSED else 1
+    if args.command == "gate":
+        task = verification_task_from_fix_task(
+            args.task,
+            candidate_patch=args.candidate_patch,
+        )
         report = VerificationHarness(args.artifacts).run(task)
         print(report.model_dump_json(indent=2))
         return 0 if report.outcome == RunOutcome.PASSED else 1
@@ -648,6 +721,7 @@ def main(argv: list[str] | None = None) -> int:
                     base_commit=args.base_commit or "HEAD",
                     trust_host=args.trust_host,
                     container_image=args.container_image,
+                    policy_file=args.policy_file,
                 )
                 progress(
                     "onboarding.local_completed",
@@ -671,6 +745,7 @@ def main(argv: list[str] | None = None) -> int:
                     trust_host=args.trust_host,
                     container_image=args.container_image,
                     source_repository=args.source_repository,
+                    policy_file=args.policy_file,
                 )
                 progress(
                     "onboarding.completed",
@@ -696,6 +771,7 @@ def main(argv: list[str] | None = None) -> int:
                         args.container_image,
                         args.repository,
                         args.issue_file,
+                        args.policy_file,
                     )
                 ):
                     raise OnboardingError(

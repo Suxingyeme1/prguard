@@ -261,6 +261,18 @@ block a Patch. Implementer and Reviewer read budgets are now independently confi
 to 24 and 12 calls respectively. See the [v0.13.2 phase report](v0.13.2-phase-report.md) and
 [ADR 0027](adr/0027-compatibility-signals-inform-but-do-not-decide.md).
 
+The twenty-second increment freezes Locust #3207 as a fresh compatibility holdout and makes its
+setup reproducible. Project discovery now recognizes one bounded nested Python test root and avoids
+traceback-call intent pollution. A reviewed external `--policy-file` can adapt an immutable upstream
+checkout, is hash-frozen, and cannot override repository-owned policy. The new model-free `gate`
+entry records actual Python runtime identity; the same public catch-response gate passed 12 tests
+under CPython 3.12 and 3.13. A network-free evaluator was SHA-256 committed before the live run and
+distinguishes the failing 3.13 Base, but its contents and expected repair remain Agent-invisible.
+Live resolution remains pending. See the [v0.13.3 phase report](v0.13.3-phase-report.md),
+[Locust evidence](../evidence/locust-3207-holdout/README.md),
+[ADR 0028](adr/0028-operator-policy-is-explicit-frozen-and-non-overriding.md), and
+[ADR 0029](adr/0029-verification-artifacts-record-runtime-identity.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

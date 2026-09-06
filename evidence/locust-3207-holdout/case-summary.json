@@ -1,0 +1,71 @@
+{
+  "schema_version": "prguard-heldout-case-1",
+  "frozen_at": "2026-09-06",
+  "repository": "https://github.com/locustio/locust",
+  "issue": "https://github.com/locustio/locust/issues/3207",
+  "upstream_base_commit": "5df19da06a0f8418d44094f3014ddee3b307bb55",
+  "agent_issue_sha256": "c572f5f3eecfcd40180acf250a04cfb8f55b033d2ef5146196cf9d8c51d4de29",
+  "leakage_boundary": {
+    "later_upstream_change_visible_to_agent": false,
+    "gold_patch_visible_to_agent": false,
+    "evaluator_body_visible_to_agent": false,
+    "expected_repair_visible_to_agent": false
+  },
+  "project_adaptation": {
+    "nested_test_root_discovered": "locust/test",
+    "automatic_full_gate_status": "rejected_after_base_readiness_run",
+    "automatic_full_gate_boundary": "requires unmaterialized UI assets and console-script environment; includes a host-sensitive timing assertion",
+    "policy_source": "operator_config",
+    "verification_argv": [
+      "pytest",
+      "-q",
+      "locust/test/test_http.py",
+      "-k",
+      "catch_response"
+    ],
+    "writable_paths": ["locust/**"],
+    "protected_runtime_file": "locust/_version.py",
+    "operator_policy_sha256": "d39e266a5d79821604a47773d82ee0fb964778b273367353441ba55754eb8a4a",
+    "preparation_manifest_sha256": "69f6e380afc6febdd93fa6de4e3802cd1115005e9b51fc7ae3e487a6de1d9ced",
+    "preparation_manifest_verified": true
+  },
+  "public_base_gates": [
+    {
+      "runtime": "CPython 3.12.13",
+      "platform": "darwin-arm64",
+      "outcome": "passed",
+      "passed": 12,
+      "deselected": 17,
+      "run_id": "e5f9040b-fbbd-491f-81d5-c212b9a2dadf",
+      "report_sha256": "3306a010e829fdbbfa174f109a0915356013e953cad91bdbb24af35ee8cd526d",
+      "manifest_sha256": "b154bd10d8a3ad284a47d7e55fc33aa346e619c29c49ad8680d4a2e652bd2403",
+      "manifest_verified": true
+    },
+    {
+      "runtime": "CPython 3.13.12",
+      "platform": "darwin-arm64",
+      "outcome": "passed",
+      "passed": 12,
+      "deselected": 17,
+      "run_id": "7c6d78c3-84b1-4326-941e-c9c77a324363",
+      "report_sha256": "9cd0a961291a14fdb634efc4ce922f692a9a112d6c438f95975e89b3330ae405",
+      "manifest_sha256": "cce3403970bdb32474e40658059f79fc06f671584c0fd4b906dc40b4d12517da",
+      "manifest_verified": true
+    }
+  ],
+  "sealed_evaluator_commitment": {
+    "sha256": "763d7082e4cc35990ad03ddc8efbcb7a1673c006e40bc537d6c5fa03669960c1",
+    "body_published": false,
+    "network_required": false,
+    "external_service_required": false,
+    "base_python_3_12": "passed",
+    "base_python_3_13": "failed"
+  },
+  "live_implementer": {
+    "status": "pending"
+  },
+  "independent_reviewer": {
+    "status": "pending"
+  },
+  "claim_boundary": "The case, reviewed public policy, two runtime-aware Base gates, and a pre-run sealed evaluator commitment are verified; no live Agent task-resolution claim is made."
+}

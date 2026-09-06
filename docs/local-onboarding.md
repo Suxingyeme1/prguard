@@ -24,6 +24,20 @@ gate and scopes. It is a review candidate, not an automatically trusted file. If
 can be identified, the report returns `needs_config` and no candidate command; choose an existing
 allowlisted gate explicitly instead of guessing one.
 
+For an immutable upstream checkout, keep a reviewed policy outside the repository and pass it
+explicitly:
+
+```bash
+uv run prguard inspect-policy \
+  --repository /path/to/project \
+  --issue-file /path/to/issue.md \
+  --policy-file /path/to/prguard-policy.toml
+```
+
+The file uses the same strict schema and argv grammar as `.prguard.toml`. PRGuard freezes its
+canonical content into the preparation Manifest. It cannot override a repository-owned
+`.prguard.toml`, which remains authoritative when present.
+
 ## One-command Fix
 
 Keep the PRGuard workspace outside the source repository:
@@ -93,12 +107,28 @@ The preparation report records the source path, requested and resolved Base Comm
 execution boundary, discovered commands, writable/protected paths, runtime scaffolds, warnings, and
 Task path. The Manifest binds the Task and report.
 
+To replay only the deterministic verification boundary—without calling an Implementer or
+Reviewer—run the frozen Task through `gate`:
+
+```bash
+uv run prguard gate \
+  /path/to/prguard-runs/add-fix/artifacts/task.json \
+  --candidate-patch /path/to/candidate.patch \
+  --artifacts /path/to/prguard-runs/gate
+```
+
+Each command result records the Python implementation, version, cache tag, platform, architecture,
+executable name, and whether the identity came from the host or container process. The same frozen
+Task can therefore be replayed under multiple explicitly provisioned Python environments without
+confusing their evidence.
+
 ## Policy boundary
 
-Automatic discovery is conservative: it recognizes Python source/test layout, pytest configuration,
-issue-related public tests, and a small runtime-file case. It does not install dependencies, infer
-external services, or invent arbitrary shell commands. If the repository cannot be described
-safely, preparation stops and asks for a reviewed `.prguard.toml`.
+Automatic discovery is conservative: it recognizes Python source/test layout, one unique bounded
+nested `test`/`tests` root, pytest configuration, issue-related public tests, and a small runtime-file
+case. It does not install dependencies, infer external services, or invent arbitrary shell
+commands. If the repository cannot be described safely, preparation stops and asks for a reviewed
+repository `.prguard.toml` or explicit `--policy-file`.
 
 `--trust-host` is an explicit operator decision. For higher-risk code, pass a digest-pinned
 `--container-image` instead. The model does not choose the execution boundary.

@@ -35,6 +35,12 @@ deterministic gate. Broader post-run checks may be reported separately, but they
 retroactively turn an incomplete configured gate into evidence that the original run was
 review-ready.
 
+When an Issue is explicitly runtime-specific, freeze the same public argv and candidate Patch for
+each required runtime. Every lane must archive its interpreter identity and Manifest. Environment
+creation and dependency installation remain evaluator setup, not Agent tools. Evaluator-only
+reproductions are committed by hash before the live run and attached only after the candidate and
+Reviewer artifacts are frozen.
+
 If a candidate adds or modifies a conventionally named Python test module, that exact file must be
 executed even when the frozen base command targets a narrower existing file. Such a command is
 Harness-derived from Git's changed-file set and retained in the report. A task without a declared

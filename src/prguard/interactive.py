@@ -11,7 +11,11 @@ from uuid import uuid4
 
 from prguard.fix import FixRunner
 from prguard.implementer.providers import ImplementerProvider
-from prguard.onboarding import inspect_project_policy, prepare_local_issue
+from prguard.onboarding import (
+    inspect_project_policy,
+    load_operator_project_config,
+    prepare_local_issue,
+)
 from prguard.onboarding.errors import OnboardingError, ProjectDiscoveryError
 from prguard.schemas import FixOutcome, FixReport, FixTask, ProjectPolicyInspection
 
@@ -174,6 +178,7 @@ def run_interactive_fix(
     input_fn: InputFunction | None = None,
     stream=None,
     color: bool | None = None,
+    policy_file: Path | None = None,
 ) -> FixReport:
     """Preview and explicitly approve one local Issue-to-Patch session."""
 
@@ -188,10 +193,15 @@ def run_interactive_fix(
         raise OnboardingError("interactive Issue text must not be empty")
 
     try:
+        operator_config = (
+            load_operator_project_config(policy_file) if policy_file is not None else None
+        )
         inspection = inspect_project_policy(
             repository,
             issue=issue,
             base_commit=base_commit,
+            operator_config=operator_config,
+            operator_config_path=policy_file,
         )
     except ProjectDiscoveryError as exc:
         raise OnboardingError(f"policy inspection failed: {exc}") from exc
@@ -231,6 +241,7 @@ def run_interactive_fix(
         base_commit=inspection.base_commit,
         trust_host=trust_host,
         container_image=container_image,
+        policy_file=policy_file,
     )
     selected_provider = provider() if callable(provider) else provider
     report = FixRunner(

@@ -61,9 +61,10 @@ uv run prguard fix work/issue/artifacts/task.json --provider openai --progress
 ## Project policy
 
 Absent configuration, PRGuard conservatively enables `pytest -q` when it sees public test/pytest
-configuration, maps explicit Issue symbols to the strongest related public test file when possible,
-does not infer lint as a gate from configuration presence alone, and limits edits to discovered
-Python source/test roots. Before any model call, the selected pytest targets must collect
+configuration, recognizes one bounded unique nested Python test root, maps explicit Issue symbols
+to the strongest related public test file when possible, does not infer lint as a gate from
+configuration presence alone, and limits edits to discovered Python source/test roots. Before any
+model call, the selected pytest targets must collect
 successfully and every declared non-pytest gate must pass at the Base Commit; failing pytest
 assertions are allowed, while missing imports/plugins and unhealthy quality gates are classified as
 environment readiness failures. It fails closed when it cannot find both a verification command
@@ -93,3 +94,13 @@ max_repair_attempts = 1
 Configuration is data, not shell: every argv still passes PRGuard's fixed pytest/Ruff grammar.
 Built-in credential/configuration protections are unioned with repository paths and cannot be
 removed by the file. Inspect the generated report and Task before allowing execution.
+
+When the upstream repository cannot be changed, put the same reviewed TOML in a local file and pass
+`--policy-file /path/to/policy.toml` to `prepare-github` or one-command `fix`. PRGuard freezes its
+canonical values as `operator-policy.json` in the preparation Manifest. It refuses ambiguous
+precedence: a local policy cannot override a repository-owned `.prguard.toml`.
+
+After preparation, `prguard gate artifacts/task.json [--candidate-patch PATCH]` runs only the
+deterministic Harness. Invoking it from separate installed Python interpreters produces independent
+Manifests with the actual implementation, version, platform, and architecture recorded for each
+command.

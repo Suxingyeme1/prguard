@@ -108,6 +108,33 @@ def test_issue_file_boundary_rejects_symlink_and_nul(tmp_path: Path) -> None:
         read_issue_file(issue)
 
 
+def test_operator_policy_rejects_symlink_before_creating_workspace(
+    make_repo, tmp_path: Path
+) -> None:
+    source, _ = make_repo(_FILES)
+    policy = tmp_path / "policy.toml"
+    policy.write_text(
+        "version = 1\n"
+        "verification_commands = [['pytest', '-q']]\n"
+        "writable_paths = ['src/**']\n",
+        encoding="utf-8",
+    )
+    link = tmp_path / "policy-link.toml"
+    link.symlink_to(policy)
+    output = tmp_path / "policy-output"
+
+    with pytest.raises(OnboardingError, match="non-symlink"):
+        prepare_local_issue(
+            source,
+            "Fix add().",
+            output,
+            trust_host=True,
+            policy_file=link,
+        )
+
+    assert not output.exists()
+
+
 @pytest.mark.integration
 def test_fix_cli_accepts_local_repository_and_natural_language_issue(
     make_repo, tmp_path: Path, capsys

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -66,6 +67,27 @@ def test_public_click_controlled_repair_artifact_hashes() -> None:
 def test_public_filelock_holdout_artifact_hashes() -> None:
     root = Path(__file__).resolve().parents[2] / "evidence" / "filelock-606-holdout"
     assert verify_evidence(root) == 2
+
+
+def test_public_locust_holdout_is_hash_bound_and_still_pending() -> None:
+    root = Path(__file__).resolve().parents[2] / "evidence" / "locust-3207-holdout"
+    assert verify_evidence(root) == 2
+    summary = json.loads((root / "case-summary.json").read_text(encoding="utf-8"))
+    assert summary["live_implementer"]["status"] == "pending"
+    assert summary["independent_reviewer"]["status"] == "pending"
+    assert summary["sealed_evaluator_commitment"] == {
+        "sha256": "763d7082e4cc35990ad03ddc8efbcb7a1673c006e40bc537d6c5fa03669960c1",
+        "body_published": False,
+        "network_required": False,
+        "external_service_required": False,
+        "base_python_3_12": "passed",
+        "base_python_3_13": "failed",
+    }
+    assert [lane["runtime"] for lane in summary["public_base_gates"]] == [
+        "CPython 3.12.13",
+        "CPython 3.13.12",
+    ]
+    assert all(lane["manifest_verified"] for lane in summary["public_base_gates"])
 
 
 def test_public_evidence_rejects_hash_mismatch(tmp_path: Path) -> None:

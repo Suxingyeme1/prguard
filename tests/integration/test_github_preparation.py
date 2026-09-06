@@ -105,3 +105,96 @@ def test_prepare_cleans_owned_output_when_discovery_fails(
         )
 
     assert not output.exists()
+
+
+@pytest.mark.integration
+def test_prepare_github_freezes_reviewed_operator_policy(
+    make_repo, tmp_path: Path
+) -> None:
+    source, commit = make_repo(
+        {
+            "package/__init__.py": "VALUE = 1\n",
+            "package/test/test_value.py": "def test_value():\n    assert True\n",
+        }
+    )
+    policy_file = tmp_path / "locust-policy.toml"
+    policy_file.write_text(
+        "version = 1\n"
+        "verification_commands = [['pytest', '-q', 'package/test', '-k', 'value']]\n"
+        "writable_paths = ['package/**']\n"
+        "command_timeout_seconds = 300\n",
+        encoding="utf-8",
+    )
+
+    def copy_checkout(_snapshot: GitHubIssueSnapshot, root: Path) -> Path:
+        destination = root / "acme-calc"
+        root.mkdir(parents=True)
+        shutil.copytree(source, destination)
+        return destination
+
+    output = tmp_path / "prepared-with-policy"
+    report = prepare_github_issue(
+        "https://github.com/acme/calc/issues/9",
+        output,
+        trust_host=True,
+        client=FrozenClient(commit),
+        materializer=copy_checkout,
+        policy_file=policy_file,
+    )
+    task = load_fix_task(report.task_path)
+
+    assert report.policy_source == "operator_config"
+    assert report.config_path == policy_file
+    assert task.commands[0].argv == ["pytest", "-q", "package/test", "-k", "value"]
+    assert task.command_timeout_seconds == 300
+    assert json.loads(
+        (output / "artifacts" / "operator-policy.json").read_text(encoding="utf-8")
+    )["writable_paths"] == ["package/**"]
+    manifest = verify_manifest(output / "artifacts" / "preparation-manifest.json")
+    assert {item.path for item in manifest.artifacts} == {
+        "operator-policy.json",
+        "preparation-report.json",
+        "task.json",
+    }
+
+
+def test_operator_policy_cannot_override_repository_policy(
+    make_repo, tmp_path: Path
+) -> None:
+    source, commit = make_repo(
+        {
+            ".prguard.toml": (
+                "version = 1\n"
+                "verification_commands = [['pytest', '-q']]\n"
+                "writable_paths = ['src/**']\n"
+            ),
+            "src/pkg.py": "VALUE = 1\n",
+            "tests/test_pkg.py": "def test_pkg():\n    assert True\n",
+        }
+    )
+    policy_file = tmp_path / "override.toml"
+    policy_file.write_text(
+        "version = 1\n"
+        "verification_commands = [['pytest', '-q', 'tests']]\n"
+        "writable_paths = ['src/**']\n",
+        encoding="utf-8",
+    )
+
+    def copy_checkout(_snapshot: GitHubIssueSnapshot, root: Path) -> Path:
+        destination = root / "acme-calc"
+        root.mkdir(parents=True)
+        shutil.copytree(source, destination)
+        return destination
+
+    output = tmp_path / "rejected-override"
+    with pytest.raises(OnboardingError, match="cannot override"):
+        prepare_github_issue(
+            "https://github.com/acme/calc/issues/9",
+            output,
+            trust_host=True,
+            client=FrozenClient(commit),
+            materializer=copy_checkout,
+            policy_file=policy_file,
+        )
+
+    assert not output.exists()

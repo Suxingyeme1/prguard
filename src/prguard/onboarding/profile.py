@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import tomllib
 from pathlib import Path
@@ -36,6 +37,25 @@ DEFAULT_PROTECTED_PATHS = (
     "**/*.pfx",
     "**/credentials.json",
 )
+_TEST_SCAN_EXCLUDED = {
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "build",
+    "dist",
+    "docs",
+    "examples",
+    "node_modules",
+    "site-packages",
+    "venv",
+}
+_MAX_TEST_SCAN_FILES = 10_000
+_MAX_TEST_SCAN_DEPTH = 6
 
 
 def render_project_config(config: ProjectConfig) -> str:
@@ -59,18 +79,37 @@ def render_project_config(config: ProjectConfig) -> str:
     )
 
 
+def _load_project_config_path(path: Path, *, label: str) -> ProjectConfig:
+    if not path.is_file():
+        raise ProjectDiscoveryError(f"{label} must be a regular file")
+    if path.is_symlink() or path.stat().st_size > 100_000:
+        raise ProjectDiscoveryError(f"{label} must be a small regular non-symlink file")
+    try:
+        payload = tomllib.loads(path.read_text(encoding="utf-8"))
+        return ProjectConfig.model_validate(payload)
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError, ValidationError) as exc:
+        raise ProjectDiscoveryError(f"invalid {label}: {exc}") from exc
+
+
 def load_project_config(repository: Path) -> tuple[ProjectConfig | None, Path | None]:
     path = repository / ".prguard.toml"
     if not path.is_file():
         return None, None
-    if path.is_symlink() or path.stat().st_size > 100_000:
-        raise ProjectDiscoveryError(".prguard.toml must be a small regular file")
-    try:
-        payload = tomllib.loads(path.read_text(encoding="utf-8"))
-        config = ProjectConfig.model_validate(payload)
-    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError, ValidationError) as exc:
-        raise ProjectDiscoveryError(f"invalid .prguard.toml: {exc}") from exc
-    return config, path
+    return _load_project_config_path(path, label=".prguard.toml"), path
+
+
+def load_operator_project_config(path: Path) -> ProjectConfig:
+    """Load one explicitly selected policy without trusting repository code."""
+
+    supplied = path.expanduser()
+    if supplied.is_symlink():
+        raise ProjectDiscoveryError(
+            "operator policy must be a small regular non-symlink file"
+        )
+    return _load_project_config_path(
+        supplied.resolve(strict=False),
+        label="operator policy",
+    )
 
 
 def _command_kind(argv: list[str]) -> str:
@@ -102,25 +141,73 @@ def _discover_commands(
     repository: Path,
     pyproject: dict[str, object],
     pytest_targets: list[str],
+    nested_test_roots: list[str],
 ) -> list[list[str]]:
     tool = pyproject.get("tool")
     tool = tool if isinstance(tool, dict) else {}
     commands: list[list[str]] = []
     if (repository / "tests").is_dir() or "pytest" in tool or (repository / "pytest.ini").is_file():
         commands.append(["pytest", "-q", *pytest_targets])
+    elif len(nested_test_roots) == 1:
+        root = nested_test_roots[0]
+        scoped_targets = [
+            target
+            for target in pytest_targets
+            if target == root or target.startswith(f"{root}/")
+        ]
+        commands.append(["pytest", "-q", *(scoped_targets or [root])])
     return commands
+
+
+def _discover_nested_python_test_roots(repository: Path) -> list[str]:
+    """Find one bounded non-standard pytest root without inspecting repository config code."""
+
+    roots: set[Path] = set()
+    scanned = 0
+    for current, directories, files in os.walk(repository, topdown=True, followlinks=False):
+        current_path = Path(current)
+        relative = current_path.relative_to(repository)
+        depth = len(relative.parts)
+        directories[:] = sorted(
+            name
+            for name in directories
+            if name not in _TEST_SCAN_EXCLUDED
+            and not name.startswith(".")
+            and not (current_path / name).is_symlink()
+            and depth < _MAX_TEST_SCAN_DEPTH
+        )
+        scanned += len(files)
+        if scanned > _MAX_TEST_SCAN_FILES:
+            return []
+        if not any(
+            name.endswith(".py")
+            and (name.startswith("test_") or name.endswith("_test.py"))
+            for name in files
+        ):
+            continue
+        test_indices = [
+            index for index, part in enumerate(relative.parts) if part in {"test", "tests"}
+        ]
+        if test_indices:
+            roots.add(Path(*relative.parts[: test_indices[0] + 1]))
+    collapsed: list[Path] = []
+    for candidate in sorted(roots, key=lambda value: (len(value.parts), value.as_posix())):
+        if not any(candidate.is_relative_to(parent) for parent in collapsed):
+            collapsed.append(candidate)
+    return [path.as_posix() for path in collapsed]
 
 
 def _issue_identifiers(issue: str) -> list[str]:
     weighted: dict[str, int] = {}
-    patterns = (
-        (r"`([A-Za-z_][A-Za-z0-9_]*)\s*\(", 5),
-        (r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", 3),
-        (r"`([A-Za-z_][A-Za-z0-9_]*)`", 2),
+    headline = next((line for line in issue.splitlines() if line.strip()), "")
+    scoped_patterns = (
+        (issue, r"`([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)(?:\(\))?`", 7),
+        (headline, r"\b([A-Za-z_][A-Za-z0-9_]*\.__[A-Za-z0-9_]+__)\b", 12),
+        (headline, r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", 5),
     )
     ignored = {"assert", "float", "format", "import", "print", "str"}
-    for pattern, weight in patterns:
-        for value in re.findall(pattern, issue):
+    for scope, pattern, weight in scoped_patterns:
+        for value in re.findall(pattern, scope):
             if value.casefold() not in ignored:
                 weighted[value] = weighted.get(value, 0) + weight
     return [
@@ -140,14 +227,23 @@ def _discover_issue_test_targets(repository: Path, issue: str | None) -> list[st
     try:
         for identifier in _issue_identifiers(issue):
             symbols = tools.find_symbols(identifier, 30)["symbols"]
+            leaf = identifier.rsplit(".", 1)[-1]
             exact_sources = [
                 item
                 for item in symbols
-                if str(item["name"]).casefold() == identifier.casefold()
+                if str(item["name"]).casefold() == leaf.casefold()
+                and (
+                    "." not in identifier
+                    or str(item["qualified_name"]).casefold().endswith(
+                        identifier.casefold()
+                    )
+                )
                 and not str(item["path"]).startswith(("test/", "tests/"))
                 and not Path(str(item["path"])).name.startswith("test_")
             ]
-            for symbol in exact_sources[:3]:
+            if len(exact_sources) != 1:
+                continue
+            for symbol in exact_sources:
                 related = tools.find_related_tests(str(symbol["qualified_name"]), 5)["tests"]
                 for test in related:
                     candidates.append((int(test["score"]), str(test["path"])))
@@ -226,14 +322,22 @@ def _discover_writable_paths(repository: Path) -> list[str]:
 
 
 def discover_project_policy(
-    repository: Path, *, issue: str | None = None
+    repository: Path,
+    *,
+    issue: str | None = None,
+    operator_config: ProjectConfig | None = None,
 ) -> DiscoveredProjectPolicy:
     repository = repository.expanduser().resolve()
     pyproject = _load_pyproject(repository)
     tool_config = pyproject.get("tool")
     ruff_configured = isinstance(tool_config, dict) and "ruff" in tool_config
     runtime_files = _discover_runtime_files(repository, pyproject)
-    config, _ = load_project_config(repository)
+    repository_config, _ = load_project_config(repository)
+    if repository_config is not None and operator_config is not None:
+        raise ProjectDiscoveryError(
+            "operator policy cannot override repository-owned .prguard.toml"
+        )
+    config = operator_config or repository_config
     if config is not None:
         commands = _validate_commands(config.verification_commands)
         protected = sorted(
@@ -245,18 +349,25 @@ def discover_project_policy(
             commands=commands,
             writable_paths=config.writable_paths,
             protected_paths=protected,
-            source="repository_config",
+            source="operator_config" if operator_config is not None else "repository_config",
             command_timeout_seconds=config.command_timeout_seconds,
             task_timeout_seconds=config.task_timeout_seconds,
             max_repair_attempts=config.max_repair_attempts,
             runtime_files=runtime_files,
             warnings=[
-                "Repository-owned policy was accepted within PRGuard's fixed command and "
-                "protected-path constraints."
+                f"{'Operator-supplied' if operator_config is not None else 'Repository-owned'} "
+                "policy was accepted within PRGuard's fixed command and protected-path "
+                "constraints."
             ],
         )
     pytest_targets = _discover_issue_test_targets(repository, issue)
-    command_values = _discover_commands(repository, pyproject, pytest_targets)
+    nested_test_roots = _discover_nested_python_test_roots(repository)
+    command_values = _discover_commands(
+        repository,
+        pyproject,
+        pytest_targets,
+        nested_test_roots,
+    )
     if not command_values:
         raise ProjectDiscoveryError(
             "no safe pytest/Ruff command was discovered; add a reviewed .prguard.toml"
@@ -297,6 +408,14 @@ def discover_project_policy(
             ),
             *(
                 [
+                    f"Pytest uses the uniquely discovered nested test root "
+                    f"{nested_test_roots[0]!r}; review and freeze it in .prguard.toml."
+                ]
+                if len(nested_test_roots) == 1 and not (repository / "tests").is_dir()
+                else []
+            ),
+            *(
+                [
                     "A declared Hatch VCS version file will be generated only inside "
                     "verification worktrees and excluded from the delivered Patch."
                 ]
@@ -312,6 +431,8 @@ def inspect_project_policy(
     *,
     issue: str | None = None,
     base_commit: str = "HEAD",
+    operator_config: ProjectConfig | None = None,
+    operator_config_path: Path | None = None,
 ) -> ProjectPolicyInspection:
     """Explain policy discovery without invoking a provider or executing repository code."""
 
@@ -326,20 +447,34 @@ def inspect_project_policy(
         signals.append("repository .prguard.toml present")
     if (repository / "pyproject.toml").is_file():
         signals.append("pyproject.toml present")
+    nested_test_roots = _discover_nested_python_test_roots(repository)
     if (repository / "pytest.ini").is_file() or (repository / "tests").is_dir():
         signals.append("pytest-compatible test layout detected")
+    elif len(nested_test_roots) == 1:
+        signals.append(f"unique nested Python test root detected: {nested_test_roots[0]}")
+    elif len(nested_test_roots) > 1:
+        signals.append("multiple nested Python test roots require reviewed configuration")
     discovered_scopes = _discover_writable_paths(repository)
     if discovered_scopes:
         signals.append("Python source/test write scopes detected")
     if issue and _issue_identifiers(issue):
         signals.append("Issue contains source-like identifiers for test targeting")
 
-    config_path = repository / ".prguard.toml"
-    if not config_path.is_file():
-        config_path = None
+    repository_config_path = repository / ".prguard.toml"
+    config_path = repository_config_path if repository_config_path.is_file() else None
+    if operator_config is not None:
+        signals.append("operator policy supplied explicitly")
+        if operator_config_path is not None:
+            config_path = operator_config_path.expanduser().resolve()
     try:
-        policy = discover_project_policy(repository, issue=issue)
+        policy = discover_project_policy(
+            repository,
+            issue=issue,
+            operator_config=operator_config,
+        )
     except ProjectDiscoveryError as exc:
+        if repository_config_path.is_file():
+            config_path = repository_config_path
         reason = str(exc)
         actions = []
         if "pytest/Ruff command" in reason:
@@ -371,6 +506,9 @@ def inspect_project_policy(
     if policy.source == "repository_config":
         config, _ = load_project_config(repository)
         assert config is not None
+    elif policy.source == "operator_config":
+        assert operator_config is not None
+        config = operator_config
     else:
         config = ProjectConfig(
             verification_commands=[command.argv for command in policy.commands],

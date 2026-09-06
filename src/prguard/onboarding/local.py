@@ -10,7 +10,11 @@ from pathlib import Path
 from prguard.harness.artifacts import canonical_json, sha256_bytes
 from prguard.onboarding.errors import OnboardingError
 from prguard.onboarding.materialize import materialize_local_checkout
-from prguard.onboarding.profile import discover_project_policy, load_project_config
+from prguard.onboarding.profile import (
+    discover_project_policy,
+    load_operator_project_config,
+    load_project_config,
+)
 from prguard.schemas import (
     ArtifactEntry,
     ContainerExecutionSpec,
@@ -62,12 +66,16 @@ def prepare_local_issue(
     base_commit: str = "HEAD",
     trust_host: bool = False,
     container_image: str | None = None,
+    policy_file: Path | None = None,
 ) -> LocalTaskPreparationReport:
     if trust_host == bool(container_image):
         raise OnboardingError(
             "choose exactly one execution boundary: trust_host or container_image"
         )
     issue = _validate_issue(issue)
+    operator_config = (
+        load_operator_project_config(policy_file) if policy_file is not None else None
+    )
     source = repository.expanduser().resolve()
     output_directory = output_directory.expanduser().resolve()
     if output_directory == source or output_directory.is_relative_to(source):
@@ -79,7 +87,11 @@ def prepare_local_issue(
         checkout, resolved = materialize_local_checkout(
             source, base_commit, output_directory / "repositories"
         )
-        policy = discover_project_policy(checkout, issue=issue)
+        policy = discover_project_policy(
+            checkout,
+            issue=issue,
+            operator_config=operator_config,
+        )
         container = (
             ContainerExecutionSpec(image=container_image)
             if container_image is not None
@@ -111,7 +123,18 @@ def prepare_local_issue(
         artifact_directory.mkdir()
         task_path = artifact_directory / "task.json"
         task_path.write_bytes(canonical_json(task.model_dump(mode="json")))
-        _, config_path = load_project_config(checkout)
+        _, repository_config_path = load_project_config(checkout)
+        config_path = (
+            policy_file.expanduser().resolve()
+            if policy_file is not None
+            else repository_config_path
+        )
+        policy_artifact = None
+        if operator_config is not None:
+            policy_artifact = artifact_directory / "operator-policy.json"
+            policy_artifact.write_bytes(
+                canonical_json(operator_config.model_dump(mode="json"))
+            )
         warnings = [
             *policy.warnings,
             "The local source repository was copied into a detached frozen checkout; "
@@ -122,6 +145,10 @@ def prepare_local_issue(
         if trust_host:
             warnings.append(
                 "Host execution was explicitly trusted; repository tests are not OS-sandboxed."
+            )
+        if operator_config is not None:
+            warnings.append(
+                "An operator-supplied policy was validated and frozen in preparation artifacts."
             )
         report = LocalTaskPreparationReport(
             issue=snapshot,
@@ -140,7 +167,9 @@ def prepare_local_issue(
         report_path = artifact_directory / "preparation-report.json"
         report_path.write_bytes(canonical_json(report.model_dump(mode="json")))
         entries = []
-        for path in (task_path, report_path):
+        for path in (task_path, report_path, policy_artifact):
+            if path is None:
+                continue
             payload = path.read_bytes()
             entries.append(
                 ArtifactEntry(

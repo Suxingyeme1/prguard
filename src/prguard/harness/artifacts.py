@@ -56,14 +56,19 @@ def render_markdown(report: HarnessReport) -> str:
                 "Agent-authored tests must fail against the unchanged Base before they can join "
                 "the candidate gate.",
                 "",
-                "| # | Kind | Command | Exit | Timeout | Failed on Base | Duration |",
-                "|---:|---|---|---:|---|---|---:|",
+                "| # | Kind | Runtime | Command | Exit | Timeout | Failed on Base | Duration |",
+                "|---:|---|---|---|---:|---|---|---:|",
             ]
         )
         for result in report.changed_test_base_results:
             command = " ".join(result.argv).replace("|", "\\|")
+            runtime = (
+                f"{result.runtime.implementation} {result.runtime.version}"
+                if result.runtime is not None
+                else "unknown"
+            )
             lines.append(
-                f"| {result.command_index} | {result.kind} | `{command}` | "
+                f"| {result.command_index} | {result.kind} | {runtime} | `{command}` | "
                 f"{result.exit_code if result.exit_code is not None else '-'} | "
                 f"{result.timed_out} | {not result.passed} | "
                 f"{result.duration_seconds:.3f}s |"
@@ -73,14 +78,19 @@ def render_markdown(report: HarnessReport) -> str:
             "",
             "## Candidate verification",
             "",
-            "| # | Kind | Command | Exit | Timeout | Passed | Duration |",
-            "|---:|---|---|---:|---|---|---:|",
+            "| # | Kind | Runtime | Command | Exit | Timeout | Passed | Duration |",
+            "|---:|---|---|---|---:|---|---|---:|",
         ]
     )
     for result in report.commands:
         command = " ".join(result.argv).replace("|", "\\|")
+        runtime = (
+            f"{result.runtime.implementation} {result.runtime.version}"
+            if result.runtime is not None
+            else "unknown"
+        )
         lines.append(
-            f"| {result.command_index} | {result.kind} | `{command}` | "
+            f"| {result.command_index} | {result.kind} | {runtime} | `{command}` | "
             f"{result.exit_code if result.exit_code is not None else '-'} | "
             f"{result.timed_out} | {result.passed} | {result.duration_seconds:.3f}s |"
         )

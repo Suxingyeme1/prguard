@@ -236,6 +236,7 @@ class FixRunner:
                         candidate_patch=patch_path,
                         commands=task.commands,
                         allowed_commands=task.allowed_commands,
+                        writable_paths=task.writable_paths,
                         protected_paths=task.protected_paths,
                         command_timeout_seconds=task.command_timeout_seconds,
                         task_timeout_seconds=remaining,
