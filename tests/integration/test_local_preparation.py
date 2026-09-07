@@ -41,6 +41,7 @@ def test_prepare_local_issue_freezes_detached_checkout_and_manifest(
     assert report.issue.base_commit == commit
     assert run_git(source, "status", "--porcelain=v1") == ""
     assert run_git(report.checkout, "rev-parse", "HEAD") == commit
+    assert run_git(report.checkout, "rev-parse", "--is-shallow-repository") == "true"
     manifest = verify_manifest(output / "artifacts" / "preparation-manifest.json")
     assert manifest.policy_version == "local-onboarding-v1"
 

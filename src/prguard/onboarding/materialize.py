@@ -234,6 +234,7 @@ def materialize_local_checkout(
             "-C",
             os.fspath(destination),
             "fetch",
+            "--depth=1",
             "--no-tags",
             os.fspath(source),
             resolved,
