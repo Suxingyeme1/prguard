@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "source_artifacts": {
+    "implementer_report_sha256": "699d5efe2b8cf674559275d215ab7b8f49d37cb37d972998daeeb4c95d022054",
+    "reviewer_12_report_sha256": "3158deb27d8e2f608c09b1f9333384fd6be0ab5d54305a97cfe223ab19681a7a",
+    "reviewer_24_report_sha256": "a861b5ece33a7685bc935ee2b5fd59f2caeb9b44f08186530f5ec169325c9d17",
+    "sealed_evaluator_source_sha256": "763d7082e4cc35990ad03ddc8efbcb7a1673c006e40bc537d6c5fa03669960c1",
+    "sealed_evaluator_raw_artifacts": "retained in root-only server storage"
+  },
+  "summary": {
+    "total": 3,
+    "passed": 0,
+    "failed": 3
+  },
+  "results": [
+    {
+      "case_id": "locust_3207_candidate_task_resolution",
+      "category": "implementer_resolution",
+      "passed": false,
+      "duration_ms": 159143.812,
+      "details": {
+        "expected": "candidate passes the precommitted CPython 3.13 evaluator",
+        "actual": "candidate still fails with missing required request metadata",
+        "public_gate": "12 passed, 17 deselected",
+        "candidate_patch_sha256": "2128de73515e62b24e6cb7e78954df1490707981ec2d3b78f1a932987b896c68"
+      }
+    },
+    {
+      "case_id": "locust_3207_reviewer_budget_12",
+      "category": "review_quality",
+      "passed": false,
+      "duration_ms": 67750.664,
+      "details": {
+        "expected": "blocking finding for a symptom-suppressing candidate",
+        "actual": "accept with zero findings",
+        "read_tool_budget": 12
+      }
+    },
+    {
+      "case_id": "locust_3207_reviewer_budget_24",
+      "category": "review_quality",
+      "passed": false,
+      "duration_ms": 227616.88,
+      "details": {
+        "expected": "blocking finding for a symptom-suppressing candidate",
+        "actual": "accept with zero findings",
+        "read_tool_budget": 24
+      }
+    }
+  ]
+}

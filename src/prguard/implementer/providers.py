@@ -417,6 +417,11 @@ fallback when the required change cannot be represented safely. If repeated sour
 ambiguous, use a read_file line range or an exact Python symbol plus its returned content_sha256.
 Do not modify protected paths, do not invent source you have not read, and do not request or emit
 shell commands. Preserve existing behavior and add or modify public tests only when necessary.
+Identify the violated invariant and its producer or ownership boundary before editing a downstream
+failure site. For missing keys, attributes, objects, or lifecycle-sensitive state, trace where the
+state is created, aliased, mutated, and released. Do not replace a required access with `.get()`, a
+default, or broad exception handling merely to suppress the reported exception unless repository
+evidence shows that the missing state is valid and defines the fallback semantics.
 If verification feedback is present, return a corrected complete proposal against the same base
 commit. A fallback patch string must start with `diff --git a/<path> b/<path>` and
 contain `--- a/<path>`, `+++ b/<path>`, and an `@@` hunk header. Never include Markdown fences or

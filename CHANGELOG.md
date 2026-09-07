@@ -3,6 +3,27 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.13.5 — 2026-09-07
+
+### Changed
+
+- Implementer guidance now requires tracing a missing-state failure to its producer, ownership,
+  aliasing, mutation, and lifetime before changing the downstream exception site;
+- Independent Review applies the same root-cause standard and treats consumer-side defaults as a
+  blocking concern when they only suppress a violated invariant;
+- bounded Python compatibility analysis now flags a required string-key lookup changed into a
+  fallback lookup as a review prompt, without automatically classifying the Patch as defective.
+
+### Evidence
+
+- completed the frozen Locust #3207 live Implementer and two independent Reviewer runs on a
+  low-privilege Linux host;
+- the one-line candidate passed the 12-test public gate but failed the sealed CPython 3.13
+  evaluator, while both the 12-call and 24-call Reviewers accepted it with zero findings;
+- the false accept is published as an unresolved capability failure. Increasing the Reviewer read
+  budget did not repair the reasoning gap, and the contaminated case is used only for deterministic
+  regression hardening after reveal.
+
 ## 0.13.4 — 2026-09-06
 
 ### Changed

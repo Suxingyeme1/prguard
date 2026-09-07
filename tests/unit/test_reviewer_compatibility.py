@@ -101,6 +101,39 @@ def test_reports_public_symbols_removed_with_a_python_module(tmp_path: Path) -> 
     ]
 
 
+def test_reports_required_mapping_lookup_replaced_by_fallback(tmp_path: Path) -> None:
+    base = tmp_path / "base"
+    candidate = tmp_path / "candidate"
+    _write(
+        base,
+        "package/client.py",
+        "class Response:\n"
+        "    def __exit__(self, exc_type, exc, traceback):\n"
+        "        self.url = self.request_meta['name']\n",
+    )
+    _write(
+        candidate,
+        "package/client.py",
+        "class Response:\n"
+        "    def __exit__(self, exc_type, exc, traceback):\n"
+        "        self.url = self.request_meta.get('name', self.url)\n",
+    )
+
+    signals = analyze_python_compatibility(
+        base,
+        candidate,
+        ["package/client.py"],
+        max_file_bytes=10_000,
+    )
+
+    assert any(
+        "Response.__exit__" in signal
+        and "required lookup self.request_meta['name']" in signal
+        and "object-lifetime invariant" in signal
+        for signal in signals
+    )
+
+
 def test_bounds_changed_file_count_and_signal_size(tmp_path: Path) -> None:
     base = tmp_path / "base"
     candidate = tmp_path / "candidate"

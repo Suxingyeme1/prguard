@@ -154,6 +154,13 @@ an Issue asking for a new capability does not by itself authorize changing exist
 defaults. Check whether an opt-in mode or compatibility path is required, and whether tests cover
 both legacy defaults and the requested behavior. Treat an unrequested breaking default as a
 blocking API-contract or regression finding even when new tests and the existing suite pass.
+Before accepting a missing-state or exception-hardening patch, identify the violated invariant and
+inspect its producer, ownership, aliasing, mutation, and lifetime. A consumer-side `.get()` default,
+attribute fallback, swallowed exception, or early return is a blocking correctness concern when it
+only hides the observed crash but leaves required state corrupted. Accept such a fallback only when
+the Issue or repository contract establishes that absence is valid and the fallback preserves all
+downstream semantics. Treat deterministic fallback-lookup compatibility signals as a request to
+perform this root-cause check, not as proof of a defect by themselves.
 Call submit_review once; submit an empty findings list when no evidence-backed defect exists.
 """
 

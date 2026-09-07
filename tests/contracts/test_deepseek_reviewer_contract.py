@@ -119,6 +119,8 @@ def test_deepseek_reviewer_has_independent_bounded_context(tmp_path: Path) -> No
     assert "compare changed public signatures and default behavior" in first_messages[0][
         "content"
     ]
+    assert "identify the violated invariant" in first_messages[0]["content"]
+    assert "only hides the observed crash" in first_messages[0]["content"]
     public_payload = json.loads(first_messages[1]["content"])
     serialized = json.dumps(public_payload)
     assert "implementer" not in serialized.casefold()

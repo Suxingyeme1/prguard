@@ -145,9 +145,12 @@ a deterministic tool, never a Test Runner Agent.
   compatibility signals for changed non-test modules. It gives an independently scoped Reviewer
   only the Issue, candidate diff, deterministic evidence/signals, and bounded read tools, then
   computes the verdict deterministically. Compatibility signals direct attention but never block
-  by themselves. P0-P2 findings block; P3 is non-blocking; failed verification blocks even when
-  the Reviewer misses a finding. A model result returned after the logical stage deadline is
-  retained as evidence but cannot produce an accepting verdict.
+  by themselves. The signals include public signatures/protocols/exports and required string-key
+  accesses changed into `.get()` fallbacks; the latter asks the Reviewer to trace state production,
+  ownership, aliasing, and lifetime instead of assuming that exception suppression repairs the
+  invariant. P0-P2 findings block; P3 is non-blocking; failed verification blocks even when the
+  Reviewer misses a finding. A model result returned after the logical stage deadline is retained
+  as evidence but cannot produce an accepting verdict.
 - **Review-repair runner** preserves the initial review and shows the Implementer only the original
   candidate plus structured public findings and verification evidence. Exact edits may be applied
   to an isolated patched worktree and folded by Git into one complete replacement Patch against the

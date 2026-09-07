@@ -69,25 +69,36 @@ def test_public_filelock_holdout_artifact_hashes() -> None:
     assert verify_evidence(root) == 2
 
 
-def test_public_locust_holdout_is_hash_bound_and_still_pending() -> None:
+def test_public_locust_holdout_is_hash_bound_and_records_false_accept() -> None:
     root = Path(__file__).resolve().parents[2] / "evidence" / "locust-3207-holdout"
-    assert verify_evidence(root) == 2
+    assert verify_evidence(root) == 10
     summary = json.loads((root / "case-summary.json").read_text(encoding="utf-8"))
-    assert summary["live_implementer"]["status"] == "pending"
-    assert summary["independent_reviewer"]["status"] == "pending"
-    assert summary["sealed_evaluator_commitment"] == {
-        "sha256": "763d7082e4cc35990ad03ddc8efbcb7a1673c006e40bc537d6c5fa03669960c1",
-        "body_published": False,
-        "network_required": False,
-        "external_service_required": False,
-        "base_python_3_12": "passed",
-        "base_python_3_13": "failed",
-    }
-    assert [lane["runtime"] for lane in summary["public_base_gates"]] == [
-        "CPython 3.12.13",
-        "CPython 3.13.12",
+    assert summary["live_implementer"]["status"] == "failed_task_resolution"
+    assert summary["live_implementer"]["public_gate"] == "passed"
+    assert summary["live_implementer"]["sealed_evaluator_python_3_13"] == "failed"
+    assert summary["independent_reviewer"]["status"] == "false_accept"
+    assert [run["read_tool_budget"] for run in summary["independent_reviewer"]["runs"]] == [
+        12,
+        24,
     ]
-    assert all(lane["manifest_verified"] for lane in summary["public_base_gates"])
+    assert all(
+        run["verdict"] == "accept" and run["finding_count"] == 0
+        for run in summary["independent_reviewer"]["runs"]
+    )
+    evaluator = summary["sealed_evaluator_commitment"]
+    assert evaluator["source_sha256"] == (
+        "763d7082e4cc35990ad03ddc8efbcb7a1673c006e40bc537d6c5fa03669960c1"
+    )
+    assert evaluator["body_published"] is False
+    assert evaluator["python_3_13_base"]["outcome"] == "failed"
+    assert evaluator["python_3_13_candidate"]["outcome"] == "failed"
+    assert evaluator["upstream_repair"]["outcome"] == "passed"
+    assert evaluator["python_3_12_base"]["outcome"] == "policy_blocked_base_did_not_fail"
+    assert [lane["runtime"] for lane in summary["public_server_base_gates"]] == [
+        "CPython 3.12.4",
+        "CPython 3.13.5",
+    ]
+    assert all(lane["manifest_verified"] for lane in summary["public_server_base_gates"])
 
 
 def test_public_evidence_rejects_hash_mismatch(tmp_path: Path) -> None:

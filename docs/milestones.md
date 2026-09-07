@@ -279,6 +279,16 @@ bounded colorized Patch preview, Artifact/Manifest locations, and a copyable Git
 command. Untrusted repository/model control characters are neutralized before terminal rendering;
 the full Patch remains the hash-bound file rather than terminal text.
 
+The twenty-fourth increment executes the frozen Locust #3207 holdout on a low-privilege Linux host.
+The Implementer candidate passed 12 public tests but failed the precommitted CPython 3.13 evaluator;
+Independent Review accepted it with zero findings at both 12- and 24-call budgets. The false accept
+is preserved as unresolved evidence. Post-reveal hardening adds explicit state producer/ownership
+reasoning to both Agents and a bounded AST signal for required string-key lookups changed into
+fallbacks. Because the case is now contaminated, this validates the regression signal only; the
+next accuracy claim requires a fresh holdout. See the [v0.13.5 phase report](v0.13.5-phase-report.md),
+[Locust evidence](../evidence/locust-3207-holdout/README.md), and
+[ADR 0030](adr/0030-required-state-fallbacks-trigger-root-cause-review.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

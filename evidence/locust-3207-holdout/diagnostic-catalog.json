@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "PRGuard Locust #3207 false-accept diagnostic catalog",
+    "version": "2026.09.07"
+  },
+  "issues": [
+    {
+      "issue_id": "PRGUARD-LOCUST-001",
+      "title": "Missing invariant tracing allowed a symptom-suppressing Patch and false accept",
+      "severity": "P1",
+      "classification": "product_defect",
+      "status": "confirmed",
+      "confidence": "high",
+      "case_ids": [
+        "locust_3207_candidate_task_resolution",
+        "locust_3207_reviewer_budget_12",
+        "locust_3207_reviewer_budget_24"
+      ],
+      "case_patterns": [],
+      "evidence": "The one-line candidate passed 12 public tests but failed the precommitted CPython 3.13 evaluator. Independent Review accepted it with zero findings at both 12- and 24-call budgets. The upstream ownership/lifetime repair passed the same sealed evaluator after reveal.",
+      "root_cause": "PRGuard supplied general protocol-change evidence but did not explicitly require either Agent to distinguish required state from valid optional state or trace the missing mapping key to its producer and object lifetime. The Implementer therefore changed the exception consumer from a required lookup to a fallback, and both Reviewers treated the fallback as safe because normal construction populated the key.",
+      "source_locations": [
+        {
+          "path": "src/prguard/reviewer/compatibility.py",
+          "symbol": "analyze_python_compatibility",
+          "anchor": "def analyze_python_compatibility(",
+          "line_hint": 181,
+          "line_span": 85,
+          "role": "Deterministic Base/Candidate analysis now emits a bounded signal for the missed required-to-fallback access shape."
+        },
+        {
+          "path": "src/prguard/implementer/providers.py",
+          "symbol": "_INSTRUCTIONS",
+          "anchor": "Identify the violated invariant and its producer or ownership boundary",
+          "line_hint": 420,
+          "line_span": 5,
+          "role": "Implementer remediation requires tracing the state producer and lifecycle before editing the failure consumer."
+        },
+        {
+          "path": "src/prguard/reviewer/providers.py",
+          "symbol": "_INSTRUCTIONS",
+          "anchor": "Before accepting a missing-state or exception-hardening patch",
+          "line_hint": 157,
+          "line_span": 7,
+          "role": "Reviewer remediation makes a consumer-side fallback blocking unless repository evidence establishes valid absence semantics."
+        }
+      ],
+      "recommendation": {
+        "summary": "Combine explicit invariant/ownership reasoning with a deterministic required-to-fallback review signal.",
+        "steps": [
+          "Require the Implementer to inspect state creation, aliasing, mutation, and release before proposing a downstream fallback.",
+          "Provide the same root-cause criterion to the independent Reviewer and treat the signal as an inspection request rather than an automatic verdict.",
+          "Regression-test the structural signal on the contaminated Patch, then evaluate quality only on a fresh precommitted holdout."
+        ]
+      },
+      "verification": {
+        "expected": "The exact Locust candidate produces a required-to-fallback compatibility signal and both provider contracts contain the invariant-tracing criterion; all repository tests and Ruff pass. No improved held-out accuracy is claimed until a fresh case completes.",
+        "cases": [
+          "tests/unit/test_reviewer_compatibility.py::test_reports_required_mapping_lookup_replaced_by_fallback",
+          "tests/contracts/test_deepseek_provider_contract.py::test_deepseek_adapter_runs_bounded_chat_tool_loop",
+          "tests/contracts/test_deepseek_reviewer_contract.py::test_deepseek_reviewer_has_independent_bounded_context"
+        ]
+      }
+    }
+  ]
+}

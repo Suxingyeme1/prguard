@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import io
 import tokenize
+from collections import Counter
 from pathlib import Path, PurePosixPath
 
 _MAX_FILES = 50
@@ -105,6 +106,78 @@ def _exports(tree: ast.Module) -> tuple[str, ...] | None:
     return None
 
 
+class _MappingAccessVisitor(ast.NodeVisitor):
+    """Collect mapping access modes without attributing nested definitions to a caller."""
+
+    def __init__(self) -> None:
+        self.required: Counter[tuple[str, str]] = Counter()
+        self.fallback: Counter[tuple[str, str]] = Counter()
+        self.labels: dict[tuple[str, str], str] = {}
+
+    def visit_Subscript(self, node: ast.Subscript) -> None:
+        if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+            access = (ast.dump(node.value, include_attributes=False), node.slice.value)
+            self.required[access] += 1
+            self.labels[access] = ast.unparse(node.value)
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        function = node.func
+        if (
+            isinstance(function, ast.Attribute)
+            and function.attr == "get"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)
+        ):
+            access = (
+                ast.dump(function.value, include_attributes=False),
+                node.args[0].value,
+            )
+            self.fallback[access] += 1
+            self.labels[access] = ast.unparse(function.value)
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        return None
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        return None
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        return None
+
+
+def _mapping_access_state(
+    tree: ast.Module, module: str
+) -> dict[
+    str,
+    tuple[
+        Counter[tuple[str, str]],
+        Counter[tuple[str, str]],
+        dict[tuple[str, str], str],
+    ],
+]:
+    values = {}
+
+    def walk(body: list[ast.stmt], parents: tuple[str, ...]) -> None:
+        for node in body:
+            if isinstance(node, ast.ClassDef):
+                if not node.name.startswith("_"):
+                    walk(node.body, (*parents, node.name))
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if not _is_public_callable(node.name, parents):
+                    continue
+                visitor = _MappingAccessVisitor()
+                for statement in node.body:
+                    visitor.visit(statement)
+                symbol = ".".join((module, *parents, node.name))
+                values[symbol] = (visitor.required, visitor.fallback, visitor.labels)
+
+    walk(tree.body, ())
+    return values
+
+
 def analyze_python_compatibility(
     base_root: Path,
     candidate_root: Path,
@@ -175,6 +248,22 @@ def analyze_python_compatibility(
                     else "public implementation changed; verify existing callers and defaults"
                 )
                 signals.append(f"{symbol}: {detail}")
+        before_accesses = _mapping_access_state(base_tree, module)
+        after_accesses = _mapping_access_state(candidate_tree, module)
+        for symbol in sorted(before_accesses.keys() & after_accesses.keys()):
+            old_required, old_fallback, old_labels = before_accesses[symbol]
+            new_required, new_fallback, new_labels = after_accesses[symbol]
+            for access in sorted(old_required):
+                if (
+                    old_required[access] > new_required[access]
+                    and new_fallback[access] > old_fallback[access]
+                ):
+                    label = new_labels.get(access, old_labels.get(access, "mapping"))
+                    signals.append(
+                        f"{symbol}: required lookup {label}[{access[1]!r}] changed to a "
+                        "fallback lookup; verify the producer or object-lifetime invariant is "
+                        "repaired instead of only masking missing state"
+                    )
         old_exports = _exports(base_tree)
         new_exports = _exports(candidate_tree)
         if old_exports != new_exports and (old_exports is not None or new_exports is not None):

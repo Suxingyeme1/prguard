@@ -115,6 +115,10 @@ def test_deepseek_adapter_runs_bounded_chat_tool_loop(tmp_path: Path) -> None:
     assert envelope.token_usage.cached_tokens == 6
     assert envelope.provider_metadata["system_fingerprint"] == "fp-test"
     first = completions.requests[0]
+    assert "Identify the violated invariant" in first["messages"][0]["content"]
+    assert "Do not replace a required access with `.get()`" in first["messages"][0][
+        "content"
+    ]
     assert "tool_choice" not in first
     assert first["extra_body"] == {"thinking": {"type": "enabled"}}
     assert first["reasoning_effort"] == "high"

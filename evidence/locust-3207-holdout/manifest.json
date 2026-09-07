@@ -1,16 +1,56 @@
 {
   "schema_version": "prguard-public-artifacts-1",
-  "frozen_at": "2026-09-06",
+  "frozen_at": "2026-09-07",
   "artifacts": [
     {
       "path": "README.md",
-      "sha256": "dae124d84fa67774a583cb53566b16045ffb7ff91d2299996b27f1cccabb807d",
-      "size_bytes": 2141
+      "sha256": "b28cb08764f0356abeabe932c171b4f93dd530a4f2ef03ece53d20a81f0c59e8",
+      "size_bytes": 3624
+    },
+    {
+      "path": "candidate.patch",
+      "sha256": "2128de73515e62b24e6cb7e78954df1490707981ec2d3b78f1a932987b896c68",
+      "size_bytes": 564
     },
     {
       "path": "case-summary.json",
-      "sha256": "f00cbb0d4229a4cd9fc98b909283b7f0a40af43a07f4bb7a1ec506f636fbf2a2",
-      "size_bytes": 2842
+      "sha256": "93607db68736534ecb1a4e19660249b16766e83cd3db3a26d59d0d4cb00b79bf",
+      "size_bytes": 6324
+    },
+    {
+      "path": "diagnostic-catalog.json",
+      "sha256": "c3dc1dea4514dce73590cd0cb8065812f170bcf4a35989c5dd27481f5d3b07ed",
+      "size_bytes": 3864
+    },
+    {
+      "path": "diagnostic-report.md",
+      "sha256": "50c62c8b2e084437d742457072643968d32679fd85e410a1893e260b1762f50f",
+      "size_bytes": 4011
+    },
+    {
+      "path": "diagnostic-results.enriched.json",
+      "sha256": "b57ec2e8e5d1d20532b19130d4033d13745829cc47e77bdf2f014a0d26c239e8",
+      "size_bytes": 18931
+    },
+    {
+      "path": "diagnostic-results.json",
+      "sha256": "34af6595853075cd63cf3ff6f6dad87f49aa157ccd389d418d2562bd0b2b8b8d",
+      "size_bytes": 1817
+    },
+    {
+      "path": "implementer-report.json",
+      "sha256": "699d5efe2b8cf674559275d215ab7b8f49d37cb37d972998daeeb4c95d022054",
+      "size_bytes": 9183
+    },
+    {
+      "path": "reviewer-12-report.json",
+      "sha256": "3158deb27d8e2f608c09b1f9333384fd6be0ab5d54305a97cfe223ab19681a7a",
+      "size_bytes": 12329
+    },
+    {
+      "path": "reviewer-24-report.json",
+      "sha256": "a861b5ece33a7685bc935ee2b5fd59f2caeb9b44f08186530f5ec169325c9d17",
+      "size_bytes": 14320
     }
   ]
 }

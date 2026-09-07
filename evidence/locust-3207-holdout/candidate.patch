@@ -1,0 +1,13 @@
+diff --git a/locust/clients.py b/locust/clients.py
+index 12a23cf..0744cbe 100644
+--- a/locust/clients.py
++++ b/locust/clients.py
+@@ -367,7 +367,7 @@ class ResponseContextManager(LocustResponse):
+             # multiple failure entries for different URLs for the same name argument, we need
+             # to temporarily override the response.url attribute
+             orig_url = self.url
+-            self.url = self.request_meta["name"]
++            self.url = self.request_meta.get("name", self.url)
+ 
+             try:
+                 self.raise_for_status()

@@ -1,15 +1,21 @@
 {
   "schema_version": "prguard-heldout-case-1",
   "frozen_at": "2026-09-06",
+  "executed_at": "2026-09-07",
   "repository": "https://github.com/locustio/locust",
   "issue": "https://github.com/locustio/locust/issues/3207",
   "upstream_base_commit": "5df19da06a0f8418d44094f3014ddee3b307bb55",
   "agent_issue_sha256": "c572f5f3eecfcd40180acf250a04cfb8f55b033d2ef5146196cf9d8c51d4de29",
+  "prguard_source_commit": "021f284794f3b1c1d6b95515f057affc020dbfab",
   "leakage_boundary": {
     "later_upstream_change_visible_to_agent": false,
     "gold_patch_visible_to_agent": false,
     "evaluator_body_visible_to_agent": false,
-    "expected_repair_visible_to_agent": false
+    "expected_repair_visible_to_agent": false,
+    "live_agents_ran_as": "prguard",
+    "sealed_evaluator_owner": "root",
+    "evaluator_body_published": false,
+    "gold_patch_published": false
   },
   "project_adaptation": {
     "nested_test_root_discovered": "locust/test",
@@ -26,46 +32,114 @@
     "writable_paths": ["locust/**"],
     "protected_runtime_file": "locust/_version.py",
     "operator_policy_sha256": "d39e266a5d79821604a47773d82ee0fb964778b273367353441ba55754eb8a4a",
-    "preparation_manifest_sha256": "69f6e380afc6febdd93fa6de4e3802cd1115005e9b51fc7ae3e487a6de1d9ced",
+    "server_preparation_manifest_sha256": "67e1c3328a6736b3f0921fd365ca6eeb8971d087ad91e9eca94f0bab3194f88e",
     "preparation_manifest_verified": true
   },
-  "public_base_gates": [
+  "public_server_base_gates": [
     {
-      "runtime": "CPython 3.12.13",
-      "platform": "darwin-arm64",
+      "runtime": "CPython 3.12.4",
+      "platform": "linux-x86_64",
       "outcome": "passed",
       "passed": 12,
       "deselected": 17,
-      "run_id": "e5f9040b-fbbd-491f-81d5-c212b9a2dadf",
-      "report_sha256": "3306a010e829fdbbfa174f109a0915356013e953cad91bdbb24af35ee8cd526d",
-      "manifest_sha256": "b154bd10d8a3ad284a47d7e55fc33aa346e619c29c49ad8680d4a2e652bd2403",
+      "run_id": "005cd2ec-82ad-4e8f-b85c-849ed5771a99",
+      "report_sha256": "243e483d617f73a96d9067df679ba9928c9ec67fec27b80d38e63fd58eb7091a",
+      "manifest_sha256": "2ab0ce643541b76af5e9f55a6e5359c2bb997f741562e0cb6ecf4f62845f1ad6",
       "manifest_verified": true
     },
     {
-      "runtime": "CPython 3.13.12",
-      "platform": "darwin-arm64",
+      "runtime": "CPython 3.13.5",
+      "platform": "linux-x86_64",
       "outcome": "passed",
       "passed": 12,
       "deselected": 17,
-      "run_id": "7c6d78c3-84b1-4326-941e-c9c77a324363",
-      "report_sha256": "9cd0a961291a14fdb634efc4ce922f692a9a112d6c438f95975e89b3330ae405",
-      "manifest_sha256": "cce3403970bdb32474e40658059f79fc06f671584c0fd4b906dc40b4d12517da",
+      "run_id": "a667809c-684a-4846-acc8-6d5bcfd0606f",
+      "report_sha256": "229e503be02be6a5bf7a4609a2ac0eed32b695c88bc149511eb48d969333aadc",
+      "manifest_sha256": "4c20775154e37e35e9e63783b3f33cd2792913793549ed388122a8c185218171",
       "manifest_verified": true
     }
   ],
+  "live_implementer": {
+    "status": "failed_task_resolution",
+    "run_id": "c7dbb7f5-8b9e-458b-bb1e-a133f1ab7a57",
+    "public_gate": "passed",
+    "sealed_evaluator_python_3_13": "failed",
+    "tool_calls": 24,
+    "duration_seconds": 159.1438120752573,
+    "input_tokens": 243533,
+    "output_tokens": 7716,
+    "cached_tokens": 220928,
+    "candidate_patch_sha256": "2128de73515e62b24e6cb7e78954df1490707981ec2d3b78f1a932987b896c68",
+    "report_sha256": "699d5efe2b8cf674559275d215ab7b8f49d37cb37d972998daeeb4c95d022054",
+    "manifest_sha256": "32acfe129937049973a4e87f25b8fa83e2d561776783f68f12b15780d99e3120"
+  },
+  "independent_reviewer": {
+    "status": "false_accept",
+    "runs": [
+      {
+        "read_tool_budget": 12,
+        "run_id": "76ae5067-6464-4b38-8720-fe7ed05bac72",
+        "verdict": "accept",
+        "finding_count": 0,
+        "duration_seconds": 67.75066423416138,
+        "input_tokens": 118548,
+        "output_tokens": 2335,
+        "cached_tokens": 87424,
+        "report_sha256": "3158deb27d8e2f608c09b1f9333384fd6be0ab5d54305a97cfe223ab19681a7a",
+        "manifest_sha256": "5fd1806a71cca37942e589bc172caa1f36327a0f1a14a8d285fc35c4bb154552"
+      },
+      {
+        "read_tool_budget": 24,
+        "run_id": "b7af7543-6348-4f62-a70b-34a0e56f7524",
+        "verdict": "accept",
+        "finding_count": 0,
+        "duration_seconds": 227.61688041687012,
+        "input_tokens": 422093,
+        "output_tokens": 10897,
+        "cached_tokens": 360832,
+        "report_sha256": "a861b5ece33a7685bc935ee2b5fd59f2caeb9b44f08186530f5ec169325c9d17",
+        "manifest_sha256": "2ee1eb08409afd69a35d5ab953a9fb92b1aa9f1e423b7fe3e9da63e22bd187b6"
+      }
+    ]
+  },
   "sealed_evaluator_commitment": {
-    "sha256": "763d7082e4cc35990ad03ddc8efbcb7a1673c006e40bc537d6c5fa03669960c1",
+    "source_sha256": "763d7082e4cc35990ad03ddc8efbcb7a1673c006e40bc537d6c5fa03669960c1",
     "body_published": false,
     "network_required": false,
     "external_service_required": false,
-    "base_python_3_12": "passed",
-    "base_python_3_13": "failed"
+    "python_3_13_base": {
+      "outcome": "failed",
+      "run_id": "ea3a963f-a45f-4a65-b680-51a46ad3fdb8",
+      "report_sha256": "827bbfd1ce0a2bae79a42fe050f9578f1d552b3c775e86c39062a8e1efa5a921",
+      "manifest_sha256": "99a7116febfa22e7bde61c46507122afdbbb942cfc83137f90ff4e92b0484fdd"
+    },
+    "python_3_13_candidate": {
+      "outcome": "failed",
+      "run_id": "c4f30416-f9d2-4631-bdfd-be5b271bdfa3",
+      "report_sha256": "3e2ec4b5bf6ef5d5135fdc9d1a544c6427bb25bb2abcf3384509272738339077",
+      "manifest_sha256": "2793aacbde4c24a6898c5febcf9d8ecfff92d26c53b41ab1a7940351cbd7ace1"
+    },
+    "upstream_repair": {
+      "outcome": "passed",
+      "run_id": "b55a3819-6ec5-47c5-a95b-155e5d072221",
+      "report_sha256": "1316ccfbd80f2b115e5eb3a34427eefb428282da20dd4483eb081113e0db10e0",
+      "manifest_sha256": "e137b3882e87ffe97d76c91ac193135abf64eb4fec7e98d2cb1aa8106328b4f4"
+    },
+    "python_3_12_base": {
+      "outcome": "policy_blocked_base_did_not_fail",
+      "run_id": "5412709b-d034-4fb6-9311-ca49bd0b5d20",
+      "report_sha256": "be2393d8ad051386114dc23975b071a4c5fd2c7528e069c5d9d722e2e9227c47",
+      "manifest_sha256": "8115ed2bdab1adc62c628019b09cd064d02b83b39dba005765d2d91bb942a3b5"
+    }
   },
-  "live_implementer": {
-    "status": "pending"
+  "server_archives": {
+    "public_raw_sha256": "93e5ac303995d826320c09fa70951161e56f3a504a860c44addc53bff9e3c234",
+    "sealed_evaluator_sha256": "18282cb44b04edf25e8e53def5c55d247949a3100181e6be12a4546067b640af",
+    "mode": "0600",
+    "owner": "root",
+    "sealed_archive_published": false
   },
-  "independent_reviewer": {
-    "status": "pending"
-  },
-  "claim_boundary": "The case, reviewed public policy, two runtime-aware Base gates, and a pre-run sealed evaluator commitment are verified; no live Agent task-resolution claim is made."
+  "manifest_verification": "all listed recursive server manifests verified",
+  "post_failure_use": "contaminated regression replay only",
+  "claim_boundary": "The live candidate passed the declared public gate but failed the sealed CPython 3.13 evaluator; both independent Reviews were false accepts. No task-resolution or improved-accuracy claim is made."
 }

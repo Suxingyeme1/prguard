@@ -301,7 +301,10 @@ The fresh [Locust #3207 holdout](evidence/locust-3207-holdout/README.md) exercis
 test tree and a Python-version-specific failure. A reviewed operator policy is frozen without
 changing upstream source; the same public gate passes under recorded CPython 3.12 and 3.13
 runtimes, while a pre-run sealed evaluator commitment distinguishes the failing 3.13 Base. The live
-Implementer and Reviewer observations remain pending.
+Implementer produced a one-line fallback that passed the 12-test public gate but failed the sealed
+3.13 evaluator. Independent Review accepted it with zero findings at both 12- and 24-call budgets.
+This is retained as an unresolved False Accept, not a resolution claim; the failure now drives a
+bounded required-state fallback signal and explicit producer/ownership reasoning guidance.
 
 A small [Reviewer value check](evidence/reviewer-value/README.md) now records three confirmed
 incremental findings plus clean-review cost. The blocking real-repository finding is on the exact PrettyTable Patch
@@ -411,12 +414,12 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.13.4 makes the guided terminal delivery directly reviewable with per-attempt verification,
-runtime, bounded Patch preview, and copyable Git validation output. Version 0.13.3 added reviewed
-local policy files for immutable upstream repositories, model-free `gate` replay, nested Python
-test-root discovery, and runtime-attributed command artifacts. A fresh Locust #3207 holdout is
-frozen with passing public gates on CPython 3.12/3.13 and a sealed version-specific evaluator; no
-live task-resolution result is claimed yet. See the
+Version 0.13.5 completes the frozen Locust #3207 Linux run and preserves its negative result: the
+candidate passed public tests but failed the sealed evaluator, and two independent Reviews missed
+the defect. The resulting hardening asks both Agents to trace missing state to its producer and
+object lifetime and deterministically points Review at required lookups changed into fallbacks.
+That signal informs review but never becomes an automatic defect verdict. See the
+[v0.13.5 phase report](docs/v0.13.5-phase-report.md),
 [v0.13.3 phase report](docs/v0.13.3-phase-report.md),
 [v0.13.2 phase report](docs/v0.13.2-phase-report.md),
 [v0.13.1 phase report](docs/v0.13.1-phase-report.md),
@@ -425,9 +428,10 @@ live task-resolution result is claimed yet. See the
 [local onboarding guide](docs/local-onboarding.md),
 [ADR 0023](docs/adr/0023-local-issues-freeze-before-agent-execution.md), and
 [controlled-repair evidence](evidence/click-controlled-repair/README.md), and
-[FileLock holdout evidence](evidence/filelock-606-holdout/README.md). FileLock #606 remains an
-honest false accept and is not reused to claim improvement. The next priority is the uncontaminated
-Locust live Implementer/Reviewer/evaluator sequence—not another Agent role.
+[FileLock holdout evidence](evidence/filelock-606-holdout/README.md). FileLock #606 and Locust #3207
+remain honest false accepts and are not reused to claim accuracy improvement. The next quality
+claim requires a new precommitted holdout; the product priority remains Issue-to-Patch usability and
+source understanding—not another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”
