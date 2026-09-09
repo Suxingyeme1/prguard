@@ -1,0 +1,55 @@
+diff --git a/src/attr/_make.py b/src/attr/_make.py
+index 04104d9..4d35e8c 100644
+--- a/src/attr/_make.py
++++ b/src/attr/_make.py
+@@ -297,7 +297,11 @@ def _is_class_var(annot):
+     annotations which would put attrs-based classes at a performance
+     disadvantage compared to plain old classes.
+     """
+-    annot = str(annot)
++    forward_arg = getattr(annot, "__forward_arg__", None)
++    if forward_arg is not None:
++        annot = forward_arg
++    else:
++        annot = str(annot)
+ 
+     # Annotation can be quoted.
+     if annot.startswith(("'", '"')) and annot.endswith(("'", '"')):
+diff --git a/tests/test_annotations.py b/tests/test_annotations.py
+index e193d4b..d98b1db 100644
+--- a/tests/test_annotations.py
++++ b/tests/test_annotations.py
+@@ -688,6 +688,7 @@ class TestAnnotations:
+     "annot",
+     [
+         typing.ClassVar,
++        typing.ForwardRef("ClassVar[int]"),
+         "typing.ClassVar",
+         "'typing.ClassVar[dict]'",
+         "t.ClassVar[int]",
+@@ -698,3 +699,25 @@ def test_is_class_var(annot):
+     ClassVars are detected, even if they're a string or quoted.
+     """
+     assert _is_class_var(annot)
++
++
++@pytest.mark.skipif(
++    sys.version_info[:2] < (3, 14),
++    reason="Python 3.14+ lazily evaluates annotations.",
++)
++def test_classvar_forward_ref_py_314():
++    """
++    ClassVars that are only imported under TYPE_CHECKING are recognized.
++    """
++    from typing import TYPE_CHECKING
++
++    if TYPE_CHECKING:
++        from typing import ClassVar  # noqa: F401
++
++    @attrs.define
++    class T:
++        t: ClassVar[str]  # noqa: F821
++
++    T()
++
++    assert "t" not in {a.name for a in attrs.fields(T)}

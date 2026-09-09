@@ -306,6 +306,14 @@ Implementer produced a one-line fallback that passed the 12-test public gate but
 This is retained as an unresolved False Accept, not a resolution claim; the failure now drives a
 bounded required-state fallback signal and explicit producer/ownership reasoning guidance.
 
+The fresh [attrs #1575 holdout](evidence/attrs-1575-holdout/README.md) exercises a fifth repository
+shape and a CPython 3.14 annotation-compatibility defect. A root-owned evaluator was hash-frozen and
+proved failing before any model call. The live Implementer produced the repair and two
+FAIL_TO_PASS tests in one attempt; 49 public tests and the sealed evaluator passed. A separate
+Reviewer correctly accepted the candidate with no findings. The wider run added no failures beyond
+the same two packaging-environment failures observed on Base. This proves one held-out Task
+Resolution, not broad accuracy or Reviewer uplift.
+
 A small [Reviewer value check](evidence/reviewer-value/README.md) now records three confirmed
 incremental findings plus clean-review cost. The blocking real-repository finding is on the exact PrettyTable Patch
 that passed 21 targeted and 338 wider existing tests: Reviewer evidence exposed a multi-table
@@ -414,11 +422,14 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.13.5 completes the frozen Locust #3207 Linux run and preserves its negative result: the
-candidate passed public tests but failed the sealed evaluator, and two independent Reviews missed
-the defect. The resulting hardening asks both Agents to trace missing state to its producer and
-object lifetime and deterministically points Review at required lookups changed into fallbacks.
-That signal informs review but never becomes an automatic defect verdict. See the
+Version 0.13.6 adds the fresh attrs #1575 CPython 3.14 holdout. The Implementer resolved it in one
+attempt against a precommitted evaluator, and Independent Review correctly accepted the result.
+Together with the preserved FileLock and Locust false accepts, the evidence now shows both a clean
+held-out success and honest failures rather than turning every green public gate into a success
+claim. The server container probe also remains fail-closed on incompatible snap-packaged Docker;
+host-mode evidence is not represented as container isolation. See the
+[v0.13.6 phase report](docs/v0.13.6-phase-report.md),
+[attrs holdout evidence](evidence/attrs-1575-holdout/README.md),
 [v0.13.5 phase report](docs/v0.13.5-phase-report.md),
 [v0.13.3 phase report](docs/v0.13.3-phase-report.md),
 [v0.13.2 phase report](docs/v0.13.2-phase-report.md),
@@ -429,9 +440,9 @@ That signal informs review but never becomes an automatic defect verdict. See th
 [ADR 0023](docs/adr/0023-local-issues-freeze-before-agent-execution.md), and
 [controlled-repair evidence](evidence/click-controlled-repair/README.md), and
 [FileLock holdout evidence](evidence/filelock-606-holdout/README.md). FileLock #606 and Locust #3207
-remain honest false accepts and are not reused to claim accuracy improvement. The next quality
-claim requires a new precommitted holdout; the product priority remains Issue-to-Patch usability and
-source understanding—not another Agent role.
+remain honest false accepts and are not reused to claim accuracy improvement. attrs #1575 is one
+new precommitted success, not enough to calibrate routing or estimate general accuracy. The product
+priority remains Issue-to-Patch usability and source understanding—not another Agent role.
 
 PRGuard is research-grade software under active development. Accepted means “passed the declared
 gate at the frozen commit,” not “proved correct for every environment.”

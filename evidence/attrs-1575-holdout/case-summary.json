@@ -1,0 +1,78 @@
+{
+  "schema_version": "prguard-heldout-case-1",
+  "frozen_at": "2026-09-09",
+  "evaluated_at": "2026-09-09",
+  "repository": "https://github.com/python-attrs/attrs",
+  "issue": "https://github.com/python-attrs/attrs/issues/1575",
+  "upstream_base_commit": "6851ab593cd25f3c14393e9355d57d22bec2a074",
+  "runtime": "CPython 3.14.2 on Linux x86_64",
+  "leakage_boundary": {
+    "upstream_repair_visible_to_agent": false,
+    "gold_patch_visible_to_agent": false,
+    "evaluator_visible_to_agent": false,
+    "defect_label_visible_to_agent": false,
+    "evaluator_readable_by_agent_account": false
+  },
+  "operator_policy": {
+    "verification_argv": ["pytest", "-q", "tests/test_annotations.py"],
+    "writable_paths": ["src/**", "tests/**"],
+    "protected_paths": [".github/**", "pyproject.toml", "changelog.d/**"],
+    "execution_backend": "host"
+  },
+  "base_readiness": {
+    "public_gate": "47 passed",
+    "sealed_evaluator": "failed_as_expected",
+    "preparation_manifest_verified": true,
+    "base_gate_manifest_verified": true
+  },
+  "live_implementer": {
+    "status": "task_resolved",
+    "provider": "deepseek-v4-pro",
+    "reasoning_effort": "high",
+    "attempts": 1,
+    "repository_tool_calls": 24,
+    "duration_seconds": 136.83561700582504,
+    "input_tokens": 167394,
+    "output_tokens": 10918,
+    "cached_tokens": 153856,
+    "candidate_patch_sha256": "ea56a09dbd642f2a8c0a7f406117614e4b6b445a19ad329e83ceed080d0ced9a",
+    "fix_manifest_sha256": "4df8656da2f8e3eb38ea640dc3d5858ce0564ca6eb8ddc9932ca444c0e8545ab",
+    "fix_manifest_verified": true,
+    "changed_tests_on_base": "2 failed, 47 passed",
+    "candidate_public_gate": "49 passed"
+  },
+  "independent_reviewer": {
+    "status": "correct_accept",
+    "provider": "deepseek-v4-pro",
+    "reasoning_effort": "high",
+    "read_tool_budget": 12,
+    "verdict": "accept",
+    "finding_count": 0,
+    "duration_seconds": 190.54669722914696,
+    "input_tokens": 66729,
+    "output_tokens": 15293,
+    "cached_tokens": 46336,
+    "review_manifest_sha256": "672e83681a37c11cca2553e8d0d83a12f2f05d540bc7f7fad11679b3ba19ac76",
+    "review_manifest_verified": true,
+    "repair_triggered": false
+  },
+  "sealed_evaluator": {
+    "attached_after_fix_and_review": true,
+    "source_sha256": "2aaaea188d5b9eafd25cdacf0e54b31f91a43aaf44ac315d3e40cfa8f7222e56",
+    "body_published": false,
+    "candidate_outcome": "1 passed",
+    "base_full_suite": "1385 passed, 2 baseline failures, 5 skipped, 2 xfailed",
+    "candidate_full_suite": "1388 passed, same 2 baseline failures, 5 skipped, 2 xfailed",
+    "new_regressions": 0,
+    "task_resolved": true
+  },
+  "upstream_comparison": {
+    "core_repair_direction_matches": true,
+    "description": "Both repairs unwrap the forward-reference argument before the existing ClassVar prefix check."
+  },
+  "private_archive_sha256": {
+    "public_raw": "9cf290dd3469a59e8200f349a4b0f616f953b171d76abb066675c12f05f4ed7f",
+    "sealed_evaluator": "e9251f022dd2b0930673a4c28b906cddfd4037e4dbe76c2301662e4f14dbd78a"
+  },
+  "claim_boundary": "One fresh live Issue-to-Patch run resolved attrs #1575 under the precommitted evaluator. The independent Reviewer correctly accepted the patch but added no defect finding or repair, so this case proves task resolution and isolation, not reviewer uplift."
+}

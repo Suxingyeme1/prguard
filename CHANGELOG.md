@@ -3,6 +3,21 @@
 All notable changes are recorded here. PRGuard is pre-1.0; contracts can still evolve between minor
 versions.
 
+## 0.13.6 — 2026-09-09
+
+### Evidence
+
+- executed a fresh `attrs` #1575 Issue-to-Patch holdout at an exact upstream Commit under CPython
+  3.14.2 on Linux x86_64;
+- the live Implementer resolved the precommitted evaluator in one attempt, while two Agent-authored
+  tests demonstrated FAIL_TO_PASS behavior and all 49 declared public tests passed;
+- a separate 12-call Independent Reviewer correctly accepted the Patch with no findings; this is a
+  correct-review result but not Reviewer-uplift evidence;
+- the candidate wider suite retained the exact two packaging-environment failures present on Base,
+  with 1,388 passes versus 1,385 on Base and no new regression;
+- requalified the server container boundary and retained its fail-closed rejection: snap-packaged
+  Docker cannot execute the reference image with the required `no-new-privileges` control.
+
 ## 0.13.5 — 2026-09-07
 
 ### Changed

@@ -1,0 +1,21 @@
+{
+  "schema_version": "prguard-public-artifacts-1",
+  "frozen_at": "2026-09-09",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "sha256": "a906d2dbb498d9f8fd63be83fb6163e9a8df3875540d732e5cf175109d955a88",
+      "size_bytes": 2206
+    },
+    {
+      "path": "case-summary.json",
+      "sha256": "68cb7a8508ec4208f34df7b6225fc944e45da3b2ce1772ea54939551af97222d",
+      "size_bytes": 3302
+    },
+    {
+      "path": "candidate.patch",
+      "sha256": "ea56a09dbd642f2a8c0a7f406117614e4b6b445a19ad329e83ceed080d0ced9a",
+      "size_bytes": 1654
+    }
+  ]
+}

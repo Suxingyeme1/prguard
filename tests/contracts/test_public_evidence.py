@@ -69,6 +69,25 @@ def test_public_filelock_holdout_artifact_hashes() -> None:
     assert verify_evidence(root) == 2
 
 
+def test_public_attrs_holdout_is_hash_bound_and_resolved() -> None:
+    root = Path(__file__).resolve().parents[2] / "evidence" / "attrs-1575-holdout"
+    assert verify_evidence(root) == 3
+    summary = json.loads((root / "case-summary.json").read_text(encoding="utf-8"))
+    assert summary["upstream_base_commit"] == (
+        "6851ab593cd25f3c14393e9355d57d22bec2a074"
+    )
+    assert summary["live_implementer"]["status"] == "task_resolved"
+    assert summary["live_implementer"]["attempts"] == 1
+    assert summary["independent_reviewer"]["status"] == "correct_accept"
+    assert summary["independent_reviewer"]["finding_count"] == 0
+    assert summary["sealed_evaluator"]["task_resolved"] is True
+    assert summary["sealed_evaluator"]["new_regressions"] == 0
+    assert summary["sealed_evaluator"]["body_published"] is False
+    assert summary["sealed_evaluator"]["source_sha256"] == (
+        "2aaaea188d5b9eafd25cdacf0e54b31f91a43aaf44ac315d3e40cfa8f7222e56"
+    )
+
+
 def test_public_locust_holdout_is_hash_bound_and_records_false_accept() -> None:
     root = Path(__file__).resolve().parents[2] / "evidence" / "locust-3207-holdout"
     assert verify_evidence(root) == 10

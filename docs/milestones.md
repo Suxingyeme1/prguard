@@ -289,6 +289,18 @@ next accuracy claim requires a fresh holdout. See the [v0.13.5 phase report](v0.
 [Locust evidence](../evidence/locust-3207-holdout/README.md), and
 [ADR 0030](adr/0030-required-state-fallbacks-trigger-root-cause-review.md).
 
+The twenty-fifth increment executes a fresh Python-version holdout on `attrs` #1575. Before any
+Agent call, the exact upstream Base, public gate, CPython 3.14 runtime, and root-owned evaluator were
+frozen; the evaluator failed on Base and was unreadable by the `prguard` account. The live
+Implementer resolved it in one 24-call attempt, added two tests that failed on Base, and passed all
+49 declared tests. A separate 12-call Reviewer correctly accepted it with zero findings. After
+reveal, the evaluator passed and the wider candidate suite retained the same two environment
+baseline failures as Base with no new regression. This is one Task Resolution and a correct Review,
+not a Reviewer-uplift or general-accuracy claim. Server container requalification separately
+confirmed that snap-packaged Docker remains an ineligible fail-closed worker. See the
+[v0.13.6 phase report](v0.13.6-phase-report.md) and
+[attrs evidence](../evidence/attrs-1575-holdout/README.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one
