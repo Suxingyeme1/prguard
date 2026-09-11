@@ -22,7 +22,7 @@
         </a>
         <div class="topbar-center" aria-label="Current environment">
           <span class="pulse-dot" aria-hidden="true"></span>
-          <span>Evidence replay</span>
+          <span id="header-view">Evidence replay</span>
           <span class="divider"></span>
           <code id="header-runtime">CPython 3.14.2 · Linux x86_64</code>
         </div>
@@ -34,11 +34,15 @@
           <a class="ghost-link" href="https://github.com/Suxingyeme1/prguard" target="_blank" rel="noreferrer">
             GitHub <span aria-hidden="true">↗</span>
           </a>
-          <span class="local-pill">LOCAL · READ ONLY</span>
+          <span class="local-pill" id="header-access">LOCAL · READ ONLY</span>
         </div>
       </header>
 
-      <main class="workspace">
+      <nav class="view-switch" aria-label="Workspace view">
+        <button type="button" class="active" data-surface="replay">Evidence replay</button>
+        <button type="button" data-surface="live">Local workspace</button>
+      </nav>
+      <main class="workspace" id="replay-workspace">
         <aside class="task-panel" aria-label="Task setup">
           <div class="panel-heading">
             <div>
@@ -182,10 +186,12 @@
           </button>
         </aside>
       </main>
+      <main id="live-workspace" class="live-workspace" hidden></main>
     </div>
 
     <script src="./data/cases.js"></script>
     <script src="./app.js"></script>
+    <script src="./live.js"></script>
     <script src="./i18n.js"></script>
   </body>
 </html>

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prguard"
-version = "0.14.0"
+version = "0.15.0"
 description = "Verifiable coding, independent review, and controlled repair for repositories"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -22,6 +22,9 @@ prguard = "prguard.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/prguard"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"demo-ui/dist" = "prguard/studio_assets"
 
 [tool.pytest.ini_options]
 addopts = "-ra --strict-config --strict-markers"

@@ -248,3 +248,14 @@ The underlying Harness reports:
 - `timed_out`: command or task deadline expired;
 - `policy_blocked`: protected or out-of-worktree writes were detected;
 - `preflight_failed`: repository/base/task validation failed.
+
+## Local Studio adapter
+
+The bilingual browser workspace connects to `prguard studio`, a loopback-only HTTP server. The
+terminal fixes the repository, provider and execution boundary. The browser prepares an Issue and
+Git version, previews the exact frozen Task, then explicitly starts it. A single worker calls the
+existing `FixRunner`; short polling displays its ordered progress and actual verification results.
+The adapter verifies the recursive Manifest before offering fixed-name, hash-checked downloads.
+The default offline path shares the real terminal-demo Task and scripted proposals. The browser
+Fix path currently does not execute Reviewer; the recorded Review demo remains a separate view.
+See [ADR 0031](adr/0031-local-studio-reuses-frozen-fix-tasks.md).

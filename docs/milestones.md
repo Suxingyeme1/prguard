@@ -311,6 +311,13 @@ unauthenticated browser. See the [v0.14.0 phase report](v0.14.0-phase-report.md)
 
 ## Priority demos
 
+Version 0.15.0 connects Studio to real local execution. A one-command browser entry runs the
+deterministic failure-repair fixture, or accepts an Issue against one operator-configured local
+repository. Task preview and explicit confirmation precede the existing FixRunner. Ordered events,
+actual attempt/test output, and hash-checked artifact downloads make the complete workflow
+demonstrable. The hosted site continues to replay evidence; local browser execution currently
+performs Fix without Reviewer. See [ADR 0031](adr/0031-local-studio-reuses-frozen-fix-tasks.md).
+
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one
    repair -> Review-ready Patch.
 2. **Demo B:** defective candidate PR -> source-linked Reviewer finding -> controlled repair ->

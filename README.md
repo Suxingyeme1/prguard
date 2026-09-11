@@ -55,7 +55,32 @@ not another Agent.
 
 ## Open the browser demo
 
-PRGuard Studio turns the two strongest checked runs into an interactive evidence cockpit:
+Open PRGuard Studio with a live local Harness:
+
+```bash
+uv run --no-editable --extra demo prguard studio
+```
+
+The browser opens in Chinese with an English selector. Choose the offline execution demo, prepare
+the task, inspect its frozen Commit and test commands, then confirm execution. Git and pytest
+actually run: the first scripted proposal fails one test, the repair passes, and the browser shows
+both attempts, the delivered Patch, and downloadable hash-checked artifacts. No model key is needed.
+
+For a real local repository, configure the model key in your terminal and select the repository
+and execution boundary when starting the adapter:
+
+```bash
+uv run --no-editable --extra agent --extra demo prguard studio \
+  --repository /path/to/project --workspace /path/to/prguard-runs \
+  --trust-host --provider deepseek
+```
+
+Enter the Issue and optional Git version in the page. Preparation freezes the exact Task before
+the browser asks for confirmation. The local entry currently runs Fix with one permitted failure
+repair; independent review remains available through `fix --review` in the CLI.
+
+The **Evidence replay** tab retains the two checked attrs and Click walkthroughs. To serve only
+those static views, without a local execution adapter:
 
 ```bash
 python3 -m http.server 4317 --bind 127.0.0.1 --directory demo-ui/dist
@@ -427,7 +452,8 @@ source code.
 | `src/prguard/harness` | Git/worktree, command policy, execution, artifacts |
 | `src/prguard/schemas` | versioned public contracts |
 | `src/prguard/evaluation` | post-run evaluator-only joins and scorecards |
-| `demo-ui` | browser Studio for replaying checked Fix and Review/Repair evidence |
+| `demo-ui` | bilingual Studio: evidence replay and authenticated local Fix workspace |
+| `src/prguard/studio.py` | loopback adapter, frozen task approval, progress and artifact APIs |
 | `benchmark` | checked deterministic fixture templates |
 | `tests` | unit, integration, contract, and security tests |
 | `docs` | architecture, ADRs, runbooks, evaluation protocol |
@@ -437,7 +463,13 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.14.0 adds PRGuard Studio, a browser evidence cockpit for the attrs #1575 held-out Fix and
+Version 0.15.0 connects Studio to the real local FixRunner, with task preview, explicit execution,
+live progress, both attempt results, and verified artifact downloads. Its offline mode uses scripted
+proposals with real Git/pytest execution; configured-repository mode reuses deterministic local
+onboarding and the selected model provider. See the [local Studio guide](demo-ui/README.md) and
+[v0.15.0 report](docs/v0.15.0-phase-report.md).
+
+Version 0.14.0 added PRGuard Studio, a browser evidence cockpit for the attrs #1575 held-out Fix and
 Click #3199 controlled Review/Repair. It makes the product journey understandable without implying
 that a static animation is a new model run. Version 0.13.6 added the fresh attrs #1575 CPython 3.14
 holdout. The Implementer resolved it in one

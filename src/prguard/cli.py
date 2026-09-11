@@ -243,6 +243,20 @@ def review_task_from_fix_task(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="prguard")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    studio = subparsers.add_parser("studio", help="open the local browser coding workspace")
+    studio.add_argument("--repository", type=Path)
+    studio.add_argument("--workspace", type=Path, default=Path("work/studio"))
+    studio.add_argument("--port", type=int, default=4318)
+    studio.add_argument("--no-browser", action="store_true")
+    studio.add_argument("--policy-file", type=Path)
+    studio_boundary = studio.add_mutually_exclusive_group()
+    studio_boundary.add_argument("--trust-host", action="store_true")
+    studio_boundary.add_argument("--container-image")
+    studio.add_argument(
+        "--provider", choices=("deepseek", "openai", "scripted"), default="deepseek"
+    )
+    studio.add_argument("--model")
+    studio.add_argument("--proposal-sequence", type=Path)
     demo = subparsers.add_parser(
         "demo",
         help="run a visual key-free walkthrough of failure, repair, and delivery",
@@ -485,6 +499,23 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "studio":
+        from prguard.studio import StudioConfig, run_studio
+
+        try:
+            run_studio(
+                StudioConfig(
+                    workspace=args.workspace, repository=args.repository,
+                    trust_host=args.trust_host, container_image=args.container_image,
+                    policy_file=args.policy_file, provider=args.provider, model=args.model,
+                    proposal_sequence=args.proposal_sequence,
+                ),
+                port=args.port, open_browser=not args.no_browser,
+            )
+        except (OSError, ValueError) as exc:
+            print(f"studio failed: {exc}", file=sys.stderr)
+            return 1
+        return 0
     if args.command == "demo":
         from prguard.demo import run_terminal_demo
 

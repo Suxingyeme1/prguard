@@ -227,11 +227,27 @@ def run_terminal_demo(
 
     demo_root = output_root.expanduser().resolve() / f"run-{uuid4().hex[:8]}"
     demo_root.mkdir(parents=True, exist_ok=False)
-    repository, commit = _create_demo_repository(demo_root)
+    task = prepare_demo_task(demo_root)
     view = TerminalDemoView(stream=stream, color=color)
-    view.header(repository)
+    view.header(task.repository)
+    report = FixRunner(
+        demo_root / "artifacts",
+        ScriptedProvider(_demo_proposals()),
+        progress=view.event,
+    ).run(task)
+    verify_manifest(report.artifact_directory / "fix-manifest.json")
+    view.result(report)
+    if report.outcome is not FixOutcome.ACCEPTED:
+        raise RuntimeError(f"terminal demo failed: {report.outcome}")
+    return report
+
+
+def prepare_demo_task(demo_root: Path) -> FixTask:
+    """Prepare the same deterministic fixture for terminal and browser entry points."""
+
+    repository, commit = _create_demo_repository(demo_root)
     commands = [CommandSpec(argv=["pytest", "-q", "tests/test_clamp.py"], kind="pytest")]
-    task = FixTask(
+    return FixTask(
         case_id="terminal-demo-clamp",
         repository=repository,
         base_commit=commit,
@@ -244,13 +260,3 @@ def run_terminal_demo(
         task_timeout_seconds=90,
         max_repair_attempts=1,
     )
-    report = FixRunner(
-        demo_root / "artifacts",
-        ScriptedProvider(_demo_proposals()),
-        progress=view.event,
-    ).run(task)
-    verify_manifest(report.artifact_directory / "fix-manifest.json")
-    view.result(report)
-    if report.outcome is not FixOutcome.ACCEPTED:
-        raise RuntimeError(f"terminal demo failed: {report.outcome}")
-    return report
