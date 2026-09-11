@@ -37,6 +37,11 @@ code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 4px rgba(86, 224, 208, 0.1); }
 .divider { width: 1px; height: 14px; background: var(--line); }
 .topbar-actions { justify-self: end; display: flex; align-items: center; gap: 17px; }
+.language-select { width: 98px; flex-shrink: 0; height: 36px; font-size: 14px; }
+html[lang="zh-CN"] { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+html[lang="zh-CN"] .eyebrow, html[lang="zh-CN"] h1, html[lang="zh-CN"] h2 { letter-spacing: 0; }
+html[lang="zh-CN"] .terminal-row p { font-family: inherit; font-size: 13px; line-height: 1.7; }
+html[lang="zh-CN"] .stage-rail li strong { font-size: 12px; }
 .ghost-link { color: var(--muted); text-decoration: none; font-size: 13px; }
 .ghost-link:hover { color: var(--text); }
 .local-pill { color: var(--lime); border: 1px solid rgba(180, 238, 117, 0.25); background: rgba(180, 238, 117, 0.07); border-radius: 999px; padding: 7px 10px; font-size: 10px; letter-spacing: 0.1em; }
@@ -213,6 +218,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 @media (max-width: 760px) {
+  .topbar-actions { gap: 10px; }
+  .brand { gap: 8px; }
+  .language-select { width: 82px; }
   .topbar { height: 62px; padding: 0 16px; }
   .brand-copy small, .local-pill { display: none; }
   .workspace { display: block; }

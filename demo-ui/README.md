@@ -9,6 +9,10 @@ The page is intentionally an evidence viewer, not a simulated live model call. I
 counts, timing, and verdicts are copied from the checked public evidence packages. The source fields
 are read-only so changing the displayed Issue cannot silently reuse unrelated recorded results.
 
+Use the language selector in the top-right corner for 中文 or English. Chinese is the default;
+the browser remembers the selection. Switching languages preserves the active replay and tab.
+Code, commands, hashes, and exported evidence retain their original values.
+
 Run it from the repository root:
 
 ```bash
