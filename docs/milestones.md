@@ -301,6 +301,14 @@ confirmed that snap-packaged Docker remains an ineligible fail-closed worker. Se
 [v0.13.6 phase report](v0.13.6-phase-report.md) and
 [attrs evidence](../evidence/attrs-1575-holdout/README.md).
 
+The twenty-sixth increment adds PRGuard Studio, a responsive browser evidence cockpit over the two
+flagship product paths. It replays the checked attrs #1575 Issue-to-Patch result and Click #3199
+Review-to-Repair result with stage events, exact public gate counts, Patch and finding views,
+evaluator status, and SHA-256-bound delivery evidence. The page is explicitly read-only: it does not
+present an animation as a new model execution or expose repository execution through an
+unauthenticated browser. See the [v0.14.0 phase report](v0.14.0-phase-report.md) and
+[ADR 0026](adr/0026-studio-replays-frozen-evidence.md).
+
 ## Priority demos
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one

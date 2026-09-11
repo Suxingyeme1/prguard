@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Replay PRGuard's verified Issue-to-Patch and independent review workflows."
+    />
+    <title>PRGuard Studio · Verified coding workflow</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="PRGuard Studio home">
+          <span class="brand-mark" aria-hidden="true"><span>PG</span></span>
+          <span class="brand-copy">
+            <strong>PRGuard</strong>
+            <small>VERIFIED CODING SYSTEM</small>
+          </span>
+        </a>
+        <div class="topbar-center" aria-label="Current environment">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          <span>Evidence replay</span>
+          <span class="divider"></span>
+          <code id="header-runtime">CPython 3.14.2 · Linux x86_64</code>
+        </div>
+        <div class="topbar-actions">
+          <a class="ghost-link" href="https://github.com/Suxingyeme1/prguard" target="_blank" rel="noreferrer">
+            GitHub <span aria-hidden="true">↗</span>
+          </a>
+          <span class="local-pill">LOCAL · READ ONLY</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="task-panel" aria-label="Task setup">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">WORKSPACE / NEW RUN</p>
+              <h1>Define the task</h1>
+            </div>
+            <button class="icon-button" id="reset-button" type="button" title="Reset replay" aria-label="Reset replay">↺</button>
+          </div>
+
+          <div class="mode-switch" role="group" aria-label="Workflow mode">
+            <button class="mode-button active" type="button" data-case="attrs">
+              <span class="mode-icon">⌁</span>
+              <span><strong>Fix</strong><small>Issue → Patch</small></span>
+            </button>
+            <button class="mode-button" type="button" data-case="click">
+              <span class="mode-icon">⌕</span>
+              <span><strong>Review</strong><small>PR → Repair</small></span>
+            </button>
+          </div>
+
+          <form id="task-form">
+            <label class="field-label" for="repository">Repository</label>
+            <div class="input-with-icon">
+              <span aria-hidden="true">⌘</span>
+              <input id="repository" name="repository" spellcheck="false" readonly />
+              <span class="verified-check" title="Commit verified">✓</span>
+            </div>
+
+            <div class="field-row">
+              <div>
+                <label class="field-label" for="base-commit">Base commit</label>
+                <input id="base-commit" name="base-commit" spellcheck="false" readonly />
+              </div>
+              <div>
+                <label class="field-label" for="boundary">Boundary</label>
+                <select id="boundary" name="boundary" disabled>
+                  <option>Trusted host</option>
+                  <option disabled>Container · unavailable</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="field-label" for="issue">Issue / requirement</label>
+            <textarea id="issue" name="issue" rows="7" readonly></textarea>
+
+            <div class="policy-card">
+              <div class="policy-title">
+                <span class="policy-icon" aria-hidden="true">◆</span>
+                <div><strong>Frozen verification policy</strong><small>Operator-reviewed before execution</small></div>
+                <span class="lock" aria-hidden="true">▣</span>
+              </div>
+              <code id="gate-command"></code>
+              <div class="policy-meta">
+                <span><i></i> argv allowlist</span>
+                <span><i></i> isolated worktree</span>
+              </div>
+            </div>
+
+            <button class="primary-button" id="run-button" type="submit">
+              <span class="button-label">Replay verified run</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </button>
+            <p class="form-note">Replays frozen public evidence. No provider call or source write.</p>
+          </form>
+        </aside>
+
+        <section class="run-panel" aria-label="Run progress">
+          <div class="run-heading">
+            <div>
+              <p class="eyebrow" id="case-kicker">LIVE HOLDOUT · ATTRS #1575</p>
+              <h2 id="run-title">Issue to review-ready patch</h2>
+            </div>
+            <div class="run-state ready" id="run-state"><span></span><strong>READY</strong></div>
+          </div>
+
+          <ol class="stage-rail" id="stage-rail" aria-label="Workflow stages"></ol>
+
+          <div class="activity-card">
+            <div class="activity-header">
+              <div class="agent-avatar" id="agent-avatar">IM</div>
+              <div>
+                <strong id="activity-title">Implementer is ready</strong>
+                <small id="activity-subtitle">Independent tools · bounded context</small>
+              </div>
+              <span class="elapsed" id="elapsed">00:00.0</span>
+            </div>
+            <div class="terminal" id="terminal" role="log" aria-live="polite">
+              <div class="terminal-empty">
+                <span class="prompt">›</span>
+                <p>Start the replay to inspect every decision and verification result.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="metrics-row" id="metrics-row">
+            <article><small>PUBLIC GATE</small><strong id="metric-tests">47 ready</strong><span>pytest · frozen argv</span></article>
+            <article><small>PATCH</small><strong id="metric-patch">—</strong><span>Git-authored diff</span></article>
+            <article><small>REVIEW</small><strong id="metric-review">Pending</strong><span>independent context</span></article>
+          </div>
+
+          <div class="detail-card">
+            <div class="tabs" role="tablist" aria-label="Run details">
+              <button class="tab active" type="button" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+              <button class="tab" type="button" role="tab" data-tab="patch" aria-selected="false">Patch</button>
+              <button class="tab" type="button" role="tab" data-tab="review" aria-selected="false">Review</button>
+              <button class="tab" type="button" role="tab" data-tab="artifacts" aria-selected="false">Artifacts</button>
+            </div>
+            <div class="tab-content" id="tab-content"></div>
+          </div>
+        </section>
+
+        <aside class="evidence-panel" aria-label="Evidence chain">
+          <div class="evidence-heading">
+            <div>
+              <p class="eyebrow">DELIVERY BOUNDARY</p>
+              <h2>Evidence chain</h2>
+            </div>
+            <span class="chain-count" id="chain-count">0/5</span>
+          </div>
+
+          <div class="manifest-card">
+            <div class="manifest-orbit" aria-hidden="true"><span>SHA</span></div>
+            <div>
+              <strong>Recursive manifest</strong>
+              <small id="manifest-hash">Waiting for run</small>
+            </div>
+          </div>
+
+          <ol class="evidence-list" id="evidence-list"></ol>
+
+          <div class="boundary-note">
+            <span aria-hidden="true">◈</span>
+            <div>
+              <strong>Facts stay separate</strong>
+              <p>Model proposals, test outcomes, review findings, and evaluator labels are recorded as different evidence.</p>
+            </div>
+          </div>
+
+          <button class="export-button" id="export-button" type="button" disabled>
+            <span>Export delivery bundle</span><span aria-hidden="true">⇩</span>
+          </button>
+        </aside>
+      </main>
+    </div>
+
+    <script src="./data/cases.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

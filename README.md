@@ -53,7 +53,21 @@ prguard review  frozen FixTask + candidate patch -> findings + optional repair
 Planner remains an internal Implementer step. The test runner is deliberately a deterministic tool,
 not another Agent.
 
-## See the pipeline in one command
+## Open the browser demo
+
+PRGuard Studio turns the two strongest checked runs into an interactive evidence cockpit:
+
+```bash
+python3 -m http.server 4317 --bind 127.0.0.1 --directory demo-ui/dist
+```
+
+Open <http://127.0.0.1:4317/>, select **Fix** or **Review**, and replay the full path from frozen
+Task boundary through source navigation, Patch, tests, independent review, evaluator, and recursive
+Manifest. The page uses the real public `attrs #1575` and `Click #3199` records. It is explicitly a
+read-only replay—no API key or repository execution is hidden behind the animation. See the
+[Studio guide](demo-ui/README.md) and [ADR 0026](docs/adr/0026-studio-replays-frozen-evidence.md).
+
+## See the terminal pipeline in one command
 
 ```bash
 uv run --extra demo prguard demo
@@ -413,6 +427,7 @@ source code.
 | `src/prguard/harness` | Git/worktree, command policy, execution, artifacts |
 | `src/prguard/schemas` | versioned public contracts |
 | `src/prguard/evaluation` | post-run evaluator-only joins and scorecards |
+| `demo-ui` | browser Studio for replaying checked Fix and Review/Repair evidence |
 | `benchmark` | checked deterministic fixture templates |
 | `tests` | unit, integration, contract, and security tests |
 | `docs` | architecture, ADRs, runbooks, evaluation protocol |
@@ -422,12 +437,16 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.13.6 adds the fresh attrs #1575 CPython 3.14 holdout. The Implementer resolved it in one
+Version 0.14.0 adds PRGuard Studio, a browser evidence cockpit for the attrs #1575 held-out Fix and
+Click #3199 controlled Review/Repair. It makes the product journey understandable without implying
+that a static animation is a new model run. Version 0.13.6 added the fresh attrs #1575 CPython 3.14
+holdout. The Implementer resolved it in one
 attempt against a precommitted evaluator, and Independent Review correctly accepted the result.
 Together with the preserved FileLock and Locust false accepts, the evidence now shows both a clean
 held-out success and honest failures rather than turning every green public gate into a success
 claim. The server container probe also remains fail-closed on incompatible snap-packaged Docker;
 host-mode evidence is not represented as container isolation. See the
+[v0.14.0 phase report](docs/v0.14.0-phase-report.md),
 [v0.13.6 phase report](docs/v0.13.6-phase-report.md),
 [attrs holdout evidence](evidence/attrs-1575-holdout/README.md),
 [v0.13.5 phase report](docs/v0.13.5-phase-report.md),
