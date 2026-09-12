@@ -1,17 +1,17 @@
 # PRGuard Studio
 
-PRGuard Studio offers a local coding workspace and evidence replay for two flagship workflows:
+PRGuard Studio offers a local coding workspace and two recorded examples of flagship workflows:
 
 - `attrs #1575`: a held-out Issue-to-Patch run accepted by an independent Reviewer;
 - `Click #3199`: a green candidate where independent review found and repaired a regression.
 
-The evidence replay tab is a recorded evidence viewer. Its hashes, test
-counts, timing, and verdicts are copied from the checked public evidence packages. The source fields
-are read-only so changing the displayed Issue cannot silently reuse unrelated recorded results.
+The recorded examples are evidence viewers. Their hashes, test counts, timing, and verdicts come
+from checked public evidence packages. They are visibly labelled as completed recordings: opening
+one does not call a model, write source code, or imitate a fresh run.
 
-Use the language selector in the top-right corner for 中文 or English. Chinese is the default;
-the browser remembers the selection. Switching languages preserves the active replay and tab.
-Code, commands, hashes, and exported evidence retain their original values.
+Use the language selector in the top-right corner for 中文 or English. Chinese is the default and
+the browser remembers the selection. Product copy is translated through explicit message IDs;
+commands, hashes, source paths, user input, and recorded evidence retain their original values.
 
 Run it from the repository root:
 
@@ -71,10 +71,13 @@ URL, `--port 0` to choose a free port, and `--workspace` to choose a persistent 
 
 ## Three-minute walkthrough
 
-1. Open `prguard studio` and select the offline execution demo.
-2. Explain the Issue and show the frozen Commit, test command, and edit boundary.
-3. Confirm execution. Point out the first failed verification and the failure-feedback event.
-4. Open both attempt results: the first loses the upper bound, the repair enforces both bounds.
-5. Show the actual final diff and download its verified Patch and Manifest.
-6. Switch to Evidence replay → Review to explain the recorded Click regression and independent
-   Reviewer. State clearly that this step replays an earlier live run.
+1. Open `prguard studio`. The workspace opens directly to one new local task, not an Agent dashboard.
+2. Explain the Issue and show the configured repository receipt. Enter the requested Git version if
+   it is not `HEAD`.
+3. Generate the run contract. Show the resolved Commit, test command, edit boundary, timeout, and
+   explicit confirmation before any model call or repository test run.
+4. Confirm execution. Point out the first failed verification and the failure-feedback event.
+5. Inspect the attempt summaries, actual final diff, test output, and verified Patch/report/Manifest
+   downloads. State that this browser path is Fix-only and independent review has not run.
+6. Open **Example runs** to explain the recorded Click regression and independent Reviewer finding.
+   State clearly that this is evidence from an earlier completed run, not a new execution.

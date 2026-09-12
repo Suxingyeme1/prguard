@@ -309,6 +309,23 @@ present an animation as a new model execution or expose repository execution thr
 unauthenticated browser. See the [v0.14.0 phase report](v0.14.0-phase-report.md) and
 [ADR 0026](adr/0026-studio-replays-frozen-evidence.md).
 
+The twenty-seventh increment connects Studio to real, authenticated loopback execution. A terminal
+command selects the repository, provider, reviewed policy and execution boundary; the browser can
+only submit an Issue and requested Git version. Existing local onboarding freezes the Task before
+an explicit approval starts the existing FixRunner. Ordered events, actual attempt/test output and
+hash-checked Patch/report/Manifest downloads make the offline fixture and an operator-configured
+repository demonstrable without pretending browser code is a sandbox. See the
+[v0.15.0 phase report](v0.15.0-phase-report.md) and
+[ADR 0031](adr/0031-local-studio-reuses-frozen-fix-tasks.md).
+
+The twenty-eighth increment turns Studio into a clearer product workspace. Static recorded examples
+and live local execution are separate states with distinct truth claims; the first cannot call a
+model or write source, and the second does not claim Independent Review where only Fix ran. The
+workspace follows prepare → frozen contract → explicit approval → execution → evidence delivery.
+Explicit Chinese/English message catalogs replace whole-page text mutation, leaving commands,
+hashes, paths, inputs and evidence untouched. See the [v0.16.0 phase report](v0.16.0-phase-report.md)
+and [ADR 0032](adr/0032-studio-separates-recorded-evidence-from-local-execution.md).
+
 ## Priority demos
 
 Version 0.15.0 connects Studio to real local execution. A one-command browser entry runs the

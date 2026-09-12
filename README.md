@@ -61,8 +61,8 @@ Open PRGuard Studio with a live local Harness:
 uv run --no-editable --extra demo prguard studio
 ```
 
-The browser opens in Chinese with an English selector. Choose the offline execution demo, prepare
-the task, inspect its frozen Commit and test commands, then confirm execution. Git and pytest
+The browser opens in Chinese with an English selector and a new offline task ready to prepare.
+Inspect its frozen Commit and test commands, then confirm execution. Git and pytest
 actually run: the first scripted proposal fails one test, the repair passes, and the browser shows
 both attempts, the delivered Patch, and downloadable hash-checked artifacts. No model key is needed.
 
@@ -79,17 +79,17 @@ Enter the Issue and optional Git version in the page. Preparation freezes the ex
 the browser asks for confirmation. The local entry currently runs Fix with one permitted failure
 repair; independent review remains available through `fix --review` in the CLI.
 
-The **Evidence replay** tab retains the two checked attrs and Click walkthroughs. To serve only
+The **Example runs** view retains the two checked attrs and Click walkthroughs. To serve only
 those static views, without a local execution adapter:
 
 ```bash
 python3 -m http.server 4317 --bind 127.0.0.1 --directory demo-ui/dist
 ```
 
-Open <http://127.0.0.1:4317/>, select **Fix** or **Review**, and replay the full path from frozen
-Task boundary through source navigation, Patch, tests, independent review, evaluator, and recursive
-Manifest. The page uses the real public `attrs #1575` and `Click #3199` records. It is explicitly a
-read-only replay—no API key or repository execution is hidden behind the animation. See the
+Open <http://127.0.0.1:4317/>, then open either recorded example to inspect the frozen Task
+boundary, source navigation, Patch, tests, independent review, evaluator, and recursive Manifest.
+The page uses the real public `attrs #1575` and `Click #3199` records. It is explicitly a read-only
+recording—no API key or repository execution is hidden behind the page. See the
 [Studio guide](demo-ui/README.md) and [ADR 0026](docs/adr/0026-studio-replays-frozen-evidence.md).
 
 ## See the terminal pipeline in one command
@@ -452,7 +452,7 @@ source code.
 | `src/prguard/harness` | Git/worktree, command policy, execution, artifacts |
 | `src/prguard/schemas` | versioned public contracts |
 | `src/prguard/evaluation` | post-run evaluator-only joins and scorecards |
-| `demo-ui` | bilingual Studio: evidence replay and authenticated local Fix workspace |
+| `demo-ui` | bilingual Studio: recorded evidence examples and authenticated local Fix workspace |
 | `src/prguard/studio.py` | loopback adapter, frozen task approval, progress and artifact APIs |
 | `benchmark` | checked deterministic fixture templates |
 | `tests` | unit, integration, contract, and security tests |
@@ -463,11 +463,21 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.15.0 connects Studio to the real local FixRunner, with task preview, explicit execution,
+Version 0.16.0 makes Studio a clearer local developer workspace rather than an Agent dashboard.
+The static site leads with the local task workflow and labels attrs #1575 and Click #3199 as frozen
+recorded examples; it never presents them as new model executions. An authenticated local session
+then follows one truthful path: describe an Issue, inspect the frozen run contract, explicitly
+approve execution, observe the real FixRunner, and retrieve its Patch and hash-checked evidence.
+The interface is bilingual through explicit UI message catalogs, so changing language never mutates
+commands, hashes, source paths, user input, or recorded evidence. Browser Studio still executes
+Fix without Independent Reviewer, and says so in the delivered result. See the
+[local Studio guide](demo-ui/README.md), [v0.16.0 report](docs/v0.16.0-phase-report.md), and
+[ADR 0032](docs/adr/0032-studio-separates-recorded-evidence-from-local-execution.md).
+
+Version 0.15.0 connected Studio to the real local FixRunner, with task preview, explicit execution,
 live progress, both attempt results, and verified artifact downloads. Its offline mode uses scripted
 proposals with real Git/pytest execution; configured-repository mode reuses deterministic local
-onboarding and the selected model provider. See the [local Studio guide](demo-ui/README.md) and
-[v0.15.0 report](docs/v0.15.0-phase-report.md).
+onboarding and the selected model provider. See the [v0.15.0 report](docs/v0.15.0-phase-report.md).
 
 Version 0.14.0 added PRGuard Studio, a browser evidence cockpit for the attrs #1575 held-out Fix and
 Click #3199 controlled Review/Repair. It makes the product journey understandable without implying

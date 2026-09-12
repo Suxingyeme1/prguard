@@ -196,7 +196,8 @@ def test_approval_is_explicit(studio, confirmed) -> None:
 def test_static_server_has_exact_asset_allowlist_and_security_headers(studio) -> None:
     status, body, headers = studio.request("GET", "/", auth=False)
     assert status == 200
-    assert b"Local workspace" in body
+    assert b'id="app"' in body
+    assert b"PRGuard Studio" in body
     assert studio.service.token.encode() not in body
     assert "frame-ancestors 'none'" in headers["Content-Security-Policy"]
     assert headers["Cache-Control"] == "no-store"
@@ -204,6 +205,21 @@ def test_static_server_has_exact_asset_allowlist_and_security_headers(studio) ->
     for path in ("/.env", "/../pyproject.toml", "/%2e%2e/.env", "/data/", "/.openai/hosting.json"):
         assert studio.request("GET", path)[0] == 404
     assert studio.request("GET", "/live.js")[0] == 200
+
+
+@pytest.mark.integration
+def test_studio_frontend_separates_recorded_evidence_from_local_adapter(studio) -> None:
+    _, locale_source, _ = studio.request("GET", "/i18n.js", auth=False)
+    _, app_source, _ = studio.request("GET", "/app.js", auth=False)
+    _, adapter_source, _ = studio.request("GET", "/live.js", auth=False)
+
+    assert b"MutationObserver" not in locale_source
+    assert b"PRGuardLocale" in locale_source
+    assert b"Recorded runs" in locale_source
+    assert b"renderExamples" in app_source
+    assert b"renderLiveWorkspace" in app_source
+    assert b"PRGuardLive" in adapter_source
+    assert b"sessionStorage" in adapter_source
 
 
 @pytest.mark.security
