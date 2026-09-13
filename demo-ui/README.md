@@ -90,6 +90,20 @@ URL, `--port 0` to choose a free port, and `--workspace` to choose a persistent 
 
 ## Three-minute walkthrough
 
+The collapsed **Connect your own repository** guide is available on the static welcome page and
+local task form. It explains clean-checkout preparation, credentials in the launching terminal,
+the source/workspace split and host/container choice. Its command uses placeholders and is never
+executed by the page. The external-policy TOML is a format example, not an automatically approved
+gate. Missing tests still require real test preparation or an explicitly selected static gate;
+static checks are not proof of Issue resolution.
+
+Approval displays the policy source and original discovery warnings. Automatically detected
+commands require human review for Issue coverage and necessary regressions. Preparation errors
+show category-specific recovery guidance, retain the raw error separately, and offer **Return to
+request** without automatically retrying. The submitted Issue, version and workflow survive this
+return even after refreshing the failed run. These drafts are recovered from the current server
+session, not from a durable browser history.
+
 1. Open `prguard studio --enable-independent-review`. The workspace opens to a new local task.
 2. Explain the Issue and show the configured repository receipt. Enter the requested Git version if
    it is not `HEAD`.
@@ -102,3 +116,6 @@ URL, `--port 0` to choose a free port, and `--workspace` to choose a persistent 
    actual model review requires a configured local repository and model credentials.
 6. Open **Example runs** to explain the recorded Click regression and independent Reviewer finding.
    State clearly that this is evidence from an earlier completed run, not a new execution.
+
+For automated checks, see the [browser test guide](../tests/browser/README.md). Playwright is a
+development-only dependency; end users still need no Node packages to open Studio.

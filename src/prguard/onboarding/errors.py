@@ -11,3 +11,7 @@ class GitHubAPIError(OnboardingError):
 
 class ProjectDiscoveryError(OnboardingError):
     """A safe executable project policy could not be determined."""
+
+    def __init__(self, message: str, *, code: str = "policy_invalid") -> None:
+        super().__init__(message)
+        self.code = code

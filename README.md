@@ -468,6 +468,15 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
+Version 0.18.0 improves first-run setup and failure recovery. The page includes a local repository
+setup guide and an explicitly illustrative external-policy example. Approval shows whether the
+verification policy came from repository config, operator config or deterministic discovery.
+Typed preparation errors explain missing/dirty repositories, unresolved versions and missing test
+gates without parsing model or repository text. Returning to edit preserves the failed request.
+The release adds real-browser automation for approval, review, exact download hashes, keyboard
+navigation, language/layout, recovery and failed-review delivery blocking. See the
+[v0.18.0 report](docs/v0.18.0-phase-report.md) and [browser test guide](tests/browser/README.md).
+
 Version 0.17.0 adds independent review to the local Studio workflow. Terminal configuration enables
 the capability; the chosen workflow, Reviewer configuration and stage budgets are frozen before
 approval. Findings, source locations and any controlled repair appear alongside actual test output.

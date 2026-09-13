@@ -1,0 +1,30 @@
+name: Studio browser
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@f98e06938123ccabd21905ea5d0069192241f9f1 # v8.3.1
+      - name: Install Python test runtime
+        run: uv sync --frozen --extra dev --no-editable
+      - name: Install browser test runner
+        run: npm ci --prefix tests/browser --ignore-scripts
+      - name: Install Chromium
+        working-directory: tests/browser
+        run: npx playwright install --with-deps chromium
+      - name: Exercise local Studio
+        working-directory: tests/browser
+        run: npm run test:e2e

@@ -8,6 +8,10 @@ class HarnessError(RuntimeError):
 class PreflightError(HarnessError):
     """Repository or input preflight failed."""
 
+    def __init__(self, message: str, *, code: str = "repository_check_failed") -> None:
+        super().__init__(message)
+        self.code = code
+
 
 class CommandPolicyError(HarnessError):
     """An argv request exceeds the command capability."""

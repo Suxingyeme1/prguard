@@ -271,3 +271,12 @@ Client request generations ignore late responses from previously selected tasks.
 reads state before allowing a duplicate start. History ends when the server stops; output artifacts
 remain. UI events are saved separately and are not claimed as part of the recursive run Manifest.
 See [ADR 0033](adr/0033-studio-freezes-reviewed-workflows.md).
+
+Preparation snapshots also expose their retained request and a recovery category. Typed Git
+preflight and policy-discovery exceptions carry stable codes; the Studio adapter follows bounded
+exception causes and accepts only a fixed set of codes. It never interprets an exception message
+as an action or command. The bilingual view maps codes to informational recovery instructions and
+keeps the original redacted error under details. Retrying means editing and preparing a new Task,
+with fresh approval required; it is not an automatic resubmission. Policy source and warnings
+come from the actual frozen preparation report. See
+[ADR 0034](adr/0034-studio-explains-setup-without-expanding-authority.md).

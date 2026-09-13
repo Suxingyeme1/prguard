@@ -1,0 +1,11 @@
+{
+  "name": "prguard-studio-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test *.test.cjs",
+    "test:e2e": "playwright test --config playwright.config.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

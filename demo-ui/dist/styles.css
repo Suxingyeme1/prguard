@@ -26,6 +26,23 @@
 
 * { box-sizing: border-box; }
 
+.setup-guide { margin-top: 24px; padding: 18px 22px; font-size: 13px; }
+.setup-guide > summary { cursor: pointer; font-size: 14px; font-weight: 600; }
+.setup-guide p { color: var(--muted-strong); line-height: 1.8; }
+.setup-steps { padding-left: 20px; margin-top: 24px; }
+.setup-steps > li { margin: 0 0 24px; padding-left: 8px; }
+.setup-steps strong { font-size: 14px; }
+.setup-guide pre { max-height: 300px; overflow: auto; padding: 14px; font-size: 12px; }
+.setup-guide code { font-size: 12px; overflow-wrap: anywhere; }
+.setup-policy { border-top: 1px solid var(--line); padding-top: 16px; }
+.setup-policy summary, .error-details summary { cursor: pointer; color: var(--muted-strong); }
+.policy-provenance { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 20px 0; padding: 16px; background: var(--surface-subtle); border-radius: 8px; font-size: 13px; }
+.policy-provenance > p, .policy-provenance > details { flex-basis: 100%; margin: 0; color: var(--muted-strong); line-height: 1.8; }
+.policy-provenance summary { cursor: pointer; }
+.policy-provenance ul { padding-left: 20px; font-size: 12px; }
+.recovery-stage { padding: 12px 16px; border-left: 3px solid var(--line-strong); font-size: 13px; color: var(--muted); }
+.error-details { margin-top: 24px; font-size: 13px; }
+
 .patch-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; color: var(--muted); font-size: 13px; }
 .patch-file { margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .patch-file > summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 16px; background: var(--surface-subtle); cursor: pointer; font-size: 12px; }

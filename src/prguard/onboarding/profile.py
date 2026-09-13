@@ -335,7 +335,7 @@ def discover_project_policy(
     repository_config, _ = load_project_config(repository)
     if repository_config is not None and operator_config is not None:
         raise ProjectDiscoveryError(
-            "operator policy cannot override repository-owned .prguard.toml"
+            "operator policy cannot override repository-owned .prguard.toml", code="policy_conflict"
         )
     config = operator_config or repository_config
     if config is not None:
@@ -370,13 +370,14 @@ def discover_project_policy(
     )
     if not command_values:
         raise ProjectDiscoveryError(
-            "no safe pytest/Ruff command was discovered; add a reviewed .prguard.toml"
+            "no safe pytest/Ruff command was discovered; add a reviewed .prguard.toml",
+            code="verification_missing",
         )
     writable_paths = _discover_writable_paths(repository)
     if not writable_paths:
         raise ProjectDiscoveryError(
             "no conservative Python source/test write scope was discovered; "
-            "add a reviewed .prguard.toml"
+            "add a reviewed .prguard.toml", code="write_scope_missing",
         )
     return DiscoveredProjectPolicy(
         commands=_validate_commands(command_values),

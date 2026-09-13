@@ -211,7 +211,27 @@
           <p>${escapeHtml(t("homeBoundaryCopy"))}</p>
         </div>
       </section>
+      ${renderSetupGuide()}
     `;
+  }
+
+  const repositoryStart = [
+    "uv run --no-editable --extra agent --extra demo prguard studio",
+    "  --repository /path/to/project --workspace /path/to/prguard-runs",
+    "  --trust-host --provider deepseek --enable-independent-review",
+  ].join(" \\\n");
+
+  function renderSetupGuide() {
+    return `<details class="setup-guide card"><summary>${escapeHtml(t("setupTitle"))}</summary>
+      <p>${escapeHtml(t("setupLead"))}</p>
+      <ol class="setup-steps">
+        <li><strong>${escapeHtml(t("setupRepoTitle"))}</strong><p>${escapeHtml(t("setupRepoCopy"))}</p><code>git status --short</code></li>
+        <li><strong>${escapeHtml(t("setupModelTitle"))}</strong><p>${escapeHtml(t("setupModelCopy"))}</p></li>
+        <li><strong>${escapeHtml(t("setupStartTitle"))}</strong><p>${escapeHtml(t("setupStartCopy"))}</p><div class="code-card"><div class="code-toolbar"><span>Terminal</span><button class="text-button" type="button" data-action="copy-repository-start">${escapeHtml(state.copyStatus === "repository-start" ? t("copied") : t("setupCopyCommand"))}</button></div><pre><code>${escapeHtml(repositoryStart)}</code></pre></div></li>
+        <li><strong>${escapeHtml(t("setupVerifyTitle"))}</strong><p>${escapeHtml(t("setupVerifyCopy"))}</p></li>
+      </ol>
+      <details class="setup-policy"><summary>${escapeHtml(t("setupPolicyTitle"))}</summary><p>${escapeHtml(t("setupPolicyCopy"))}</p><pre>version = 1\nverification_commands = [["pytest", "-q", "tests"]]\nwritable_paths = ["src/**", "tests/**"]</pre><p>${escapeHtml(t("setupPolicyUse"))}</p><code>--policy-file /path/to/prguard-policy.toml</code><p>${escapeHtml(t("setupNoTests"))}</p></details>
+    </details>`;
   }
 
   function renderLocalStart() {
@@ -272,6 +292,7 @@
             </button>
           </form>
           ${state.live.error ? renderInlineError(state.live.error) : ""}
+          ${renderSetupGuide()}
         </div>
         <aside class="workspace-receipt card">
           <p class="card-kicker">${escapeHtml(t("details"))}</p>
@@ -315,6 +336,7 @@
               ${compactDetails.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
             </dl>
             ${preview.review?.enabled ? `<div class="contract-review-note"><strong>${escapeHtml(t("contractReviewTitle"))}</strong><p>${escapeHtml(t("contractReviewCopy"))}</p></div>` : ""}
+            ${preview.policy_source ? `<div class="policy-provenance"><strong>${escapeHtml(t("policySourceTitle"))}</strong><span>${escapeHtml(t("policySource_" + preview.policy_source))}</span>${preview.policy_source === "deterministic_discovery" ? `<p>${escapeHtml(t("policyInferredNote"))}</p>` : ""}${preview.policy_warnings?.length ? `<details><summary>${escapeHtml(t("policyWarnings"))}</summary><ul>${preview.policy_warnings.map(note => `<li>${escapeHtml(note)}</li>`).join("")}</ul></details>` : ""}</div>` : ""}
             <div class="contract-policy-grid">
               <article><span>${escapeHtml(t("contractCommands"))}</span><div>${preview.commands.map(argv => `<code>${escapeHtml(command(argv))}</code>`).join("")}</div></article>
               <article><span>${escapeHtml(t("contractWritable"))}</span><div class="pill-list">${pillList(preview.writable_paths)}</div></article>
@@ -565,17 +587,20 @@
   }
 
   function renderError(run) {
+    const known = new Set(["repository_missing", "repository_not_git", "repository_root", "base_unresolved", "repository_dirty", "repository_check_failed", "policy_invalid", "policy_conflict", "verification_missing", "write_scope_missing", "artifact_integrity"]);
+    const code = known.has(run.guidance?.code) ? run.guidance.code : "unexpected_error";
     return `
       <section class="error-layout">
         <div class="error-card card">
           <p class="eyebrow">${escapeHtml(t("errorEyebrow"))}</p>
-          <h1>${escapeHtml(t("errorTitle"))}</h1>
-          <p>${escapeHtml(t("errorLead"))}</p>
-          <pre class="error-message">${escapeHtml(run.error || state.live.error || t("unknown"))}</pre>
+          <h1>${escapeHtml(t("recovery_" + code + "_title"))}</h1>
+          <p>${escapeHtml(t("recovery_" + code + "_copy"))}</p>
+          <p class="recovery-stage">${escapeHtml(t(run.guidance?.stage === "preparation" ? "recoveryBeforeRun" : "recoveryAfterStart"))}</p>
+          <details class="error-details"><summary>${escapeHtml(t("recoveryTechnical"))}</summary><pre class="error-message">${escapeHtml(run.error || state.live.error || t("unknown"))}</pre></details>
           <div class="hero-actions">
-            <button class="button button-primary" type="button" data-action="new-task">${escapeHtml(t("errorTryAgain"))}</button>
-            <button class="button button-secondary" type="button" data-action="reconnect">${escapeHtml(t("errorReconnect"))}</button>
+            <button class="button button-primary" type="button" data-action="retry-task">${escapeHtml(t("recoveryEditRequest"))}</button>
           </div>
+          ${renderSetupGuide()}
         </div>
       </section>
     `;
@@ -785,10 +810,16 @@
       render();
     } else if (action === "copy-start") {
       copy("uv run --no-editable --extra demo prguard studio", "start");
+    } else if (action === "copy-repository-start") {
+      copy(repositoryStart, "repository-start");
     } else if (action === "toggle-contract") {
       state.contractExpanded = !state.contractExpanded;
       render();
-    } else if (action === "new-task") {
+    } else if (action === "new-task" || action === "retry-task") {
+      if (action === "retry-task" && state.live.snapshot?.request) {
+        const request = state.live.snapshot.request;
+        state.draft = { issue: request.issue, baseCommit: request.base_commit, workflow: request.workflow };
+      }
       state.contractConfirmed = false;
       state.contractExpanded = false;
       state.resultTab = "summary";

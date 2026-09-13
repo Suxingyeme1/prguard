@@ -51,12 +51,18 @@ class GitRepository:
 
     def preflight(self, base_commit: str, *, deadline: float | None = None) -> str:
         if not self.path.is_dir():
-            raise PreflightError(f"repository does not exist: {self.path}")
+            raise PreflightError(
+                f"repository does not exist: {self.path}", code="repository_missing"
+            )
         top = run_git(self.path, "rev-parse", "--show-toplevel", timeout=self._timeout(deadline))
         if top.returncode != 0:
-            raise PreflightError(f"not a Git repository: {top.stderr.strip()}")
+            raise PreflightError(
+                f"not a Git repository: {top.stderr.strip()}", code="repository_not_git"
+            )
         if Path(top.stdout.strip()).resolve() != self.path:
-            raise PreflightError("repository must identify the Git toplevel")
+            raise PreflightError(
+                "repository must identify the Git toplevel", code="repository_root"
+            )
         resolved = run_git(
             self.path,
             "rev-parse",
@@ -65,7 +71,9 @@ class GitRepository:
             timeout=self._timeout(deadline),
         )
         if resolved.returncode != 0:
-            raise PreflightError(f"base commit is not resolvable: {base_commit}")
+            raise PreflightError(
+                f"base commit is not resolvable: {base_commit}", code="base_unresolved"
+            )
         status = run_git(
             self.path,
             "status",
@@ -76,7 +84,10 @@ class GitRepository:
         if status.returncode != 0:
             raise PreflightError(f"unable to inspect source checkout: {status.stderr.strip()}")
         if status.stdout.strip():
-            raise PreflightError("source repository must be clean before creating a worktree")
+            raise PreflightError(
+                "source repository must be clean before creating a worktree",
+                code="repository_dirty",
+            )
         return resolved.stdout.strip()
 
     def add_worktree(

@@ -328,6 +328,13 @@ and [ADR 0032](adr/0032-studio-separates-recorded-evidence-from-local-execution.
 
 ## Priority demos
 
+The thirtieth increment (0.18.0) makes initial local setup and failed preparation understandable.
+It adds an in-page repository guide, policy provenance, typed recovery categories and request
+preservation. A separate development-only browser suite exercises real local execution and
+downloads, including failure paths, with scripted providers and no paid API calls. It does not
+add remote repository authority, automatic policy installation or dependency installation.
+See the [v0.18.0 report](v0.18.0-phase-report.md).
+
 The twenty-ninth increment (0.17.0) extends the local browser path to independently reviewed Fix.
 Workflow selection precedes frozen approval, then the existing composed pipeline handles review
 and any single controlled repair. Source-linked findings, per-stage tests, file diffs, session

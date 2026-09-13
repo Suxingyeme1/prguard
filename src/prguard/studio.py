@@ -48,6 +48,7 @@ from prguard.schemas import (
     Verdict,
 )
 from prguard.schemas.common import StrictModel
+from prguard.studio_guidance import recovery_code
 
 MAX_BODY = 60_000
 MAX_ARTIFACT = 10_000_000
@@ -191,6 +192,8 @@ class _Run:
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     issue_summary: str = ""
     workflow: str = "fix"
+    request: PrepareRequest | None = None
+    guidance: dict | None = None
     events: list[dict] = field(default_factory=list)
     preview: dict | None = None
     task: bytes | None = None
@@ -277,6 +280,7 @@ class StudioService:
             run = _Run(
                 run_id, request.mode, self.root / run_id,
                 issue_summary=request.issue[:160], workflow=request.workflow,
+                request=request.model_copy(deep=True),
             )
             self.runs[run_id] = run
             self.current_run_id = run_id
@@ -352,6 +356,8 @@ class StudioService:
     def _prepare(self, run: _Run, request: PrepareRequest) -> None:
         try:
             self._event(run, "preparation.started", {})
+            policy_source = "demo_fixture"
+            policy_warnings: list[str] = []
             if request.mode == "demo":
                 run.root.mkdir(mode=0o700)
                 task = prepare_demo_task(run.root)
@@ -365,6 +371,8 @@ class StudioService:
                 )
                 verify_manifest(run.root / "artifacts" / "preparation-manifest.json")
                 task = FixTask.model_validate_json(preparation.task_path.read_bytes())
+                policy_source = preparation.policy_source
+                policy_warnings = preparation.warnings
             review = None
             execution_task: FixTask | IssueToPRTask = task
             if request.workflow == "reviewed_fix":
@@ -404,6 +412,8 @@ class StudioService:
                     "task_timeout_seconds": execution_task.task_timeout_seconds,
                     "max_repair_attempts": execution_task.max_repair_attempts,
                     "workflow": request.workflow,
+                    "policy_source": policy_source,
+                    "policy_warnings": policy_warnings,
                     "review": {
                         "enabled": review is not None,
                         "provider": review.provider if review else None,
@@ -684,6 +694,10 @@ class StudioService:
     def _fail(self, run: _Run, exc: Exception) -> None:
         with self.lock:
             run.error = self._safe_text(f"{type(exc).__name__}: {exc}")[:1500]
+            run.guidance = {
+                "code": recovery_code(exc),
+                "stage": "preparation" if run.task is None else "execution",
+            }
             run.state = "error"
             self._event(run, "adapter.failed", {"error": run.error})
 
@@ -699,6 +713,8 @@ class StudioService:
                 "id": run.id, "mode": run.mode, "state": run.state,
                 "preview": run.preview, "events": run.events,
                 "result": run.result, "error": run.error,
+                "guidance": run.guidance,
+                "request": run.request.model_dump(mode="json") if run.request else None,
             }, ensure_ascii=False)
             return json.loads(self._safe_text(payload))
 
