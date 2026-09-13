@@ -260,7 +260,8 @@ startup. The approval envelope binds the workflow, stage budgets, Reviewer ident
 scripted proposal contents. Reviewer and repair provider instances are created independently.
 The adapter verifies the recursive Manifest before offering fixed-name, hash-checked downloads.
 The default offline path shares the real terminal-demo Task and scripted proposals. The browser
-Review path uses a scripted no-finding submission with real candidate verification. The recorded
+also offers a scripted regression case with a finding, controlled repair and reference-test probe.
+Both cases execute real candidate verification. The recorded
 Review examples remain separate views. Final Patch is withheld on any non-accepted pipeline result.
 The browser distinguishes initial acceptance from an accepted repair; repair does not imply a
 second Reviewer pass. Progress observers carry only allowlisted fields and cannot change runner
@@ -280,3 +281,20 @@ keeps the original redacted error under details. Retrying means editing and prep
 with fresh approval required; it is not an automatic resubmission. Policy source and warnings
 come from the actual frozen preparation report. See
 [ADR 0034](adr/0034-studio-explains-setup-without-expanding-authority.md).
+
+## Regression-test reference during review repair
+
+Initial Fix probes changed tests against the original Base. Review repair instead uses the frozen
+pre-repair candidate: a regression test may correctly pass Base because the candidate introduced
+the defect. ReviewRepairRunner snapshots candidate bytes before review and binds their SHA-256 to
+the final verification Task. The Harness archives a bounded, regular, hash-matching reference
+Patch, checks its path policy and probes the new tests on that isolated reference worktree.
+Final verification still runs on the repaired candidate. Replay uses the archived reference,
+not the original external file. The internal reference fields are withheld from Task.public_context.
+
+For compatibility, `require_changed_tests_fail_on_base` and `changed_test_base_results` retain
+their historical names. Consumers must inspect `changed_test_reference` (`base` or
+`review_candidate`) and the optional reference hash rather than infer the baseline from the old
+field name. Schema 1.4.0, Harness 0.4.0 and review-repair-v8 identify this behavior change. A
+failing test group is useful reproduction evidence, not proof that every assertion is meaningful
+or that the Issue is fully resolved. See [ADR 0035](adr/0035-review-repair-probes-the-reviewed-candidate.md).

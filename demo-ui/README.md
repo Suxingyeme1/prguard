@@ -36,6 +36,14 @@ Reviewer. The demo's final clamp patch receives no findings. The persistent demo
 this as scripted model output, including on the result page. Generated work is saved under
 `work/studio/session-…`. Omit `--enable-independent-review` for a Fix-only session.
 
+With review enabled, select **Green tests → review finds regression → repair and test**. Its small
+normalizer repository starts with one incomplete test. A scripted change passes it but drops
+lowercase conversion; the scripted Reviewer supplies a source-linked finding. The repair restores
+the behavior and adds a regression test. In the review result, expand the reproduction record to
+inspect the command, failing output and reference Patch hash, then compare final passing output.
+The workflow is fixed to reviewed Fix for this case. All reasoning and edits are predetermined;
+the case is a runnable product demonstration, not an upstream evaluation or model success claim.
+
 To work on an existing repository:
 
 ```bash

@@ -335,6 +335,13 @@ downloads, including failure paths, with scripted providers and no paid API call
 add remote repository authority, automatic policy installation or dependency installation.
 See the [v0.18.0 report](v0.18.0-phase-report.md).
 
+The thirty-first increment (0.19.0) makes the review-repair path runnable without model credentials:
+a second offline case demonstrates green initial tests, an independent review finding, repair and
+a new regression test. Building it exposed and fixed a Harness false block: tests for regressions
+introduced by the candidate now reproduce against that frozen candidate, while initial Fix retains
+the Base probe. Reference hashes, raw probe output and replay archives preserve the distinction.
+See the [v0.19.0 report](v0.19.0-phase-report.md).
+
 The twenty-ninth increment (0.17.0) extends the local browser path to independently reviewed Fix.
 Workflow selection precedes frozen approval, then the existing composed pipeline handles review
 and any single controlled repair. Source-linked findings, per-stage tests, file diffs, session

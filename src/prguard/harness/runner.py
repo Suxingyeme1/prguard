@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import os
 import shutil
+import stat
 import time
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
@@ -169,8 +171,9 @@ def _run_changed_test_base_probe(
     changed_paths: list[str],
     changed_tests: list[str],
     deadline: float,
+    reference_patch: Path | None = None,
 ) -> tuple[VerificationResult | None, list[PolicyViolation], list[str]]:
-    """Run Agent-authored tests on Base while withholding candidate source changes."""
+    """Probe changed tests on Base, or on the frozen pre-repair reviewed candidate."""
 
     probe_worktree = run_directory / "changed-test-base-worktree"
     probe_runtime = run_directory / "changed-test-base-runtime"
@@ -190,6 +193,17 @@ def _run_changed_test_base_probe(
     try:
         repository.add_worktree(probe_worktree, resolved_commit, deadline=deadline)
         registered = True
+        if reference_patch is not None:
+            applied, error = apply_patch(probe_worktree, reference_patch, deadline=deadline)
+            if not applied:
+                raise PreflightError(f"unable to apply changed-test reference Patch: {error}")
+            reference_changes = changed_files(probe_worktree)
+            violations.extend(protected_path_violations(
+                probe_worktree, reference_changes, task.protected_paths
+            ))
+            violations.extend(writable_path_violations(reference_changes, task.writable_paths))
+            if violations:
+                return None, violations, changed_tests
         probed_tests = [
             relative
             for relative in changed_tests
@@ -227,7 +241,8 @@ def _run_changed_test_base_probe(
         )
         command = CommandSpec(
             argv=["pytest", "-q", *probed_tests],
-            kind="pytest_changed_tests_base",
+            kind=("pytest_changed_tests_review_candidate" if reference_patch
+                  else "pytest_changed_tests_base"),
         )
         executor = CommandExecutor(
             worktree=probe_worktree,
@@ -292,6 +307,26 @@ def _run_changed_test_base_probe(
     return result, violations, probed_tests
 
 
+def _freeze_changed_test_reference(task: Task, run_directory: Path) -> bytes | None:
+    if task.changed_test_reference_patch is None:
+        return None
+    path = task.changed_test_reference_patch.expanduser()
+    if path.is_symlink():
+        raise PreflightError("changed-test reference Patch must not be a symlink")
+    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(descriptor, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > 10_000_000:
+            raise PreflightError("changed-test reference Patch must be a bounded regular file")
+        payload = stream.read(10_000_001)
+    if len(payload) > 10_000_000:
+        raise PreflightError("changed-test reference Patch exceeds the size limit")
+    if hashlib.sha256(payload).hexdigest() != task.changed_test_reference_sha256:
+        raise PreflightError("changed-test reference Patch hash mismatch")
+    (run_directory / "changed-test-reference.patch").write_bytes(payload)
+    return payload
+
+
 class VerificationHarness:
     def __init__(self, artifact_root: Path) -> None:
         self.store = ArtifactStore(artifact_root)
@@ -316,6 +351,7 @@ class VerificationHarness:
         changed: list[str] = []
         outcome = RunOutcome.PREFLIGHT_FAILED
         patch_bytes: bytes | None = None
+        reference_patch_bytes: bytes | None = None
         repository = GitRepository(task.repository)
         source_before: dict = {}
         audit_before: dict = {}
@@ -331,6 +367,7 @@ class VerificationHarness:
 
         try:
             trace("preflight.started", "validating repository, commit, and command policy")
+            reference_patch_bytes = _freeze_changed_test_reference(task, run_directory)
             policy = CommandPolicy(task.allowed_commands)
             for command in task.commands:
                 policy.authorize(command.argv)
@@ -373,8 +410,12 @@ class VerificationHarness:
                 if not violations and task.require_changed_tests_fail_on_base and changed_tests:
                     trace(
                         "changed_tests.base_probe_started",
-                        "running changed tests against the unchanged Base",
+                        "running changed tests against the frozen reference",
                         paths=changed_tests,
+                        reference=(
+                            "review_candidate" if reference_patch_bytes is not None else "base"
+                        ),
+                        reference_sha256=task.changed_test_reference_sha256,
                     )
                     base_result, base_violations, probed_tests = _run_changed_test_base_probe(
                         repository=repository,
@@ -385,6 +426,10 @@ class VerificationHarness:
                         changed_paths=changed,
                         changed_tests=changed_tests,
                         deadline=deadline,
+                        reference_patch=(
+                            run_directory / "changed-test-reference.patch"
+                            if reference_patch_bytes is not None else None
+                        ),
                     )
                     violations.extend(base_violations)
                     if not probed_tests:
@@ -402,10 +447,12 @@ class VerificationHarness:
                         elif base_result.passed:
                             violations.append(
                                 PolicyViolation(
-                                    code="changed_tests_pass_on_base",
+                                    code=("changed_tests_pass_on_review_candidate"
+                                          if reference_patch_bytes is not None
+                                          else "changed_tests_pass_on_base"),
                                     message=(
-                                        "Agent-authored tests do not demonstrate "
-                                        "FAIL_TO_PASS behavior"
+                                        "Agent-authored tests do not demonstrate FAIL_TO_PASS "
+                                        "behavior against the frozen reference"
                                     ),
                                     paths=probed_tests,
                                 )
@@ -415,9 +462,9 @@ class VerificationHarness:
                                 PolicyViolation(
                                     code="changed_tests_base_probe_invalid",
                                     message=(
-                                        "Agent-authored tests must collect on Base and fail as "
-                                        "tests; collection/import errors are not FAIL_TO_PASS "
-                                        "evidence"
+                                        "Agent-authored tests must collect on the reference and "
+                                        "fail as tests; collection/import errors are not "
+                                        "FAIL_TO_PASS evidence"
                                     ),
                                     paths=probed_tests,
                                 )
@@ -425,7 +472,7 @@ class VerificationHarness:
                         else:
                             trace(
                                 "changed_tests.base_probe_failed_as_expected",
-                                "changed tests fail against Base and may join the gate",
+                                "changed tests fail against the reference and may join the gate",
                                 exit_code=base_result.exit_code,
                             )
                 if violations:
@@ -601,6 +648,10 @@ class VerificationHarness:
             duration_seconds=time.monotonic() - started,
             patch=patch_result,
             changed_test_base_results=changed_test_base_results,
+            changed_test_reference=(
+                "review_candidate" if task.changed_test_reference_patch is not None else "base"
+            ),
+            changed_test_reference_sha256=task.changed_test_reference_sha256,
             commands=results,
             changed_files=changed,
             policy_violations=violations,
@@ -613,5 +664,6 @@ class VerificationHarness:
             report=report,
             final_diff=final_patch,
             patch_bytes=patch_bytes,
+            reference_patch_bytes=reference_patch_bytes,
         )
         return report

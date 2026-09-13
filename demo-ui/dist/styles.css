@@ -42,6 +42,10 @@
 .policy-provenance ul { padding-left: 20px; font-size: 12px; }
 .recovery-stage { padding: 12px 16px; border-left: 3px solid var(--line-strong); font-size: 13px; color: var(--muted); }
 .error-details { margin-top: 24px; font-size: 13px; }
+.review-repro { padding: 16px 0; font-size: 13px; }
+.review-repro summary { cursor: pointer; }
+.review-repro code { display: block; overflow-wrap: anywhere; font-size: 11px; }
+.review-repro pre { max-height: 320px; overflow: auto; padding: 12px; background: var(--surface-subtle); font-size: 12px; }
 
 .patch-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; color: var(--muted); font-size: 13px; }
 .patch-file { margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }

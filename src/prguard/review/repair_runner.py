@@ -11,6 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from prguard.harness import VerificationHarness
+from prguard.harness.artifacts import sha256_bytes
 from prguard.harness.errors import HarnessError
 from prguard.harness.git import GitRepository, apply_patch, final_diff
 from prguard.implementer.edits import apply_structured_edits
@@ -180,6 +181,8 @@ class ReviewRepairRunner:
         try:
             candidate_path = task.candidate_patch.expanduser().resolve()
             candidate_bytes = candidate_path.read_bytes()
+            candidate_path = run_directory / "original-candidate.patch"
+            candidate_path.write_bytes(candidate_bytes)
             candidate_text = candidate_bytes.decode("utf-8", errors="replace")
             review_budget = min(
                 task.review_timeout_seconds,
@@ -189,7 +192,9 @@ class ReviewRepairRunner:
                 run_directory / "initial-review",
                 self.reviewer,
                 progress=self._forward_review_progress,
-            ).run(_as_review_task(task, review_budget))
+            ).run(_as_review_task(task, review_budget).model_copy(update={
+                "candidate_patch": candidate_path,
+            }))
             resolved_commit = initial_review.resolved_base_commit
             _add_usage(token_usage, initial_review.token_usage)
             self._emit(
@@ -295,6 +300,8 @@ class ReviewRepairRunner:
                     task_timeout_seconds=remaining,
                     max_output_bytes=task.max_output_bytes,
                     require_changed_tests_fail_on_base=True,
+                    changed_test_reference_patch=candidate_path,
+                    changed_test_reference_sha256=sha256_bytes(candidate_bytes),
                     container=task.container,
                     runtime_files=task.runtime_files,
                 )

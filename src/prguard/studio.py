@@ -48,6 +48,13 @@ from prguard.schemas import (
     Verdict,
 )
 from prguard.schemas.common import StrictModel
+from prguard.studio_demo import (
+    REVIEW_DEMO_ISSUE,
+    prepare_review_demo_task,
+    review_demo_initial,
+    review_demo_repair,
+    review_demo_submission,
+)
 from prguard.studio_guidance import recovery_code
 
 MAX_BODY = 60_000
@@ -66,6 +73,7 @@ class PrepareRequest(StrictModel):
     issue: str = Field(default="", max_length=50_000)
     base_commit: str = Field(default="HEAD", min_length=1, max_length=128)
     workflow: Literal["fix", "reviewed_fix"] = "fix"
+    demo_case: Literal["clamp", "review_regression"] = "clamp"
 
     @field_validator("issue", "base_commit")
     @classmethod
@@ -243,6 +251,11 @@ class StudioService:
                 "boundary": "container" if self.config.container_image else "host",
                 "runtime": f"{platform.python_implementation()} {platform.python_version()}",
                 "demo_issue": "clamp() must enforce both lower and upper bounds.",
+                "demo_cases": [
+                    {"id": "clamp", "issue": "clamp() must enforce both lower and upper bounds."},
+                    *([{"id": "review_regression", "issue": REVIEW_DEMO_ISSUE}]
+                      if self.config.enable_independent_review else []),
+                ],
                 "review_available": self.config.enable_independent_review,
                 "review_policy": (
                     {
@@ -272,6 +285,10 @@ class StudioService:
                 raise StudioError("Session limit reached; restart Studio for more tasks", 429)
             if request.mode == "local" and (not self.config.repository or not request.issue):
                 raise StudioError("Local mode requires a configured repository and an Issue")
+            if request.demo_case == "review_regression" and (
+                request.mode != "demo" or request.workflow != "reviewed_fix"
+            ):
+                raise StudioError("The regression demo requires demo mode with independent review")
             if request.workflow == "reviewed_fix" and not self.config.enable_independent_review:
                 raise StudioError(
                     "Independent review was not enabled when this Studio session started"
@@ -312,7 +329,7 @@ class StudioService:
         })
         return IssueToPRTask.model_validate(payload)
 
-    def _review_spec(self, mode: str) -> FrozenReviewSpec:
+    def _review_spec(self, mode: str, demo_case: str = "clamp") -> FrozenReviewSpec:
         """Freeze provider identity and scripted evidence before explicit approval."""
 
         if mode == "demo":
@@ -320,7 +337,8 @@ class StudioService:
                 provider="scripted",
                 model="deterministic-fixture",
                 max_tool_calls=self.config.review_max_tool_calls,
-                scripted_submission=ReviewerSubmission(
+                scripted_submission=review_demo_submission() if demo_case == "review_regression"
+                else ReviewerSubmission(
                     summary="No evidence-backed defects in the verified clamp patch.",
                     findings=[],
                 ),
@@ -358,9 +376,13 @@ class StudioService:
             self._event(run, "preparation.started", {})
             policy_source = "demo_fixture"
             policy_warnings: list[str] = []
+            regression_demo = request.mode == "demo" and request.demo_case == "review_regression"
             if request.mode == "demo":
                 run.root.mkdir(mode=0o700)
-                task = prepare_demo_task(run.root)
+                task = (
+                    prepare_review_demo_task(run.root) if regression_demo
+                    else prepare_demo_task(run.root)
+                )
             else:
                 preparation = prepare_local_issue(
                     self.config.repository, request.issue, run.root,
@@ -376,19 +398,21 @@ class StudioService:
             review = None
             execution_task: FixTask | IssueToPRTask = task
             if request.workflow == "reviewed_fix":
-                review = self._review_spec(run.mode)
+                review = self._review_spec(run.mode, request.demo_case)
                 execution_task = self._review_task(task, review.max_tool_calls)
             envelope = FrozenTaskEnvelope(
                 workflow=request.workflow,
                 task=execution_task.model_dump(mode="json"),
                 review=review,
                 scripted_proposals=(
-                    _demo_proposals() if run.mode == "demo"
+                    review_demo_initial() if regression_demo
+                    else _demo_proposals() if run.mode == "demo"
                     else self._scripted_proposals(self.config.proposal_sequence)
                     if self.config.provider == "scripted" else None
                 ),
                 scripted_repair_proposals=(
-                    [_demo_proposals()[-1]] if run.mode == "demo" and review
+                    review_demo_repair() if regression_demo
+                    else [_demo_proposals()[-1]] if run.mode == "demo" and review
                     else self._scripted_proposals(self.config.review_repair_proposal_sequence)
                     if review and self.config.provider == "scripted" else None
                 ),
@@ -412,6 +436,7 @@ class StudioService:
                     "task_timeout_seconds": execution_task.task_timeout_seconds,
                     "max_repair_attempts": execution_task.max_repair_attempts,
                     "workflow": request.workflow,
+                    "demo_case": request.demo_case if run.mode == "demo" else None,
                     "policy_source": policy_source,
                     "policy_warnings": policy_warnings,
                     "review": {
@@ -572,13 +597,20 @@ class StudioService:
             self._fail(run, exc)
 
     @staticmethod
-    def _commands(verification: HarnessReport | None) -> list[dict]:
+    def _commands(
+        verification: HarnessReport | None, *, reference_probe: bool = False,
+    ) -> list[dict]:
+        if verification is None:
+            return []
+        commands = (
+            verification.changed_test_base_results if reference_probe else verification.commands
+        )
         return [{
             "argv": command.argv, "passed": command.passed,
             "exit_code": command.exit_code, "timed_out": command.timed_out,
             "stdout": command.stdout[-6000:], "stderr": command.stderr[-2000:],
             "duration_seconds": command.duration_seconds,
-        } for command in verification.commands] if verification else []
+        } for command in commands]
 
     @classmethod
     def _attempts(cls, report: FixReport | None) -> list[dict]:
@@ -687,6 +719,12 @@ class StudioService:
                     ),
                     "error": repair.error,
                     "commands": self._commands(repair.final_verification),
+                    "reference_probe": {
+                        "reference": repair.final_verification.changed_test_reference,
+                        "patch_sha256": repair.final_verification.changed_test_reference_sha256,
+                        "commands": self._commands(repair.final_verification, reference_probe=True),
+                    } if repair.final_verification
+                    and repair.final_verification.changed_test_base_results else None,
                 } if repair else None,
             },
         }

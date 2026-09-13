@@ -48,15 +48,20 @@ def render_markdown(report: HarnessReport) -> str:
         f"- Patch applied: {report.patch.applied}",
     ]
     if report.changed_test_base_results:
+        reference = (
+            "reviewed candidate" if report.changed_test_reference == "review_candidate"
+            else "unchanged Base"
+        )
         lines.extend(
             [
                 "",
-                "## Changed-test Base probe",
+                "## Changed-test reference probe",
                 "",
-                "Agent-authored tests must fail against the unchanged Base before they can join "
-                "the candidate gate.",
+                f"Agent-authored tests must fail against the {reference} before joining the gate.",
+                "Reference Patch SHA-256: "
+                f"{report.changed_test_reference_sha256 or 'not applicable'}",
                 "",
-                "| # | Kind | Runtime | Command | Exit | Timeout | Failed on Base | Duration |",
+                "| # | Kind | Runtime | Command | Exit | Timeout | Reproduced | Duration |",
                 "|---:|---|---|---|---:|---|---|---:|",
             ]
         )
@@ -125,6 +130,7 @@ class ArtifactStore:
         report: HarnessReport,
         final_diff: str,
         patch_bytes: bytes | None,
+        reference_patch_bytes: bytes | None = None,
     ) -> RunManifest:
         payloads: dict[str, bytes] = {
             "task.json": canonical_json(task.model_dump(mode="json")),
@@ -134,6 +140,8 @@ class ArtifactStore:
         }
         if patch_bytes is not None:
             payloads["candidate.patch"] = patch_bytes
+        if reference_patch_bytes is not None:
+            payloads["changed-test-reference.patch"] = reference_patch_bytes
         entries: list[ArtifactEntry] = []
         for name, payload in sorted(payloads.items()):
             path = run_directory / name
@@ -208,6 +216,13 @@ def load_replay_task(manifest_path: Path, *, repository: Path | None = None) -> 
         payload["repository"] = repository.expanduser().resolve()
     archived_patch = root / "candidate.patch"
     payload["candidate_patch"] = archived_patch if archived_patch.exists() else None
+    if payload.get("changed_test_reference_patch") is not None:
+        reference = root / "changed-test-reference.patch"
+        if not reference.is_file():
+            raise ArtifactIntegrityError("missing archived changed-test reference Patch")
+        if sha256_file(reference) != payload.get("changed_test_reference_sha256"):
+            raise ArtifactIntegrityError("changed-test reference Patch hash mismatch")
+        payload["changed_test_reference_patch"] = reference
     task = Task.model_validate(payload)
     if task.base_commit != manifest.resolved_base_commit:
         raise ArtifactIntegrityError("task base commit does not match manifest")

@@ -14,7 +14,7 @@
     contractExpanded: false,
     contractConfirmed: false,
     copyStatus: null,
-    draft: { issue: "", baseCommit: "HEAD", workflow: "fix" },
+    draft: { issue: "", baseCommit: "HEAD", workflow: "fix", demoCase: "clamp" },
     live: live.getState(),
   };
 
@@ -186,7 +186,7 @@
         <aside class="start-card" aria-label="Local Studio command">
           <p class="card-kicker">${escapeHtml(t("liveStartTitle"))}</p>
           <p>${escapeHtml(t("liveStartCopy"))}</p>
-          <div class="command-box"><code>uv run --no-editable --extra demo prguard studio</code><button type="button" data-action="copy-start" aria-label="${escapeHtml(t("copyStart"))}">⧉</button></div>
+          <div class="command-box"><code>uv run --no-editable --extra demo prguard studio --enable-independent-review</code><button type="button" data-action="copy-start" aria-label="${escapeHtml(t("copyStart"))}">⧉</button></div>
           <p class="start-card-note">${escapeHtml(t("homeDemoCopy"))}</p>
         </aside>
       </section>
@@ -240,7 +240,7 @@
         <p class="eyebrow">${escapeHtml(t("taskEyebrow"))}</p>
         <h1>${escapeHtml(t("liveStartTitle"))}</h1>
         <p>${escapeHtml(t("liveStartCopy"))}</p>
-        <div class="command-box command-box-large"><code>uv run --no-editable --extra demo prguard studio</code><button type="button" data-action="copy-start" aria-label="${escapeHtml(t("copyStart"))}">⧉</button></div>
+        <div class="command-box command-box-large"><code>uv run --no-editable --extra demo prguard studio --enable-independent-review</code><button type="button" data-action="copy-start" aria-label="${escapeHtml(t("copyStart"))}">⧉</button></div>
         <p class="muted">${escapeHtml(t("liveStartOwn"))}</p>
       </section>
     `;
@@ -253,6 +253,9 @@
     const provider = localRepository ? session.provider : "scripted";
     const actionPending = state.live.action === "prepare";
     const workflow = session.review_available ? state.draft.workflow : "fix";
+    const demoCase = state.draft.demoCase || "clamp";
+    const demoIssue = session.demo_cases?.find(item => item.id === demoCase)?.issue || session.demo_issue;
+    const reviewDemo = !localRepository && demoCase === "review_regression";
     return `
       <section class="task-layout">
         <div class="task-main">
@@ -264,8 +267,9 @@
             </div>
           </div>
           <form class="task-form card" data-form="prepare">
+            ${!localRepository && session.demo_cases?.length > 1 ? `<label for="demo-case">${escapeHtml(t("demoCaseLabel"))}</label><select id="demo-case" name="demoCase">${session.demo_cases.map(item => `<option value="${escapeHtml(item.id)}" ${demoCase === item.id ? "selected" : ""}>${escapeHtml(t("demoCase_" + item.id))}</option>`).join("")}</select><p class="field-hint">${escapeHtml(t(reviewDemo ? "demoReviewStory" : "demoClampStory"))}</p>` : ""}
             <label for="task-issue">${escapeHtml(t("taskIssue"))}</label>
-            <textarea id="task-issue" name="issue" rows="6" maxlength="50000" required ${localRepository ? "" : "readonly"} placeholder="${escapeHtml(t("taskIssueHint"))}">${escapeHtml(localRepository ? state.draft.issue : session.demo_issue || "")}</textarea>
+            <textarea id="task-issue" name="issue" rows="6" maxlength="50000" required ${localRepository ? "" : "readonly"} placeholder="${escapeHtml(t("taskIssueHint"))}">${escapeHtml(localRepository ? state.draft.issue : demoIssue || "")}</textarea>
             <p class="field-hint">${escapeHtml(localRepository ? t("taskIssueHint") : t("taskDemoCopy"))}</p>
             ${session.review_available ? `
               <fieldset class="workflow-picker">
@@ -273,7 +277,7 @@
                 <div class="workflow-options">
                   ${[["fix", "workflowFix", "workflowFixHint"], ["reviewed_fix", "workflowReviewedFix", "workflowReviewedFixHint"]].map(([value, title, hint]) => `
                     <label class="workflow-option ${workflow === value ? "is-selected" : ""}">
-                      <input type="radio" name="workflow" value="${value}" ${workflow === value ? "checked" : ""} />
+                      <input type="radio" name="workflow" value="${value}" ${workflow === value ? "checked" : ""} ${reviewDemo && value === "fix" ? "disabled" : ""} />
                       <span><strong>${escapeHtml(t(title))}</strong><small>${escapeHtml(t(hint))}</small></span>
                     </label>
                   `).join("")}
@@ -479,6 +483,7 @@
         <section class="review-repair-card">
           <h2>${escapeHtml(t("reviewRepairTitle"))}</h2>
           ${repair.summary ? `<p>${escapeHtml(repair.summary)}</p>` : ""}
+          ${repair.reference_probe ? `<details class="review-repro"><summary>${escapeHtml(t("reviewReproTitle"))}</summary><p>${escapeHtml(t(repair.reference_probe.reference === "review_candidate" ? "reviewReproCandidate" : "reviewReproBase"))}</p>${repair.reference_probe.patch_sha256 ? `<code>SHA-256 ${escapeHtml(repair.reference_probe.patch_sha256)}</code>` : ""}${repair.reference_probe.commands.map(item => `<pre>${escapeHtml(command(item.argv))}\nexit ${escapeHtml(item.exit_code)}\n${escapeHtml([item.stdout, item.stderr].filter(Boolean).join("\n"))}</pre>`).join("")}</details>` : ""}
           ${repair.verification_outcome ? `<span class="outcome-pill ${repair.verification_outcome === "passed" ? "is-success" : "is-danger"}">${escapeHtml(t(repair.verification_outcome === "passed" ? "reviewRepairPassed" : "reviewRepairFailed"))}</span>` : ""}
           ${repair.error ? renderInlineError(repair.error) : ""}
           <p class="field-hint">${escapeHtml(t("reviewRepairBoundary"))}</p>
@@ -542,6 +547,7 @@
         ${renderReviewSummary(result)}
         ${result.error ? renderInlineError(result.error) : ""}
         <div class="attempt-list">${(result.attempts || []).map(renderAttemptSummary).join("")}</div>
+        ${result.review?.repair?.summary ? `<section class="review-repair-card"><h3>${escapeHtml(t("reviewRepairTitle"))}</h3><p>${escapeHtml(result.review.repair.summary)}</p><p class="field-hint">${escapeHtml(t("reviewRepairBoundary"))}</p></section>` : ""}
       </div>
     `;
   }
@@ -809,7 +815,7 @@
       state.exampleId = null;
       render();
     } else if (action === "copy-start") {
-      copy("uv run --no-editable --extra demo prguard studio", "start");
+      copy("uv run --no-editable --extra demo prguard studio --enable-independent-review", "start");
     } else if (action === "copy-repository-start") {
       copy(repositoryStart, "repository-start");
     } else if (action === "toggle-contract") {
@@ -818,7 +824,7 @@
     } else if (action === "new-task" || action === "retry-task") {
       if (action === "retry-task" && state.live.snapshot?.request) {
         const request = state.live.snapshot.request;
-        state.draft = { issue: request.issue, baseCommit: request.base_commit, workflow: request.workflow };
+        state.draft = { issue: request.issue, baseCommit: request.base_commit, workflow: request.workflow, demoCase: request.demo_case || "clamp" };
       }
       state.contractConfirmed = false;
       state.contractExpanded = false;
@@ -859,6 +865,10 @@
     } else if (input.name === "workflow") {
       state.draft.workflow = input.value;
       render();
+    } else if (input.id === "demo-case") {
+      state.draft.demoCase = input.value;
+      if (input.value === "review_regression") state.draft.workflow = "reviewed_fix";
+      render();
     }
   });
 
@@ -876,7 +886,7 @@
     if (form.dataset.form === "prepare") {
       const issue = state.draft.issue || form.elements.issue?.value || "";
       const baseCommit = state.draft.baseCommit || form.elements.baseCommit?.value || "HEAD";
-      await live.prepare({ issue, baseCommit, workflow: state.live.session.review_available ? state.draft.workflow : "fix" });
+      await live.prepare({ issue, baseCommit, workflow: state.live.session.review_available ? state.draft.workflow : "fix", demoCase: state.draft.demoCase || "clamp" });
     }
     if (form.dataset.form === "approve") {
       const check = form.querySelector("#contract-confirm");

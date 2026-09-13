@@ -220,7 +220,7 @@
     }
   }
 
-  async function prepare({ issue, baseCommit, workflow = "fix" }) {
+  async function prepare({ issue, baseCommit, workflow = "fix", demoCase = "clamp" }) {
     if (!state.session || state.action || state.activeRunId || state.connection !== "connected") return;
     const version = resetRequests();
     const mode = state.session.repository ? "local" : "demo";
@@ -228,9 +228,12 @@
     try {
       const response = await api("/api/prepare", {
         mode,
-        issue: mode === "demo" ? state.session.demo_issue : issue,
+        issue: mode === "demo"
+          ? state.session.demo_cases?.find(item => item.id === demoCase)?.issue || state.session.demo_issue
+          : issue,
         base_commit: baseCommit,
         workflow,
+        ...(mode === "demo" ? { demo_case: demoCase } : {}),
       });
       const payload = await response.json();
       if (version !== generation) return;

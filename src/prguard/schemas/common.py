@@ -10,14 +10,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = "1.3.0"
-HARNESS_VERSION = "0.3.0"
+SCHEMA_VERSION = "1.4.0"
+HARNESS_VERSION = "0.4.0"
 POLICY_VERSION = "argv-v3"
 FIX_WORKFLOW_VERSION = "fix-v5"
 ISSUE_TO_PR_WORKFLOW_VERSION = "issue-to-pr-v8"
 PATCH_POLICY_VERSION = "patch-v2"
 REVIEW_WORKFLOW_VERSION = "review-v5"
-REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v7"
+REVIEW_REPAIR_WORKFLOW_VERSION = "review-repair-v8"
 REVIEW_ROUTING_POLICY_VERSION = "review-routing-v4"
 
 

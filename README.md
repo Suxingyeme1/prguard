@@ -68,6 +68,12 @@ both attempts, the delivered Patch, and downloadable hash-checked artifacts. Sel
 and review** to include an independent Reviewer with scripted findings in this offline demo.
 No model key is needed; the page labels model responses as scripted throughout the run.
 
+Choose **Green tests → review finds regression → repair and test** for the second offline case:
+the initial Patch passes its
+existing test, the scripted Reviewer identifies lost lowercase behavior, and a controlled repair
+adds a regression test. Expand the reproduction record to see that test fail on the reviewed
+candidate, then pass with the repair. This demonstrates the execution path, not model accuracy.
+
 For a real local repository, configure the model key in your terminal and select the repository
 and execution boundary when starting the adapter:
 
@@ -467,6 +473,12 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 [contribution guide](CONTRIBUTING.md).
 
 ## Current boundary and roadmap
+
+Version 0.19.0 adds a selectable offline review-and-repair demo and visible regression-test
+reproduction evidence. It also fixes a real gate error: a test for a regression introduced by a
+candidate should fail on that candidate, not on an originally correct Base. Review repair now
+probes a frozen, SHA-256-bound candidate; initial Fix keeps its original Base probe. Both the
+reference and results are archived for replay. See the [v0.19.0 report](docs/v0.19.0-phase-report.md).
 
 Version 0.18.0 improves first-run setup and failure recovery. The page includes a local repository
 setup guide and an explicitly illustrative external-policy example. Approval shows whether the

@@ -23,7 +23,7 @@ def test_preparation_failure_preserves_request_and_never_runs_models(
     )))
     request = {"mode": "local", "issue": "Keep my request", "base_commit": (
         "no-such-version" if failure == "version" else "HEAD"
-    ), "workflow": "fix"}
+    ), "workflow": "fix", "demo_case": "clamp"}
     try:
         run_id = client.json("POST", "/api/prepare", request)["id"]
         failed = client.wait(run_id, "error")

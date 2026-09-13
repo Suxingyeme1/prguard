@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 
@@ -57,6 +58,8 @@ class HarnessReport(StrictModel):
     duration_seconds: float = Field(ge=0)
     patch: PatchApplicationResult
     changed_test_base_results: list[VerificationResult] = Field(default_factory=list)
+    changed_test_reference: Literal["base", "review_candidate"] = "base"
+    changed_test_reference_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     commands: list[VerificationResult] = Field(default_factory=list)
     changed_files: list[str] = Field(default_factory=list)
     policy_violations: list[PolicyViolation] = Field(default_factory=list)

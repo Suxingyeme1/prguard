@@ -37,6 +37,8 @@ invalid-version recovery with retained request, literal rendering of HTML-like I
 static setup guide that sends no execution request. A simulated Reviewer outage must withhold
 final Patch delivery even after initial tests pass. Python integration tests separately cover
 authentication/Origin, source preservation, immutable workflow approval and failed delivery gates.
+The second offline case checks the enforced reviewed workflow, a real repair Patch with a new
+test, and visible failing output from its frozen pre-repair reference probe.
 
 These are Chromium functional checks, not a cross-browser or accessibility certification.
 Playwright is not required to install or run PRGuard Studio.

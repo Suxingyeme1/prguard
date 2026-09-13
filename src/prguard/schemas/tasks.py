@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from prguard.schemas.common import (
     SCHEMA_VERSION,
@@ -36,8 +36,26 @@ class Task(StrictModel):
     task_timeout_seconds: float = Field(default=600, gt=0, le=7200)
     max_output_bytes: int = Field(default=200_000, ge=1024, le=10_000_000)
     require_changed_tests_fail_on_base: bool = False
+    changed_test_reference_patch: Path | None = None
+    changed_test_reference_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     container: ContainerExecutionSpec | None = None
     runtime_files: list[RuntimeFileSpec] = Field(default_factory=list, max_length=16)
+
+    @model_validator(mode="after")
+    def reference_is_review_repair_only(self) -> Task:
+        if (self.changed_test_reference_patch is None) != (
+            self.changed_test_reference_sha256 is None
+        ):
+            raise ValueError("changed-test reference requires both a Patch and its SHA-256")
+        if self.changed_test_reference_patch is not None and (
+            self.mode is not TaskMode.REVIEW_REPAIR
+            or not self.require_changed_tests_fail_on_base
+            or self.candidate_patch is None
+        ):
+            raise ValueError(
+                "changed-test candidate reference is only valid for gated review repair"
+            )
+        return self
 
     @field_validator("writable_paths", "protected_paths")
     @classmethod
@@ -50,7 +68,9 @@ class Task(StrictModel):
 
     def public_context(self) -> dict[str, object]:
         """Return the only Task payload later agents may receive."""
-        return self.model_dump(mode="json")
+        return self.model_dump(mode="json", exclude={
+            "changed_test_reference_patch", "changed_test_reference_sha256",
+        })
 
 
 class CodingTaskState(StrictModel):

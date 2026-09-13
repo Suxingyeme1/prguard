@@ -105,7 +105,7 @@
       resultFailureEyebrow: "需要处理",
       resultFailureTitle: "这次任务没有通过验证",
       resultLead: "下面是本次运行实际生成的补丁、测试结果和可下载证据。",
-      resultAttempts: "尝试次数",
+      resultAttempts: "实现阶段尝试",
       resultDuration: "运行耗时",
       resultCommands: "验证命令",
       resultManifest: "交付文件",
@@ -266,7 +266,7 @@
       resultFailureEyebrow: "Needs attention",
       resultFailureTitle: "This task did not pass verification",
       resultLead: "Below are the patch, test results, and downloadable evidence actually produced by this run.",
-      resultAttempts: "Attempts",
+      resultAttempts: "Implementation attempts",
       resultDuration: "Run time",
       resultCommands: "Verification commands",
       resultManifest: "Delivery files",
@@ -326,6 +326,14 @@
   };
 
   Object.assign(messages.zh, {
+    demoCaseLabel: "选择演示流程",
+    reviewReproTitle: "新增测试的复现记录",
+    reviewReproCandidate: "这些测试先在待修复的候选补丁上运行，要求正常收集并失败，再参与修复后的验证。这里保留了实际输出。",
+    reviewReproBase: "这些测试先在原始代码版本上运行，再参与补丁验证。这里保留了实际输出。",
+    demoCase_clamp: "测试发现问题 → 修复通过",
+    demoCase_review_regression: "测试通过 → 审查发现回归 → 修复并补测试",
+    demoClampStory: "先体验测试失败后的自动修复，也可以加上独立审查。模型回复为预设内容。",
+    demoReviewStory: "现有测试只覆盖新需求，漏掉了旧行为。审查指出问题后，修复代码并补回归测试。这是预设案例，不是模型能力评测。",
     demoRunNotice: "离线执行演示 · Git 和测试实际运行，模型回复为预设内容。",
     taskDemoBaseHint: "演示使用临时仓库的固定版本。",
     preparingTitle: "正在准备执行计划",
@@ -402,6 +410,14 @@
     eventDeliveryPreparing: "正在整理交付文件",
   });
   Object.assign(messages.en, {
+    demoCaseLabel: "Choose a demo flow",
+    reviewReproTitle: "New test reproduction record",
+    reviewReproCandidate: "These tests first run against the pre-repair candidate. They must collect and fail before joining repaired-patch verification. The actual output is retained below.",
+    reviewReproBase: "These tests first run against the original Base, then join patch verification. The actual output is retained below.",
+    demoCase_clamp: "Test failure → passing repair",
+    demoCase_review_regression: "Green tests → review finds regression → repair and test",
+    demoClampStory: "Try a failed test followed by an automatic repair, with optional independent review. Model replies are scripted.",
+    demoReviewStory: "Existing tests cover the new request but miss old behavior. Review flags the regression; repair restores the code and adds a test. This is a scripted case, not a model benchmark.",
     demoRunNotice: "Offline execution demo · Git and tests run locally; model replies are scripted.",
     taskDemoBaseHint: "The demo uses a fixed version in its temporary repository.",
     preparingTitle: "Preparing the run plan",

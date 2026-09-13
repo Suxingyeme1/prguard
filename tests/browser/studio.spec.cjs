@@ -147,6 +147,27 @@ test('static start guide does not create a backend task', async ({ page, studio 
   expect(posts).toHaveLength(0);
 });
 
+test('regression demo shows a review finding, controlled repair and the new regression test', async ({ page, studio }) => {
+  await open(page, studio);
+  await page.getByLabel('选择演示流程', { exact: true }).selectOption('review_regression');
+  await expect(page.getByRole('radio', { name: /^修改、验证并审查/ })).toBeChecked();
+  await expect(page.getByRole('radio', { name: /^修改并验证/ })).toBeDisabled();
+  await expect(page.getByLabel('问题或需求', { exact: true })).toHaveValue(/normalize/);
+  await page.getByRole('button', { name: '查看执行计划', exact: true }).click();
+  await approve(page);
+  await expect(page.locator('.result-stats')).toContainText('实现阶段尝试');
+  await expect(page.locator('.result-summary .review-repair-card')).toContainText('Restore lowercase conversion');
+  await page.getByRole('tab', { name: '审查', exact: true }).click();
+  await expect(page.locator('.finding-card')).toHaveCount(1);
+  await expect(page.locator('.finding-card')).toContainText('normalizer.py');
+  await expect(page.locator('.review-repair-card')).toContainText('本轮未进行第二次 Reviewer 审查');
+  await page.getByText('新增测试的复现记录', { exact: true }).click();
+  await expect(page.locator('.review-repro')).toContainText('1 failed');
+  await page.getByRole('tab', { name: '补丁', exact: true }).click();
+  await expect(page.locator('.patch-file')).toHaveCount(2);
+  await expect(page.locator('.patch-file')).toContainText(['normalizer.py', 'tests/test_regression.py']);
+});
+
 test.describe('review service failure', () => {
   test.use({ reviewUnavailable: true });
   test('initial green verification does not become accepted delivery', async ({ page, studio }) => {
