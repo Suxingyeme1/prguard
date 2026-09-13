@@ -8,7 +8,8 @@
   const storageTokenKey = "prguard-live-token";
   const storageRunKey = "prguard-live-run";
   let pollTimer = null;
-  let pollInFlight = false;
+  let pollInFlight = null;
+  let generation = 0;
 
   const state = {
     availability: "static",
@@ -20,6 +21,8 @@
     action: null,
     error: null,
     retryCount: 0,
+    runs: [],
+    activeRunId: null,
   };
 
   function snapshotState() {
@@ -27,6 +30,7 @@
       ...state,
       session: state.session ? { ...state.session } : null,
       snapshot: state.snapshot ? { ...state.snapshot } : null,
+      runs: state.runs.map(run => ({ ...run })),
     };
   }
 
@@ -35,9 +39,26 @@
     listeners.forEach(listener => listener(value));
   }
 
+  function sameValue(current, next) {
+    if (Object.is(current, next)) return true;
+    if (!current || !next || typeof current !== "object" || typeof next !== "object") {
+      return false;
+    }
+    // API snapshots are JSON values. Avoid replacing the whole view when a poll
+    // returns the same run again with a new object identity.
+    return JSON.stringify(current) === JSON.stringify(next);
+  }
+
   function update(next) {
-    Object.assign(state, next);
-    emit();
+    let visibleChange = false;
+    for (const [key, value] of Object.entries(next)) {
+      if (sameValue(state[key], value)) continue;
+      state[key] = value;
+      // These values affect retries and authentication, but never alter the
+      // visible workspace by themselves.
+      if (key !== "retryCount" && key !== "token") visibleChange = true;
+    }
+    if (visibleChange) emit();
   }
 
   function clearPoll() {
@@ -49,8 +70,28 @@
     return window.location.hostname === "127.0.0.1";
   }
 
-  function isTerminal(run) {
-    return run && (run.state === "completed" || run.state === "error");
+  function needsPolling(run) {
+    // A contract is intentionally stable while it awaits human approval. Keep
+    // polling only while preparation/execution can make observable progress.
+    return !run || run.state === "preparing" || run.state === "running";
+  }
+
+  function resetRequests() {
+    generation += 1;
+    pollInFlight = null;
+    clearPoll();
+    return generation;
+  }
+
+  function requestFailed(error) {
+    const expired = error?.status === 401 || error?.status === 403 || error?.status === 404;
+    update({
+      connection: expired ? "expired" : "degraded",
+      error: error instanceof Error ? error.message : "Local connection failed",
+      retryCount: state.retryCount + 1,
+      action: null,
+    });
+    if (expired) clearPoll();
   }
 
   async function api(path, body) {
@@ -76,7 +117,9 @@
           const payload = await response.json();
           message = payload.error || message;
         } catch { /* Keep the safe generic message. */ }
-        throw new Error(message);
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
       }
       return response;
     } finally {
@@ -86,41 +129,47 @@
 
   function schedulePoll() {
     clearPoll();
-    if (!state.runId || isTerminal(state.snapshot)) return;
+    if (state.connection === "expired") return;
+    const selectedIsRunning = state.runId && needsPolling(state.snapshot);
+    if (!selectedIsRunning && !state.activeRunId) return;
     const delay = state.connection === "degraded"
       ? Math.min(8000, 900 * (2 ** Math.min(state.retryCount, 3)))
-      : 750;
+      : selectedIsRunning ? 750 : 2000;
     pollTimer = window.setTimeout(refresh, delay);
   }
 
   async function refresh() {
-    if (pollInFlight || !state.runId) return;
-    pollInFlight = true;
+    if (pollInFlight !== null || !state.session || state.connection === "expired") return;
+    const version = generation;
+    const runId = state.runId;
+    pollInFlight = version;
     try {
-      const response = await api("/api/runs/" + state.runId);
-      const run = await response.json();
+      const [history, run] = await Promise.all([
+        api("/api/runs").then(response => response.json()),
+        runId ? api("/api/runs/" + runId).then(response => response.json()) : null,
+      ]);
+      if (version !== generation || runId !== state.runId) return;
       update({
         snapshot: run,
+        runs: history.runs,
+        activeRunId: history.active_run_id,
         connection: "connected",
         error: null,
         retryCount: 0,
-        action: isTerminal(run) ? null : state.action,
+        action: needsPolling(run) ? state.action : null,
       });
       schedulePoll();
     } catch (error) {
-      const retryCount = state.retryCount + 1;
-      update({
-        connection: "degraded",
-        error: error instanceof Error ? error.message : "Local connection failed",
-        retryCount,
-      });
+      if (version !== generation) return;
+      requestFailed(error);
       schedulePoll();
     } finally {
-      pollInFlight = false;
+      if (pollInFlight === version) pollInFlight = null;
     }
   }
 
   async function connect() {
+    const version = resetRequests();
     if (!localStudioPage()) {
       update({ availability: "static", connection: "idle" });
       return;
@@ -143,35 +192,37 @@
     }
     update({ availability: "local", connection: "connecting", token, error: null });
     try {
-      const response = await api("/api/session");
-      const session = await response.json();
-      let runId = session.latest_run_id || null;
+      const [session, history] = await Promise.all([
+        api("/api/session").then(response => response.json()),
+        api("/api/runs").then(response => response.json()),
+      ]);
+      if (version !== generation) return;
+      let runId = state.runId || session.latest_run_id || null;
       try {
         runId = window.sessionStorage.getItem(storageRunKey) || runId;
       } catch { /* Run recovery is optional. */ }
+      if (!history.runs.some(run => run.id === runId)) runId = session.latest_run_id || null;
       update({
         availability: "local",
         connection: "connected",
         session,
         runId,
-        snapshot: null,
+        runs: history.runs,
+        activeRunId: history.active_run_id,
+        snapshot: state.snapshot?.id === runId ? state.snapshot : null,
         action: null,
         error: null,
         retryCount: 0,
       });
-      if (runId) await refresh();
+      if (runId || history.active_run_id) await refresh();
     } catch (error) {
-      update({
-        availability: "local",
-        connection: "degraded",
-        error: error instanceof Error ? error.message : "Could not connect to local Studio",
-        retryCount: 1,
-      });
+      if (version === generation) requestFailed(error);
     }
   }
 
-  async function prepare({ issue, baseCommit }) {
-    if (!state.session || state.action) return;
+  async function prepare({ issue, baseCommit, workflow = "fix" }) {
+    if (!state.session || state.action || state.activeRunId || state.connection !== "connected") return;
+    const version = resetRequests();
     const mode = state.session.repository ? "local" : "demo";
     update({ action: "prepare", error: null });
     try {
@@ -179,38 +230,61 @@
         mode,
         issue: mode === "demo" ? state.session.demo_issue : issue,
         base_commit: baseCommit,
+        workflow,
       });
       const payload = await response.json();
+      if (version !== generation) return;
       try { window.sessionStorage.setItem(storageRunKey, payload.id); } catch { /* Optional. */ }
       update({ runId: payload.id, snapshot: null, action: null });
       await refresh();
     } catch (error) {
+      if (version !== generation) return;
       update({
         action: null,
         error: error instanceof Error ? error.message : "Could not prepare the task",
       });
+      // The server may have prepared a task even when its response was lost.
+      // Recover its identifier before allowing a second submission.
+      if (!error?.status || error.status >= 500) await connect();
+      else if ([401, 403, 404].includes(error.status)) requestFailed(error);
     }
   }
 
   async function approve() {
-    if (!state.runId || state.action) return;
+    if (!state.runId || state.action || state.connection !== "connected") return;
+    const runId = state.runId;
+    const version = generation;
     update({ action: "approve", error: null });
     try {
-      await api("/api/runs/" + state.runId + "/start", { confirmed: true });
+      await api("/api/runs/" + runId + "/start", { confirmed: true });
+      if (version !== generation) return;
       update({ action: null });
       await refresh();
     } catch (error) {
+      if (version !== generation) return;
       update({
         action: null,
         error: error instanceof Error ? error.message : "Could not start the task",
       });
+      if ([401, 403, 404].includes(error?.status)) requestFailed(error);
+      else await refresh();
     }
   }
 
   function newTask() {
-    clearPoll();
+    if (state.action) return;
+    resetRequests();
     try { window.sessionStorage.removeItem(storageRunKey); } catch { /* Optional. */ }
     update({ runId: null, snapshot: null, action: null, error: null, retryCount: 0 });
+    schedulePoll();
+  }
+
+  async function selectRun(runId) {
+    if (state.action || !state.runs.some(run => run.id === runId)) return;
+    resetRequests();
+    try { window.sessionStorage.setItem(storageRunKey, runId); } catch { /* Optional. */ }
+    update({ runId, snapshot: null, error: null, retryCount: 0 });
+    await refresh();
   }
 
   async function download(name) {
@@ -238,6 +312,7 @@
     prepare,
     approve,
     newTask,
+    selectRun,
     download,
   };
 

@@ -253,9 +253,21 @@ The underlying Harness reports:
 
 The bilingual browser workspace connects to `prguard studio`, a loopback-only HTTP server. The
 terminal fixes the repository, provider and execution boundary. The browser prepares an Issue and
-Git version, previews the exact frozen Task, then explicitly starts it. A single worker calls the
-existing `FixRunner`; short polling displays its ordered progress and actual verification results.
+Git version and an enabled workflow, previews the exact frozen Task, then explicitly starts it.
+A single worker calls the existing `FixRunner` or `IssueToPRRunner`; short polling displays its
+ordered progress and actual verification results. Review capability is enabled only at server
+startup. The approval envelope binds the workflow, stage budgets, Reviewer identity/settings and
+scripted proposal contents. Reviewer and repair provider instances are created independently.
 The adapter verifies the recursive Manifest before offering fixed-name, hash-checked downloads.
 The default offline path shares the real terminal-demo Task and scripted proposals. The browser
-Fix path currently does not execute Reviewer; the recorded Review demo remains a separate view.
-See [ADR 0031](adr/0031-local-studio-reuses-frozen-fix-tasks.md).
+Review path uses a scripted no-finding submission with real candidate verification. The recorded
+Review examples remain separate views. Final Patch is withheld on any non-accepted pipeline result.
+The browser distinguishes initial acceptance from an accepted repair; repair does not imply a
+second Reviewer pass. Progress observers carry only allowlisted fields and cannot change runner
+outcomes if the observer raises an exception.
+
+Authenticated session history lists in-memory task summaries only, without scanning old workspaces.
+Client request generations ignore late responses from previously selected tasks. Connection recovery
+reads state before allowing a duplicate start. History ends when the server stops; output artifacts
+remain. UI events are saved separately and are not claimed as part of the recursive run Manifest.
+See [ADR 0033](adr/0033-studio-freezes-reviewed-workflows.md).

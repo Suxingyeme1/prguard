@@ -328,12 +328,16 @@ and [ADR 0032](adr/0032-studio-separates-recorded-evidence-from-local-execution.
 
 ## Priority demos
 
-Version 0.15.0 connects Studio to real local execution. A one-command browser entry runs the
-deterministic failure-repair fixture, or accepts an Issue against one operator-configured local
-repository. Task preview and explicit confirmation precede the existing FixRunner. Ordered events,
-actual attempt/test output, and hash-checked artifact downloads make the complete workflow
-demonstrable. The hosted site continues to replay evidence; local browser execution currently
-performs Fix without Reviewer. See [ADR 0031](adr/0031-local-studio-reuses-frozen-fix-tasks.md).
+The twenty-ninth increment (0.17.0) extends the local browser path to independently reviewed Fix.
+Workflow selection precedes frozen approval, then the existing composed pipeline handles review
+and any single controlled repair. Source-linked findings, per-stage tests, file diffs, session
+history and hash-checked downloads form the inspection flow. Recovery ignores stale responses
+and avoids duplicate starts. Offline model replies stay explicitly scripted, and history is not
+durable across service restarts. See [ADR 0033](adr/0033-studio-freezes-reviewed-workflows.md).
+
+Start `prguard studio --enable-independent-review` for a key-free run of the real local Harness
+with scripted Implementer and Reviewer adapters. Use an operator-configured repository and provider
+for live model execution. Static examples remain read-only evidence from completed runs.
 
 1. **Demo A:** Issue -> repository localization -> minimal code/test edits -> verification -> one
    repair -> Review-ready Patch.

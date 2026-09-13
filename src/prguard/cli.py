@@ -257,6 +257,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     studio.add_argument("--model")
     studio.add_argument("--proposal-sequence", type=Path)
+    studio.add_argument(
+        "--enable-independent-review",
+        action="store_true",
+        help=(
+            "allow the browser to select the frozen Fix + independent Reviewer workflow; "
+            "the Reviewer still receives an isolated read-only context"
+        ),
+    )
+    studio.add_argument("--review-provider", choices=("deepseek", "scripted"), default="deepseek")
+    studio.add_argument("--review-model")
+    studio.add_argument("--review-reasoning-effort", choices=("high", "max"), default="high")
+    studio.add_argument(
+        "--review-max-tool-calls",
+        type=int,
+        choices=range(1, 101),
+        default=12,
+        help="Reviewer-only repository read budget (default: 12)",
+    )
+    studio.add_argument(
+        "--review-submission",
+        type=Path,
+        help="frozen scripted Reviewer submission for deterministic repository testing",
+    )
+    studio.add_argument("--review-repair-proposal-sequence", type=Path)
     demo = subparsers.add_parser(
         "demo",
         help="run a visual key-free walkthrough of failure, repair, and delivery",
@@ -509,6 +533,13 @@ def main(argv: list[str] | None = None) -> int:
                     trust_host=args.trust_host, container_image=args.container_image,
                     policy_file=args.policy_file, provider=args.provider, model=args.model,
                     proposal_sequence=args.proposal_sequence,
+                    enable_independent_review=args.enable_independent_review,
+                    review_provider=args.review_provider,
+                    review_model=args.review_model,
+                    review_reasoning_effort=args.review_reasoning_effort,
+                    review_max_tool_calls=args.review_max_tool_calls,
+                    review_submission=args.review_submission,
+                    review_repair_proposal_sequence=args.review_repair_proposal_sequence,
                 ),
                 port=args.port, open_browser=not args.no_browser,
             )

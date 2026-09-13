@@ -109,6 +109,73 @@ def test_browser_demo_runs_actual_failed_attempt_repair_and_verified_download(st
 
 
 @pytest.mark.integration
+def test_browser_demo_can_run_frozen_independent_review_before_delivery(tmp_path: Path) -> None:
+    client = StudioClient(StudioService(StudioConfig(
+        workspace=tmp_path / "studio",
+        enable_independent_review=True,
+    )))
+    try:
+        session = client.json("GET", "/api/session")
+        assert session["review_available"] is True
+        assert session["review_policy"] == {
+            "routing": "always", "max_tool_calls": 12, "provider": "scripted",
+        }
+        run_id = client.json("POST", "/api/prepare", {
+            "mode": "demo", "workflow": "reviewed_fix",
+        })["id"]
+        ready = client.wait(run_id, "ready")
+        assert ready["preview"]["workflow"] == "reviewed_fix"
+        assert ready["preview"]["review"] == {
+            "enabled": True,
+            "provider": "scripted",
+            "routing": "always",
+            "max_tool_calls": 12,
+            "review_timeout_seconds": 22.5,
+        }
+        approved = json.loads(
+            (client.service.runs[run_id].root / "approved-task.json").read_text()
+        )
+        assert approved["workflow"] == "reviewed_fix"
+        assert approved["review"]["provider"] == "scripted"
+        assert "DEEPSEEK_API_KEY" not in approved
+        client.json("POST", f"/api/runs/{run_id}/start", {"confirmed": True})
+        completed = client.wait(run_id, "completed")
+        result = completed["result"]
+        assert result["workflow"] == "reviewed_fix"
+        assert result["outcome"] == "accepted"
+        assert result["review_status"] == "accepted"
+        assert result["review"]["verdict"] == "accept"
+        assert result["review"]["findings"] == []
+        assert result["review"]["routing"]["effective_route"] == "review"
+        assert result["review"]["repair"]["outcome"] == "accepted_without_repair"
+        assert result["manifest_verified"] is True
+        assert "+    return max(lower, min(value, upper))" in result["patch"]
+        manifest = verify_manifest(
+            Path(result["artifact_directory"]) / "issue-to-pr-manifest.json"
+        )
+        assert manifest.run_id
+        assert {artifact["name"] for artifact in result["artifacts"]} == {
+            "issue-to-pr-report.json",
+            "issue-to-pr-report.md",
+            "issue-to-pr-manifest.json",
+            "review-routing.json",
+            "final.patch",
+        }
+        events = completed["events"]
+        names = [event["event"] for event in events]
+        assert "pipeline.started" in names
+        assert "routing.completed" in names
+        assert "review.started" in names
+        assert "review.completed" in names
+        assert names[-1] == "studio.delivery.completed"
+        public_trace = json.dumps(events, ensure_ascii=False)
+        assert "clamp() must enforce" not in public_trace
+        assert str(client.service.runs[run_id].root) not in public_trace
+    finally:
+        client.close()
+
+
+@pytest.mark.integration
 def test_configured_repo_uses_approved_commit_even_after_source_head_moves(
     make_repo, tmp_path: Path,
 ) -> None:
@@ -185,6 +252,29 @@ def test_request_cannot_expand_configured_authority(studio, payload) -> None:
 
 
 @pytest.mark.security
+def test_browser_cannot_enable_independent_review_after_session_start(studio) -> None:
+    status, body, _ = studio.request(
+        "POST", "/api/prepare", {"mode": "demo", "workflow": "reviewed_fix"}
+    )
+    assert status == 400
+    assert b"Independent review was not enabled" in body
+    assert not studio.service.runs
+
+
+@pytest.mark.security
+def test_start_request_cannot_replace_the_frozen_workflow(studio) -> None:
+    run_id = studio.json("POST", "/api/prepare", {"mode": "demo"})["id"]
+    studio.wait(run_id, "ready")
+    assert studio.request(
+        "POST", f"/api/runs/{run_id}/start", {
+            "confirmed": True,
+            "workflow": "reviewed_fix",
+        },
+    )[0] == 400
+    assert studio.service.runs[run_id].state == "ready"
+
+
+@pytest.mark.security
 @pytest.mark.parametrize("confirmed", [False, 1, "true", None])
 def test_approval_is_explicit(studio, confirmed) -> None:
     assert studio.request(
@@ -205,6 +295,7 @@ def test_static_server_has_exact_asset_allowlist_and_security_headers(studio) ->
     for path in ("/.env", "/../pyproject.toml", "/%2e%2e/.env", "/data/", "/.openai/hosting.json"):
         assert studio.request("GET", path)[0] == 404
     assert studio.request("GET", "/live.js")[0] == 200
+    assert studio.request("GET", "/diff.js")[0] == 200
 
 
 @pytest.mark.integration

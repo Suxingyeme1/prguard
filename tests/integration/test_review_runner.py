@@ -176,6 +176,63 @@ def test_clean_patch_and_empty_review_accept(make_repo, tmp_path: Path) -> None:
 
 
 @pytest.mark.integration
+def test_review_progress_is_safe_and_observer_failures_do_not_change_outcome(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = make_repo(
+        {
+            "calc.py": "def add(a: int, b: int) -> int:\n    return a - b\n",
+            "tests/test_calc.py": (
+                "from calc import add\n\ndef test_add():\n    assert add(2, 3) == 5\n"
+            ),
+        }
+    )
+    patch = write_patch(
+        tmp_path / "candidate.patch",
+        "diff --git a/calc.py b/calc.py\n--- a/calc.py\n+++ b/calc.py\n"
+        "@@ -1,2 +1,2 @@\n def add(a: int, b: int) -> int:\n"
+        "-    return a - b\n+    return a + b\n",
+    )
+    task = review_task(repo, commit, patch, "review-progress")
+    submission = ReviewerSubmission(summary="No evidence-backed defects.", findings=[])
+    events: list[tuple[str, dict[str, object]]] = []
+
+    report = ReviewRunner(
+        tmp_path / "review-artifacts",
+        ScriptedReviewerProvider(submission),
+        progress=lambda event, data: events.append((event, data)),
+    ).run(task)
+
+    assert report.verdict is Verdict.ACCEPT
+    names = [event for event, _data in events]
+    assert {
+        "review.started",
+        "review.verification.started",
+        "review.verification.completed",
+        "review.analysis.started",
+        "review.analysis.completed",
+        "review.provider.started",
+        "review.provider.completed",
+        "review.completed",
+    }.issubset(names)
+    assert names[-1] == "review.completed"
+    serialized = json.dumps(events, ensure_ascii=False)
+    for prohibited in ("Preserve normalization", "calc.py", "return a + b"):
+        assert prohibited not in serialized
+
+    def broken_observer(_event: str, _data: dict[str, object]) -> None:
+        raise RuntimeError("presentation failure")
+
+    observed_with_failure = ReviewRunner(
+        tmp_path / "broken-observer-artifacts",
+        ScriptedReviewerProvider(submission),
+        progress=broken_observer,
+    ).run(task)
+
+    assert observed_with_failure.verdict is Verdict.ACCEPT
+
+
+@pytest.mark.integration
 def test_review_provider_failure_artifact_preserves_partial_evidence(
     make_repo, tmp_path: Path
 ) -> None:

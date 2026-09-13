@@ -6,6 +6,7 @@ import json
 import shutil
 import time
 from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from uuid import uuid4
 
@@ -36,6 +37,7 @@ from prguard.schemas import (
 )
 
 ImplementerSource = ImplementerProvider | Callable[[], ImplementerProvider]
+ReviewRepairProgressCallback = Callable[[str, dict[str, object]], None]
 
 
 def _add_usage(total: TokenUsage, extra: TokenUsage) -> None:
@@ -134,10 +136,24 @@ class ReviewRepairRunner:
         artifact_root: Path,
         reviewer: ReviewerProvider,
         implementer: ImplementerSource,
+        *,
+        progress: ReviewRepairProgressCallback | None = None,
     ) -> None:
         self.artifact_root = artifact_root.expanduser().resolve()
         self.reviewer = reviewer
         self.implementer = implementer
+        self.progress = progress
+
+    def _emit(self, event: str, **data: object) -> None:
+        """Notify an optional observer without letting presentation break the run."""
+
+        if self.progress is None:
+            return
+        with suppress(Exception):
+            self.progress(event, data)
+
+    def _forward_review_progress(self, event: str, data: dict[str, object]) -> None:
+        self._emit(event, **data)
 
     def run(self, task: ReviewRepairTask) -> ReviewRepairReport:
         run_id = str(uuid4())
@@ -159,6 +175,8 @@ class ReviewRepairRunner:
         verdict = Verdict.FAILED
         error = None
         registered = False
+        repair_started = False
+        self._emit("review_repair.started", run_id=run_id)
         try:
             candidate_path = task.candidate_patch.expanduser().resolve()
             candidate_bytes = candidate_path.read_bytes()
@@ -167,11 +185,23 @@ class ReviewRepairRunner:
                 task.review_timeout_seconds,
                 max(0.1, deadline - time.monotonic()),
             )
-            initial_review = ReviewRunner(run_directory / "initial-review", self.reviewer).run(
-                _as_review_task(task, review_budget)
-            )
+            initial_review = ReviewRunner(
+                run_directory / "initial-review",
+                self.reviewer,
+                progress=self._forward_review_progress,
+            ).run(_as_review_task(task, review_budget))
             resolved_commit = initial_review.resolved_base_commit
             _add_usage(token_usage, initial_review.token_usage)
+            self._emit(
+                "review.decision",
+                outcome=initial_review.outcome.value,
+                verdict=initial_review.verdict.value,
+                findings=(
+                    len(initial_review.review.submission.findings)
+                    if initial_review.review
+                    else 0
+                ),
+            )
             if initial_review.outcome is ReviewOutcome.POLICY_BLOCKED:
                 outcome = ReviewRepairOutcome.POLICY_BLOCKED
             elif initial_review.outcome in {
@@ -187,6 +217,8 @@ class ReviewRepairRunner:
                 outcome = ReviewRepairOutcome.ACCEPTED_WITHOUT_REPAIR
                 verdict = Verdict.ACCEPT
             elif initial_review.verdict is Verdict.REQUEST_CHANGES:
+                repair_started = True
+                self._emit("repair.started")
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise ImplementerError("task deadline expired before controlled repair")
@@ -202,6 +234,7 @@ class ReviewRepairRunner:
                     )
                 fix_task = _as_fix_task(task, resolved_commit)
                 implementer = self.implementer() if callable(self.implementer) else self.implementer
+                self._emit("repair.provider.started")
                 repair_proposal = implementer.propose(
                     ProviderRequest(
                         task=fix_task,
@@ -223,6 +256,13 @@ class ReviewRepairRunner:
                         raise PatchPolicyError("structured repair generated an empty Patch")
                 else:
                     generated_patch = repair_proposal.proposal.patch
+                self._emit(
+                    "repair.provider.completed",
+                    provider=repair_proposal.provider,
+                    model=repair_proposal.model,
+                    tool_calls=len(repair_proposal.tool_calls),
+                    patch_bytes=len(generated_patch.encode()),
+                )
                 repair_path = run_directory / "repair.patch"
                 repair_path.write_text(generated_patch, encoding="utf-8")
                 (run_directory / "repair-proposal.json").write_bytes(
@@ -258,8 +298,15 @@ class ReviewRepairRunner:
                     container=task.container,
                     runtime_files=task.runtime_files,
                 )
+                self._emit("repair.verification.started", command_count=len(task.commands))
                 final_verification = VerificationHarness(run_directory / "final-verification").run(
                     verification_task
+                )
+                self._emit(
+                    "repair.verification.completed",
+                    outcome=final_verification.outcome.value,
+                    command_count=len(final_verification.commands),
+                    changed_files=len(final_verification.changed_files),
                 )
                 if final_verification.outcome is RunOutcome.PASSED:
                     final_patch = run_directory / "final.patch"
@@ -311,4 +358,17 @@ class ReviewRepairRunner:
             artifact_directory=run_directory,
         )
         finalize_review_repair_artifacts(run_directory, task, report, candidate_bytes)
+        if repair_started:
+            self._emit(
+                "repair.completed",
+                outcome=report.outcome.value,
+                verdict=report.verdict.value,
+                duration_seconds=round(report.duration_seconds, 3),
+            )
+        self._emit(
+            "review_repair.completed",
+            outcome=report.outcome.value,
+            verdict=report.verdict.value,
+            duration_seconds=round(report.duration_seconds, 3),
+        )
         return report

@@ -58,13 +58,15 @@ not another Agent.
 Open PRGuard Studio with a live local Harness:
 
 ```bash
-uv run --no-editable --extra demo prguard studio
+uv run --no-editable --extra demo prguard studio --enable-independent-review
 ```
 
 The browser opens in Chinese with an English selector and a new offline task ready to prepare.
 Inspect its frozen Commit and test commands, then confirm execution. Git and pytest
 actually run: the first scripted proposal fails one test, the repair passes, and the browser shows
-both attempts, the delivered Patch, and downloadable hash-checked artifacts. No model key is needed.
+both attempts, the delivered Patch, and downloadable hash-checked artifacts. Select **Fix, verify
+and review** to include an independent Reviewer with scripted findings in this offline demo.
+No model key is needed; the page labels model responses as scripted throughout the run.
 
 For a real local repository, configure the model key in your terminal and select the repository
 and execution boundary when starting the adapter:
@@ -72,12 +74,15 @@ and execution boundary when starting the adapter:
 ```bash
 uv run --no-editable --extra agent --extra demo prguard studio \
   --repository /path/to/project --workspace /path/to/prguard-runs \
-  --trust-host --provider deepseek
+  --trust-host --provider deepseek --enable-independent-review
 ```
 
 Enter the Issue and optional Git version in the page. Preparation freezes the exact Task before
-the browser asks for confirmation. The local entry currently runs Fix with one permitted failure
-repair; independent review remains available through `fix --review` in the CLI.
+the browser asks for confirmation. Choose Fix alone or Fix with independent review. The latter
+uses the existing composed pipeline and may attempt one additional repair after a review finding.
+The page separates initial verification, Reviewer findings and repair verification. A repair that
+passes tests is not described as a second independent review. Session history lets you revisit
+tasks while this local service is running.
 
 The **Example runs** view retains the two checked attrs and Click walkthroughs. To serve only
 those static views, without a local execution adapter:
@@ -452,8 +457,8 @@ source code.
 | `src/prguard/harness` | Git/worktree, command policy, execution, artifacts |
 | `src/prguard/schemas` | versioned public contracts |
 | `src/prguard/evaluation` | post-run evaluator-only joins and scorecards |
-| `demo-ui` | bilingual Studio: recorded evidence examples and authenticated local Fix workspace |
-| `src/prguard/studio.py` | loopback adapter, frozen task approval, progress and artifact APIs |
+| `demo-ui` | bilingual Studio: local Fix/Review, file diffs, session history and recorded examples |
+| `src/prguard/studio.py` | loopback adapter, frozen workflow approval, progress and artifact APIs |
 | `benchmark` | checked deterministic fixture templates |
 | `tests` | unit, integration, contract, and security tests |
 | `docs` | architecture, ADRs, runbooks, evaluation protocol |
@@ -463,16 +468,20 @@ Start with the [architecture](docs/architecture.md), [milestones](docs/milestone
 
 ## Current boundary and roadmap
 
-Version 0.16.0 makes Studio a clearer local developer workspace rather than an Agent dashboard.
-The static site leads with the local task workflow and labels attrs #1575 and Click #3199 as frozen
-recorded examples; it never presents them as new model executions. An authenticated local session
-then follows one truthful path: describe an Issue, inspect the frozen run contract, explicitly
-approve execution, observe the real FixRunner, and retrieve its Patch and hash-checked evidence.
-The interface is bilingual through explicit UI message catalogs, so changing language never mutates
-commands, hashes, source paths, user input, or recorded evidence. Browser Studio still executes
-Fix without Independent Reviewer, and says so in the delivered result. See the
-[local Studio guide](demo-ui/README.md), [v0.16.0 report](docs/v0.16.0-phase-report.md), and
-[ADR 0032](docs/adr/0032-studio-separates-recorded-evidence-from-local-execution.md).
+Version 0.17.0 adds independent review to the local Studio workflow. Terminal configuration enables
+the capability; the chosen workflow, Reviewer configuration and stage budgets are frozen before
+approval. Findings, source locations and any controlled repair appear alongside actual test output.
+Only an accepted final outcome exposes a downloadable final Patch. File-by-file diffs show old/new
+line numbers, and session history supports switching tasks and recovering interrupted connections
+without silently submitting another execution. History is limited to the current server process;
+the on-disk artifacts remain after it stops. There is no browser cancellation or remote worker
+service. See the [Studio guide](demo-ui/README.md),
+[v0.17.0 report](docs/v0.17.0-phase-report.md) and
+[ADR 0033](docs/adr/0033-studio-freezes-reviewed-workflows.md).
+
+Version 0.16.0 introduced the current light, bilingual workspace with explicit separation between
+recorded evidence and local execution. Language changes leave commands, hashes, source paths,
+user input and model evidence untouched. See the [v0.16.0 report](docs/v0.16.0-phase-report.md).
 
 Version 0.15.0 connected Studio to the real local FixRunner, with task preview, explicit execution,
 live progress, both attempt results, and verified artifact downloads. Its offline mode uses scripted

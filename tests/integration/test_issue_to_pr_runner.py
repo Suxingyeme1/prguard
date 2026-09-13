@@ -179,6 +179,77 @@ def test_fix_review_and_controlled_repair_deliver_one_patch(make_repo, tmp_path:
 
 
 @pytest.mark.integration
+def test_pipeline_progress_covers_fix_review_repair_and_delivery_without_source_data(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = _repo(make_repo)
+    events: list[tuple[str, dict[str, object]]] = []
+
+    report = IssueToPRRunner(
+        tmp_path / "artifacts",
+        ScriptedProvider([_proposal(_candidate_regression(), "Implement None behavior")]),
+        _blocking_reviewer(),
+        ScriptedProvider([_proposal(_correct_patch(), "Restore normalization")]),
+        progress=lambda event, data: events.append((event, data)),
+    ).run(_task(repo, commit, "issue-to-pr-progress"))
+
+    assert report.outcome is IssueToPROutcome.ACCEPTED
+    names = [event for event, _data in events]
+    required = {
+        "pipeline.started",
+        "fix.started",
+        "fix.run.started",
+        "fix.completed",
+        "routing.started",
+        "routing.completed",
+        "review.started",
+        "review.completed",
+        "repair.started",
+        "repair.completed",
+        "delivery.started",
+        "delivery.completed",
+        "pipeline.completed",
+    }
+    assert required.issubset(names)
+    assert names.index("fix.completed") < names.index("routing.started")
+    assert names.index("routing.completed") < names.index("review.started")
+    assert names.index("review.completed") < names.index("repair.started")
+    assert names.index("repair.completed") < names.index("delivery.started")
+    assert names[-1] == "pipeline.completed"
+    serialized = json.dumps(events, ensure_ascii=False)
+    for prohibited in (
+        "Accept None as empty without regressing normalization.",
+        "service.py",
+        "tests/test_new_behavior.py",
+        "return value.strip()",
+    ):
+        assert prohibited not in serialized
+
+
+@pytest.mark.integration
+def test_pipeline_progress_observer_failure_cannot_change_outcome(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit = _repo(make_repo)
+
+    def broken_observer(_event: str, _data: dict[str, object]) -> None:
+        raise RuntimeError("presentation failure")
+
+    report = IssueToPRRunner(
+        tmp_path / "observer-artifacts",
+        ScriptedProvider([_proposal(_correct_patch(), "Implement complete behavior")]),
+        ScriptedReviewerProvider(
+            ReviewerSubmission(summary="No evidence-backed defects.", findings=[])
+        ),
+        ScriptedProvider([_proposal(_correct_patch(), "Must remain unused")]),
+        progress=broken_observer,
+    ).run(_task(repo, commit, "issue-to-pr-observer-failure"))
+
+    assert report.outcome is IssueToPROutcome.ACCEPTED
+    assert report.final_patch is not None
+
+
+@pytest.mark.integration
 def test_clean_fix_is_delivered_without_review_repair(make_repo, tmp_path: Path) -> None:
     repo, commit = _repo(make_repo)
     reviewer = ScriptedReviewerProvider(

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import shutil
 import time
+from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from uuid import uuid4
 
@@ -30,12 +32,28 @@ from prguard.schemas import (
 )
 
 _BLOCKING_SEVERITIES = {Severity.P0, Severity.P1, Severity.P2}
+ReviewProgressCallback = Callable[[str, dict[str, object]], None]
 
 
 class ReviewRunner:
-    def __init__(self, artifact_root: Path, provider: ReviewerProvider) -> None:
+    def __init__(
+        self,
+        artifact_root: Path,
+        provider: ReviewerProvider,
+        *,
+        progress: ReviewProgressCallback | None = None,
+    ) -> None:
         self.artifact_root = artifact_root.expanduser().resolve()
         self.provider = provider
+        self.progress = progress
+
+    def _emit(self, event: str, **data: object) -> None:
+        """Notify an optional observer without letting presentation break the review."""
+
+        if self.progress is None:
+            return
+        with suppress(Exception):
+            self.progress(event, data)
 
     def run(self, task: ReviewTask) -> ReviewReport:
         run_id = str(uuid4())
@@ -58,10 +76,12 @@ class ReviewRunner:
         repository = GitRepository(task.repository)
         registered = False
         base_registered = False
+        self._emit("review.started", run_id=run_id)
         try:
             patch_bytes = task.candidate_patch.expanduser().resolve().read_bytes()
             base_commands = readiness_commands(task.commands)
             if base_commands:
+                self._emit("review.readiness.started", command_count=len(base_commands))
                 readiness_task = Task(
                     case_id=f"{task.case_id}-readiness",
                     mode=TaskMode.REVIEW,
@@ -78,6 +98,7 @@ class ReviewRunner:
                     runtime_files=task.runtime_files,
                 )
                 readiness = VerificationHarness(run_directory / "readiness").run(readiness_task)
+                self._emit("review.readiness.completed", outcome=readiness.outcome.value)
                 resolved_commit = readiness.resolved_base_commit
                 if readiness.outcome is not RunOutcome.PASSED:
                     boundary = readiness_failure_boundary(readiness)
@@ -86,6 +107,7 @@ class ReviewRunner:
                         f"({readiness.outcome.value})"
                     )
             if readiness is None or readiness.outcome is RunOutcome.PASSED:
+                self._emit("review.verification.started", command_count=len(task.commands))
                 verification_task = Task(
                     case_id=f"{task.case_id}-verification",
                     mode=TaskMode.REVIEW,
@@ -105,6 +127,12 @@ class ReviewRunner:
                 )
                 verification = VerificationHarness(run_directory / "verification").run(
                     verification_task
+                )
+                self._emit(
+                    "review.verification.completed",
+                    outcome=verification.outcome.value,
+                    command_count=len(verification.commands),
+                    changed_files=len(verification.changed_files),
                 )
                 resolved_commit = verification.resolved_base_commit
             if verification is None:
@@ -129,12 +157,18 @@ class ReviewRunner:
                 )
                 if not applied:
                     raise ImplementerError(f"unable to prepare review worktree: {patch_error}")
+                self._emit("review.analysis.started", changed_files=len(verification.changed_files))
                 compatibility_signals = analyze_python_compatibility(
                     base_review_worktree,
                     review_worktree,
                     verification.changed_files,
                     max_file_bytes=task.max_file_bytes,
                 )
+                self._emit(
+                    "review.analysis.completed",
+                    compatibility_signals=len(compatibility_signals),
+                )
+                self._emit("review.provider.started")
                 envelope = self.provider.review(
                     ReviewProviderRequest(
                         task=task,
@@ -144,6 +178,13 @@ class ReviewRunner:
                         deadline_monotonic=deadline,
                     ),
                     RepositoryTools(review_worktree, task),
+                )
+                self._emit(
+                    "review.provider.completed",
+                    provider=envelope.provider,
+                    model=envelope.model,
+                    tool_calls=len(envelope.tool_calls),
+                    findings=len(envelope.submission.findings),
                 )
                 if time.monotonic() >= deadline:
                     raise ImplementerError("task deadline expired during Reviewer call")
@@ -208,4 +249,11 @@ class ReviewRunner:
             artifact_directory=run_directory,
         )
         finalize_review_artifacts(run_directory, task, report, patch_bytes)
+        self._emit(
+            "review.completed",
+            outcome=report.outcome.value,
+            verdict=report.verdict.value,
+            findings=(len(report.review.submission.findings) if report.review else 0),
+            duration_seconds=round(report.duration_seconds, 3),
+        )
         return report

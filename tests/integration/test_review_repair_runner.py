@@ -172,6 +172,59 @@ def test_blocking_review_is_repaired_and_reverified(make_repo, tmp_path: Path) -
 
 
 @pytest.mark.integration
+def test_review_repair_progress_is_safe_and_observer_failures_do_not_change_outcome(
+    make_repo, tmp_path: Path
+) -> None:
+    repo, commit, candidate, reviewer = _regression_case(make_repo, tmp_path)
+    task = _task(repo, commit, candidate, "review-repair-progress")
+    events: list[tuple[str, dict[str, object]]] = []
+
+    report = ReviewRepairRunner(
+        tmp_path / "artifacts",
+        reviewer,
+        ScriptedProvider([_proposal(_correct_replacement())]),
+        progress=lambda event, data: events.append((event, data)),
+    ).run(task)
+
+    assert report.outcome is ReviewRepairOutcome.ACCEPTED_AFTER_REPAIR
+    names = [event for event, _data in events]
+    assert {
+        "review_repair.started",
+        "review.started",
+        "review.completed",
+        "review.decision",
+        "repair.started",
+        "repair.provider.started",
+        "repair.provider.completed",
+        "repair.verification.started",
+        "repair.verification.completed",
+        "repair.completed",
+        "review_repair.completed",
+    }.issubset(names)
+    assert names[-1] == "review_repair.completed"
+    serialized = json.dumps(events, ensure_ascii=False)
+    for prohibited in (
+        "Accept None without changing normalization of non-None values.",
+        "service.py",
+        "tests/test_service.py",
+        "return value.strip()",
+    ):
+        assert prohibited not in serialized
+
+    def broken_observer(_event: str, _data: dict[str, object]) -> None:
+        raise RuntimeError("presentation failure")
+
+    observed_with_failure = ReviewRepairRunner(
+        tmp_path / "broken-observer-artifacts",
+        reviewer,
+        ScriptedProvider([_proposal(_correct_replacement())]),
+        progress=broken_observer,
+    ).run(task)
+
+    assert observed_with_failure.outcome is ReviewRepairOutcome.ACCEPTED_AFTER_REPAIR
+
+
+@pytest.mark.integration
 def test_failed_replacement_remains_request_changes(make_repo, tmp_path: Path) -> None:
     repo, commit, candidate, reviewer = _regression_case(make_repo, tmp_path)
     broken_replacement = candidate.read_text(encoding="utf-8")

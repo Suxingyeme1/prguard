@@ -1,4 +1,4 @@
-"""Loopback-only browser adapter for the existing preparation and Fix pipeline."""
+"""Loopback browser adapter for frozen Fix and independently reviewed Fix tasks."""
 
 from __future__ import annotations
 
@@ -15,12 +15,13 @@ import time
 import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import Field, ValidationError, field_validator
+from pydantic import Field, ValidationError, field_validator, model_validator
 
 from prguard.demo import _demo_proposals, prepare_demo_task
 from prguard.fix import FixRunner
@@ -32,12 +33,25 @@ from prguard.implementer.providers import (
     ScriptedProvider,
 )
 from prguard.onboarding import prepare_local_issue
-from prguard.schemas import FixReport, FixTask
+from prguard.pipeline import IssueToPRRunner
+from prguard.reviewer import DeepSeekReviewerProvider, ScriptedReviewerProvider
+from prguard.schemas import (
+    FixReport,
+    FixTask,
+    HarnessReport,
+    ImplementerProposal,
+    IssueToPRReport,
+    IssueToPRTask,
+    ReviewerSubmission,
+    ReviewRepairOutcome,
+    ReviewRoutingMode,
+    Verdict,
+)
 from prguard.schemas.common import StrictModel
 
 MAX_BODY = 60_000
 MAX_ARTIFACT = 10_000_000
-ASSETS = ("index.html", "styles.css", "app.js", "i18n.js", "live.js", "data/cases.js")
+ASSETS = ("index.html", "styles.css", "app.js", "i18n.js", "live.js", "diff.js", "data/cases.js")
 
 
 class StudioError(ValueError):
@@ -50,6 +64,7 @@ class PrepareRequest(StrictModel):
     mode: Literal["demo", "local"] = "demo"
     issue: str = Field(default="", max_length=50_000)
     base_commit: str = Field(default="HEAD", min_length=1, max_length=128)
+    workflow: Literal["fix", "reviewed_fix"] = "fix"
 
     @field_validator("issue", "base_commit")
     @classmethod
@@ -77,6 +92,42 @@ class ApprovalRequest(StrictModel):
         return value
 
 
+class FrozenReviewSpec(StrictModel):
+    """Non-secret Reviewer configuration bound into an approved Studio contract."""
+
+    provider: Literal["deepseek", "scripted"]
+    model: str = Field(min_length=1, max_length=200)
+    reasoning_effort: Literal["high", "max"] | None = None
+    max_tool_calls: int = Field(default=12, ge=1, le=100)
+    routing: Literal["always"] = "always"
+    scripted_submission: ReviewerSubmission | None = None
+
+    @model_validator(mode="after")
+    def source_is_complete(self) -> FrozenReviewSpec:
+        if self.provider == "scripted" and self.scripted_submission is None:
+            raise ValueError("scripted Reviewer requires a frozen submission")
+        if self.provider == "deepseek" and self.reasoning_effort is None:
+            raise ValueError("DeepSeek Reviewer requires a reasoning effort")
+        return self
+
+
+class FrozenTaskEnvelope(StrictModel):
+    """Hash-bound execution description; the browser never supplies this object."""
+
+    version: Literal["studio-approved-task-v2"] = "studio-approved-task-v2"
+    workflow: Literal["fix", "reviewed_fix"]
+    task: dict[str, object]
+    review: FrozenReviewSpec | None = None
+    scripted_proposals: list[ImplementerProposal] | None = Field(default=None, max_length=2)
+    scripted_repair_proposals: list[ImplementerProposal] | None = Field(default=None, max_length=2)
+
+    @model_validator(mode="after")
+    def workflow_has_matching_review_spec(self) -> FrozenTaskEnvelope:
+        if (self.workflow == "reviewed_fix") != (self.review is not None):
+            raise ValueError("approved workflow and Reviewer specification disagree")
+        return self
+
+
 @dataclass(frozen=True)
 class StudioConfig:
     workspace: Path
@@ -87,6 +138,13 @@ class StudioConfig:
     provider: Literal["deepseek", "openai", "scripted"] = "deepseek"
     model: str | None = None
     proposal_sequence: Path | None = None
+    enable_independent_review: bool = False
+    review_provider: Literal["deepseek", "scripted"] = "deepseek"
+    review_model: str | None = None
+    review_reasoning_effort: Literal["high", "max"] = "high"
+    review_max_tool_calls: int = 12
+    review_submission: Path | None = None
+    review_repair_proposal_sequence: Path | None = None
 
     def validate(self) -> None:
         if self.repository is not None:
@@ -97,6 +155,30 @@ class StudioConfig:
                 raise StudioError("Studio workspace must be outside the source repository")
             if self.provider == "scripted" and self.proposal_sequence is None:
                 raise StudioError("scripted repository mode requires --proposal-sequence")
+        if not 1 <= self.review_max_tool_calls <= 100:
+            raise StudioError("Reviewer read budget must be between 1 and 100")
+        if self.review_provider not in {"scripted", "deepseek"}:
+            raise StudioError("unsupported Reviewer provider")
+        if self.review_reasoning_effort not in {"high", "max"}:
+            raise StudioError("Reviewer reasoning effort must be high or max")
+        if (
+            self.enable_independent_review
+            and self.repository is not None
+            and self.review_provider == "scripted"
+            and self.review_submission is None
+        ):
+            raise StudioError(
+                "scripted repository review requires --review-submission"
+            )
+        if (
+            self.enable_independent_review
+            and self.repository is not None
+            and self.provider == "scripted"
+            and self.review_repair_proposal_sequence is None
+        ):
+            raise StudioError(
+                "scripted review repair requires --review-repair-proposal-sequence"
+            )
 
 
 @dataclass
@@ -106,6 +188,9 @@ class _Run:
     root: Path
     state: str = "preparing"
     created: float = field(default_factory=time.monotonic)
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    issue_summary: str = ""
+    workflow: str = "fix"
     events: list[dict] = field(default_factory=list)
     preview: dict | None = None
     task: bytes | None = None
@@ -155,6 +240,19 @@ class StudioService:
                 "boundary": "container" if self.config.container_image else "host",
                 "runtime": f"{platform.python_implementation()} {platform.python_version()}",
                 "demo_issue": "clamp() must enforce both lower and upper bounds.",
+                "review_available": self.config.enable_independent_review,
+                "review_policy": (
+                    {
+                        "routing": "always",
+                        "max_tool_calls": self.config.review_max_tool_calls,
+                        "provider": (
+                            "scripted" if self.config.repository is None
+                            else self.config.review_provider
+                        ),
+                    }
+                    if self.config.enable_independent_review
+                    else None
+                ),
                 "latest_run_id": self.current_run_id,
             }
 
@@ -171,8 +269,15 @@ class StudioService:
                 raise StudioError("Session limit reached; restart Studio for more tasks", 429)
             if request.mode == "local" and (not self.config.repository or not request.issue):
                 raise StudioError("Local mode requires a configured repository and an Issue")
+            if request.workflow == "reviewed_fix" and not self.config.enable_independent_review:
+                raise StudioError(
+                    "Independent review was not enabled when this Studio session started"
+                )
             run_id = uuid4().hex
-            run = _Run(run_id, request.mode, self.root / run_id)
+            run = _Run(
+                run_id, request.mode, self.root / run_id,
+                issue_summary=request.issue[:160], workflow=request.workflow,
+            )
             self.runs[run_id] = run
             self.current_run_id = run_id
             self.worker.submit(self._prepare, run, request)
@@ -185,6 +290,64 @@ class StudioService:
                     "sequence": len(run.events), "event": name,
                     "elapsed": round(time.monotonic() - run.created, 2), "data": data,
                 })
+
+    @staticmethod
+    def _review_task(task: FixTask, max_tool_calls: int) -> IssueToPRTask:
+        """Allocate fixed stage budgets without silently expanding the approved deadline."""
+
+        if task.task_timeout_seconds < 15:
+            raise StudioError(
+                "Independent review requires a Task timeout of at least 15 seconds"
+            )
+        payload = task.model_dump(mode="json")
+        payload.update({
+            "fix_timeout_seconds": min(600.0, task.task_timeout_seconds * 0.55),
+            "review_timeout_seconds": min(300.0, task.task_timeout_seconds * 0.25),
+            "review_max_tool_calls": max_tool_calls,
+            "review_routing_mode": ReviewRoutingMode.ALWAYS.value,
+        })
+        return IssueToPRTask.model_validate(payload)
+
+    def _review_spec(self, mode: str) -> FrozenReviewSpec:
+        """Freeze provider identity and scripted evidence before explicit approval."""
+
+        if mode == "demo":
+            return FrozenReviewSpec(
+                provider="scripted",
+                model="deterministic-fixture",
+                max_tool_calls=self.config.review_max_tool_calls,
+                scripted_submission=ReviewerSubmission(
+                    summary="No evidence-backed defects in the verified clamp patch.",
+                    findings=[],
+                ),
+            )
+        if self.config.review_provider == "scripted":
+            if self.config.review_submission is None:
+                raise StudioError("scripted Reviewer has no frozen submission")
+            provider = ScriptedReviewerProvider.from_file(self.config.review_submission)
+            return FrozenReviewSpec(
+                provider="scripted",
+                model=provider.model,
+                max_tool_calls=self.config.review_max_tool_calls,
+                scripted_submission=provider.submission,
+            )
+        return FrozenReviewSpec(
+            provider="deepseek",
+            model=self.config.review_model or DeepSeekReviewerProvider.default_model,
+            reasoning_effort=self.config.review_reasoning_effort,
+            max_tool_calls=self.config.review_max_tool_calls,
+        )
+
+    @staticmethod
+    def _scripted_proposals(path: Path | None) -> list[ImplementerProposal]:
+        if path is None:
+            raise StudioError("scripted execution requires a proposal file")
+        if path.stat().st_size > MAX_ARTIFACT:
+            raise StudioError("scripted proposal file exceeds size limit")
+        values = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(values, list) or not 1 <= len(values) <= 2:
+            raise StudioError("scripted proposal file must contain one or two proposals")
+        return [ImplementerProposal.model_validate(value) for value in values]
 
     def _prepare(self, run: _Run, request: PrepareRequest) -> None:
         try:
@@ -202,24 +365,62 @@ class StudioService:
                 )
                 verify_manifest(run.root / "artifacts" / "preparation-manifest.json")
                 task = FixTask.model_validate_json(preparation.task_path.read_bytes())
-            payload = canonical_json(task.model_dump(mode="json"))
+            review = None
+            execution_task: FixTask | IssueToPRTask = task
+            if request.workflow == "reviewed_fix":
+                review = self._review_spec(run.mode)
+                execution_task = self._review_task(task, review.max_tool_calls)
+            envelope = FrozenTaskEnvelope(
+                workflow=request.workflow,
+                task=execution_task.model_dump(mode="json"),
+                review=review,
+                scripted_proposals=(
+                    _demo_proposals() if run.mode == "demo"
+                    else self._scripted_proposals(self.config.proposal_sequence)
+                    if self.config.provider == "scripted" else None
+                ),
+                scripted_repair_proposals=(
+                    [_demo_proposals()[-1]] if run.mode == "demo" and review
+                    else self._scripted_proposals(self.config.review_repair_proposal_sequence)
+                    if review and self.config.provider == "scripted" else None
+                ),
+            )
+            payload = canonical_json(envelope.model_dump(mode="json"))
             (run.root / "approved-task.json").write_bytes(payload)
             with self.lock:
                 run.task = payload
                 run.task_hash = sha256_bytes(payload)
+                run.issue_summary = execution_task.issue[:160]
                 run.preview = {
-                    "issue": task.issue, "base_commit": task.base_commit,
-                    "repository": str(self.config.repository or task.repository),
-                    "commands": [command.argv for command in task.commands],
-                    "writable_paths": task.writable_paths,
-                    "protected_paths": task.protected_paths,
-                    "boundary": "container" if task.container else "host",
+                    "issue": execution_task.issue,
+                    "base_commit": execution_task.base_commit,
+                    "repository": str(self.config.repository or execution_task.repository),
+                    "commands": [command.argv for command in execution_task.commands],
+                    "writable_paths": execution_task.writable_paths,
+                    "protected_paths": execution_task.protected_paths,
+                    "boundary": "container" if execution_task.container else "host",
                     "provider": "scripted" if run.mode == "demo" else self.config.provider,
                     "task_sha256": run.task_hash,
-                    "task_timeout_seconds": task.task_timeout_seconds,
-                    "max_repair_attempts": task.max_repair_attempts,
+                    "task_timeout_seconds": execution_task.task_timeout_seconds,
+                    "max_repair_attempts": execution_task.max_repair_attempts,
+                    "workflow": request.workflow,
+                    "review": {
+                        "enabled": review is not None,
+                        "provider": review.provider if review else None,
+                        "routing": review.routing if review else None,
+                        "max_tool_calls": review.max_tool_calls if review else None,
+                        "review_timeout_seconds": (
+                            execution_task.review_timeout_seconds
+                            if isinstance(execution_task, IssueToPRTask)
+                            else None
+                        ),
+                    },
                 }
-                self._event(run, "preparation.completed", {"base_commit": task.base_commit})
+                self._event(
+                    run,
+                    "preparation.completed",
+                    {"base_commit": execution_task.base_commit, "workflow": request.workflow},
+                )
                 run.state = "ready"
         except Exception as exc:
             self._fail(run, exc)
@@ -233,58 +434,146 @@ class StudioService:
             if time.monotonic() - run.created > 1800:
                 raise StudioError("Task preview expired; prepare a new task", 409)
             run.state = "running"
+            self._event(run, "execution.approved", {"workflow": run.workflow})
             self.current_run_id = run_id
             self.worker.submit(self._execute, run)
 
-    def _provider(self, mode: str):
-        if mode == "demo":
-            return ScriptedProvider(_demo_proposals())
-        if self.config.provider == "scripted":
-            return ScriptedProvider.from_file(self.config.proposal_sequence)
+    def _provider(self, mode: str, proposals: list[ImplementerProposal] | None):
+        if mode == "demo" or self.config.provider == "scripted":
+            if not proposals:
+                raise StudioError("approved scripted proposals are missing")
+            return ScriptedProvider(proposals)
         if self.config.provider == "deepseek":
             return DeepSeekChatProvider(
                 model=self.config.model or DeepSeekChatProvider.default_model,
             )
         return OpenAIResponsesProvider(model=self.config.model or "gpt-5.6-terra")
 
+    @staticmethod
+    def _reviewer(spec: FrozenReviewSpec):
+        """Create a fresh Reviewer from the frozen non-secret contract."""
+
+        if spec.provider == "scripted":
+            assert spec.scripted_submission is not None
+            return ScriptedReviewerProvider(spec.scripted_submission)
+        assert spec.reasoning_effort is not None
+        return DeepSeekReviewerProvider(
+            model=spec.model,
+            reasoning_effort=spec.reasoning_effort,
+        )
+
+    def _load_approved_task(
+        self, run: _Run
+    ) -> tuple[FrozenTaskEnvelope, FixTask | IssueToPRTask]:
+        if run.task is None:
+            raise StudioError("Prepared task is missing; prepare it again", 409)
+        on_disk = self._read_regular(run.root / "approved-task.json", run.root)
+        if on_disk != run.task:
+            raise StudioError("Prepared task changed; prepare it again", 409)
+        envelope = FrozenTaskEnvelope.model_validate_json(run.task)
+        if envelope.workflow == "fix":
+            return envelope, FixTask.model_validate(envelope.task)
+        return envelope, IssueToPRTask.model_validate(envelope.task)
+
+    def _delivery_files(
+        self, run: _Run, artifact_root: Path, names: tuple[str, ...]
+    ) -> dict[str, tuple[Path, str]]:
+        files: dict[str, tuple[Path, str]] = {}
+        for name in names:
+            path = artifact_root / name
+            if not path.exists():
+                continue
+            payload = self._read_regular(path, run.root)
+            # Downloaded evidence is either byte-exact or blocked, never silently rewritten.
+            text = payload.decode("utf-8")
+            if self._safe_text(text) != text:
+                continue
+            files[name] = (path, sha256_bytes(payload))
+        return files
+
+    def _complete(
+        self,
+        run: _Run,
+        result: dict,
+        artifact_root: Path,
+        names: tuple[str, ...],
+        *,
+        outcome: str,
+        event: str = "delivery.completed",
+    ) -> None:
+        if outcome != "accepted":
+            names = tuple(name for name in names if name != "final.patch")
+            result["patch"] = ""
+        files = self._delivery_files(run, artifact_root, names)
+        result["artifacts"] = [
+            {"name": name, "sha256": digest} for name, (_, digest) in files.items()
+        ]
+        result["manifest_verified"] = True
+        self._event(run, event, {"outcome": outcome, "artifact_count": len(files)})
+        (run.root / "studio-events.json").write_bytes(canonical_json(run.events))
+        with self.lock:
+            run.files = files
+            run.result = result
+            run.state = "completed"
+
     def _execute(self, run: _Run) -> None:
         try:
-            if self._read_regular(run.root / "approved-task.json", run.root) != run.task:
-                raise StudioError("Prepared task changed; prepare it again", 409)
-            task = FixTask.model_validate_json(run.task)
-            report = FixRunner(
-                run.root / "fix-runs", self._provider(run.mode),
+            envelope, task = self._load_approved_task(run)
+            if envelope.workflow == "fix":
+                assert isinstance(task, FixTask)
+                report = FixRunner(
+                    run.root / "fix-runs", self._provider(run.mode, envelope.scripted_proposals),
+                    progress=lambda name, data: self._event(run, name, data),
+                ).run(task)
+                verify_manifest(report.artifact_directory / "fix-manifest.json")
+                self._complete(
+                    run,
+                    self._result(report),
+                    report.artifact_directory,
+                    ("fix-report.json", "fix-report.md", "fix-manifest.json", "final.patch"),
+                    outcome=report.outcome.value,
+                )
+                return
+            assert isinstance(task, IssueToPRTask)
+            assert envelope.review is not None
+            report = IssueToPRRunner(
+                run.root / "issue-to-pr-runs",
+                self._provider(run.mode, envelope.scripted_proposals),
+                lambda: self._reviewer(envelope.review),
+                lambda: self._provider(run.mode, envelope.scripted_repair_proposals),
                 progress=lambda name, data: self._event(run, name, data),
             ).run(task)
-            manifest_path = report.artifact_directory / "fix-manifest.json"
-            verify_manifest(manifest_path)
-            result = self._result(report)
-            files = {}
-            for name in ("fix-report.json", "fix-report.md", "fix-manifest.json", "final.patch"):
-                path = report.artifact_directory / name
-                if not path.exists():
-                    continue
-                payload = self._read_regular(path, run.root)
-                # Downloaded evidence is either byte-exact or blocked, never silently rewritten.
-                if self._safe_text(payload.decode("utf-8")) != payload.decode("utf-8"):
-                    continue
-                files[name] = (path, sha256_bytes(payload))
-            result["artifacts"] = [
-                {"name": name, "sha256": digest} for name, (_, digest) in files.items()
-            ]
-            result["manifest_verified"] = True
-            self._event(run, "delivery.completed", {"outcome": report.outcome.value})
-            (run.root / "studio-events.json").write_bytes(canonical_json(run.events))
-            with self.lock:
-                run.files = files
-                run.result = result
-                run.state = "completed"
+            verify_manifest(report.artifact_directory / "issue-to-pr-manifest.json")
+            self._complete(
+                run,
+                self._issue_to_pr_result(report),
+                report.artifact_directory,
+                (
+                    "issue-to-pr-report.json",
+                    "issue-to-pr-report.md",
+                    "issue-to-pr-manifest.json",
+                    "review-routing.json",
+                    "final.patch",
+                ),
+                outcome=report.outcome.value,
+                event="studio.delivery.completed",
+            )
         except Exception as exc:
             self._fail(run, exc)
 
-    def _result(self, report: FixReport) -> dict:
+    @staticmethod
+    def _commands(verification: HarnessReport | None) -> list[dict]:
+        return [{
+            "argv": command.argv, "passed": command.passed,
+            "exit_code": command.exit_code, "timed_out": command.timed_out,
+            "stdout": command.stdout[-6000:], "stderr": command.stderr[-2000:],
+            "duration_seconds": command.duration_seconds,
+        } for command in verification.commands] if verification else []
+
+    @classmethod
+    def _attempts(cls, report: FixReport | None) -> list[dict]:
         attempts = []
-        for attempt in report.attempts:
+        for attempt in report.attempts if report else []:
             verification = attempt.verification
             attempts.append({
                 "attempt": attempt.attempt + 1,
@@ -292,25 +581,104 @@ class StudioService:
                 "plan": attempt.proposal.proposal.plan if attempt.proposal else [],
                 "error": attempt.error,
                 "outcome": verification.outcome.value if verification else "not_run",
-                "commands": [{
-                    "argv": command.argv, "passed": command.passed,
-                    "exit_code": command.exit_code, "timed_out": command.timed_out,
-                    "stdout": command.stdout[-6000:], "stderr": command.stderr[-2000:],
-                    "duration_seconds": command.duration_seconds,
-                } for command in verification.commands] if verification else [],
+                "commands": cls._commands(verification),
             })
+        return attempts
+
+    def _patch(self, path: Path | None, root: Path) -> str:
         patch = ""
-        if report.final_patch:
+        if path:
             patch = self._read_regular(
-                report.final_patch, report.artifact_directory
+                path, root
             ).decode("utf-8")
+        return patch
+
+    def _result(self, report: FixReport) -> dict:
         return {
-            "outcome": report.outcome.value, "attempts": attempts,
-            "base_commit": report.resolved_base_commit, "patch": patch,
+            "workflow": "fix",
+            "outcome": report.outcome.value,
+            "attempts": self._attempts(report),
+            "base_commit": report.resolved_base_commit,
+            "patch": self._patch(report.final_patch, report.artifact_directory),
             "duration_seconds": report.duration_seconds,
             "token_usage": report.token_usage.model_dump(mode="json"),
             "artifact_directory": str(report.artifact_directory),
             "review_status": "not_run",
+        }
+
+    def _issue_to_pr_result(self, report: IssueToPRReport) -> dict:
+        repair = report.review_repair
+        initial = repair.initial_review if repair else None
+        submission = initial.review.submission if initial and initial.review else None
+        if repair is None:
+            review_status = (
+                "skipped" if report.review_routing
+                and report.review_routing.effective_route.value == "skip"
+                else "failed" if report.review_routing else "not_reached"
+            )
+        elif repair.outcome is ReviewRepairOutcome.ACCEPTED_WITHOUT_REPAIR:
+            review_status = "accepted"
+        elif repair.outcome is ReviewRepairOutcome.ACCEPTED_AFTER_REPAIR:
+            review_status = "accepted_after_repair"
+        elif initial and initial.verdict is Verdict.REQUEST_CHANGES:
+            review_status = "changes_requested"
+        else:
+            review_status = "failed"
+        routing = report.review_routing
+        return {
+            "workflow": "reviewed_fix",
+            "outcome": report.outcome.value,
+            "attempts": self._attempts(report.fix),
+            "base_commit": report.resolved_base_commit,
+            "patch": self._patch(report.final_patch, report.artifact_directory),
+            "duration_seconds": report.duration_seconds,
+            "token_usage": report.token_usage.model_dump(mode="json"),
+            "artifact_directory": str(report.artifact_directory),
+            "review_status": review_status,
+            "error": report.error,
+            "review": {
+                "summary": submission.summary if submission else None,
+                "verdict": initial.verdict.value if initial else None,
+                "findings": [
+                    finding.model_dump(mode="json") for finding in submission.findings
+                ] if submission else [],
+                "verification": {
+                    "outcome": initial.verification.outcome.value,
+                    "commands": self._commands(initial.verification),
+                } if initial and initial.verification else None,
+                "error": initial.error if initial else report.error,
+                "routing": {
+                    "mode": routing.mode.value,
+                    "recommended_route": routing.recommended_route.value,
+                    "effective_route": routing.effective_route.value,
+                    "score": routing.score,
+                    "threshold": routing.threshold,
+                    "changed_files": routing.changed_files,
+                    "factors": [
+                        {
+                            "code": factor.code,
+                            "weight": factor.weight,
+                            "summary": factor.summary,
+                        }
+                        for factor in routing.factors
+                    ],
+                } if routing else None,
+                "repair": {
+                    "outcome": repair.outcome.value,
+                    "summary": (
+                        repair.repair_proposal.proposal.summary
+                        if repair.repair_proposal
+                        else None
+                    ),
+                    "verification_outcome": (
+                        repair.final_verification.outcome.value
+                        if repair.final_verification
+                        else None
+                    ),
+                    "error": repair.error,
+                    "commands": self._commands(repair.final_verification),
+                } if repair else None,
+            },
         }
 
     def _fail(self, run: _Run, exc: Exception) -> None:
@@ -333,6 +701,30 @@ class StudioService:
                 "result": run.result, "error": run.error,
             }, ensure_ascii=False)
             return json.loads(self._safe_text(payload))
+
+    def run_summaries(self) -> dict:
+        """Read only records owned by the current authenticated process."""
+        with self.lock:
+            runs = [{
+                "id": run.id,
+                "mode": run.mode,
+                "workflow": run.workflow,
+                "state": run.state,
+                "created_at": run.created_at,
+                "issue_summary": run.issue_summary,
+                "base_commit": run.preview["base_commit"] if run.preview else None,
+                "outcome": run.result["outcome"] if run.result else None,
+                "artifact_count": len(run.files),
+                "manifest_verified": bool(run.result and run.result.get("manifest_verified")),
+            } for run in reversed(list(self.runs.values()))]
+            return json.loads(self._safe_text(json.dumps({
+                "current_run_id": self.current_run_id,
+                "active_run_id": next((
+                    run.id for run in self.runs.values()
+                    if run.state in {"preparing", "running"}
+                ), None),
+                "runs": runs,
+            }, ensure_ascii=False)))
 
     @staticmethod
     def _read_regular(path: Path, root: Path) -> bytes:
@@ -423,6 +815,8 @@ def create_server(service: StudioService, port: int = 0) -> ThreadingHTTPServer:
                     self._send(200, assets[self.path], f"{content_type}; charset=utf-8")
                 elif self.path == "/api/session":
                     self._json(200, service.session())
+                elif self.path == "/api/runs":
+                    self._json(200, service.run_summaries())
                 elif match := re.fullmatch(r"/api/runs/([0-9a-f]{32})", self.path):
                     self._json(200, service.snapshot(match[1]))
                 elif match := re.fullmatch(

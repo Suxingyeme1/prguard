@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
 from uuid import uuid4
 
@@ -37,6 +38,67 @@ from prguard.schemas import (
 
 ReviewerSource = ReviewerProvider | Callable[[], ReviewerProvider]
 ImplementerSource = ImplementerProvider | Callable[[], ImplementerProvider]
+PipelineProgressCallback = Callable[[str, dict[str, object]], None]
+
+
+# Progress is an observability boundary, not a second artifact channel. Keep the
+# relay deliberately small so callers never receive Issue text, file paths,
+# command arguments/output, Patch content, or exception messages.
+_FIX_PROGRESS_FIELDS: dict[str, frozenset[str]] = {
+    "run.started": frozenset({"run_id"}),
+    "preflight.started": frozenset(),
+    "preflight.completed": frozenset({"resolved_base_commit"}),
+    "readiness.started": frozenset({"command_count"}),
+    "readiness.completed": frozenset({"outcome"}),
+    "attempt.started": frozenset({"attempt", "repair"}),
+    "proposal.completed": frozenset({"provider", "model", "tool_calls", "patch_bytes"}),
+    "verification.started": frozenset({"attempt"}),
+    "verification.completed": frozenset(
+        {"attempt", "outcome", "command_count", "changed_files"}
+    ),
+    "repair.requested": frozenset({"attempt", "failure"}),
+    "attempt.failed": frozenset({"attempt", "error_type"}),
+    "run.completed": frozenset({"outcome", "attempts", "duration_seconds"}),
+}
+_REVIEW_REPAIR_PROGRESS_FIELDS: dict[str, frozenset[str]] = {
+    "review_repair.started": frozenset({"run_id"}),
+    "review.started": frozenset({"run_id"}),
+    "review.readiness.started": frozenset({"command_count"}),
+    "review.readiness.completed": frozenset({"outcome"}),
+    "review.verification.started": frozenset({"command_count"}),
+    "review.verification.completed": frozenset(
+        {"outcome", "command_count", "changed_files"}
+    ),
+    "review.analysis.started": frozenset({"changed_files"}),
+    "review.analysis.completed": frozenset({"compatibility_signals"}),
+    "review.provider.started": frozenset(),
+    "review.provider.completed": frozenset({"provider", "model", "tool_calls", "findings"}),
+    "review.completed": frozenset({"outcome", "verdict", "findings", "duration_seconds"}),
+    "review.decision": frozenset({"outcome", "verdict", "findings"}),
+    "repair.started": frozenset(),
+    "repair.provider.started": frozenset(),
+    "repair.provider.completed": frozenset({"provider", "model", "tool_calls", "patch_bytes"}),
+    "repair.verification.started": frozenset({"command_count"}),
+    "repair.verification.completed": frozenset(
+        {"outcome", "command_count", "changed_files"}
+    ),
+    "repair.completed": frozenset({"outcome", "verdict", "duration_seconds"}),
+    "review_repair.completed": frozenset({"outcome", "verdict", "duration_seconds"}),
+}
+
+
+def _public_progress_data(
+    event: str,
+    data: dict[str, object],
+    allowed_fields: dict[str, frozenset[str]],
+) -> dict[str, object]:
+    """Copy only the explicit, non-sensitive fields for a progress observer."""
+
+    return {
+        field: data[field]
+        for field in allowed_fields.get(event, frozenset())
+        if field in data
+    }
 
 
 def _add_usage(total: TokenUsage, extra: TokenUsage) -> None:
@@ -154,11 +216,46 @@ class IssueToPRRunner:
         implementer: ImplementerProvider,
         reviewer: ReviewerSource,
         repair_implementer: ImplementerSource,
+        *,
+        progress: PipelineProgressCallback | None = None,
     ) -> None:
         self.artifact_root = artifact_root.expanduser().resolve()
         self.implementer = implementer
         self.reviewer = reviewer
         self.repair_implementer = repair_implementer
+        self.progress = progress
+
+    def _emit(self, event: str, **data: object) -> None:
+        """Notify an optional observer without letting presentation break the run."""
+
+        if self.progress is None:
+            return
+        with suppress(Exception):
+            self.progress(event, data)
+
+    def _forward_fix_progress(self, event: str, data: dict[str, object]) -> None:
+        if event not in _FIX_PROGRESS_FIELDS:
+            return
+        self._emit(
+            f"fix.{event}",
+            **_public_progress_data(event, data, _FIX_PROGRESS_FIELDS),
+        )
+
+    def _forward_review_repair_progress(
+        self, event: str, data: dict[str, object]
+    ) -> None:
+        if event not in _REVIEW_REPAIR_PROGRESS_FIELDS:
+            return
+        public = _public_progress_data(event, data, _REVIEW_REPAIR_PROGRESS_FIELDS)
+        if event in {
+            "review.started",
+            "review.completed",
+            "repair.started",
+            "repair.completed",
+        }:
+            self._emit(event, **public)
+            return
+        self._emit(f"review.detail.{event}", **public)
 
     @staticmethod
     def _resolve_reviewer(source: ReviewerSource) -> ReviewerProvider:
@@ -179,12 +276,23 @@ class IssueToPRRunner:
         outcome = IssueToPROutcome.PREFLIGHT_FAILED
         verdict = Verdict.FAILED
         error = None
+        self._emit("pipeline.started", run_id=run_id)
         try:
             fix_budget = min(task.fix_timeout_seconds, deadline - time.monotonic())
             if fix_budget <= 0:
                 raise ImplementerError("task deadline expired before Fix stage")
-            fix_report = FixRunner(run_directory / "fix", self.implementer).run(
+            self._emit("fix.started", budget_seconds=round(fix_budget, 3))
+            fix_report = FixRunner(
+                run_directory / "fix",
+                self.implementer,
+                progress=self._forward_fix_progress,
+            ).run(
                 _as_fix_task(task, fix_budget)
+            )
+            self._emit(
+                "fix.completed",
+                outcome=fix_report.outcome.value,
+                attempts=len(fix_report.attempts),
             )
             resolved_commit = fix_report.resolved_base_commit
             _add_usage(token_usage, fix_report.token_usage)
@@ -195,11 +303,21 @@ class IssueToPRRunner:
             elif fix_report.outcome is not FixOutcome.ACCEPTED or fix_report.final_patch is None:
                 outcome = IssueToPROutcome.FIX_FAILED
             else:
+                self._emit("routing.started")
                 routing = route_accepted_fix(
                     task,
                     fix_report,
                     run_directory,
                     deadline_monotonic=deadline,
+                )
+                self._emit(
+                    "routing.completed",
+                    mode=routing.mode.value,
+                    recommended_route=routing.recommended_route.value,
+                    effective_route=routing.effective_route.value,
+                    score=routing.score,
+                    factors=len(routing.factors),
+                    uncovered_reachable_tests=len(routing.uncovered_reachable_tests),
                 )
                 if time.monotonic() >= deadline:
                     raise ImplementerError("task deadline expired during Reviewer routing")
@@ -208,6 +326,7 @@ class IssueToPRRunner:
                         "Fix final Patch changed after Reviewer routing"
                     )
                 if routing.effective_route is ReviewRoute.SKIP:
+                    self._emit("delivery.started", source="fix")
                     final_patch = run_directory / "final.patch"
                     patch_bytes = Path(fix_report.final_patch).read_bytes()
                     if sha256_bytes(patch_bytes) != routing.patch_sha256:
@@ -217,6 +336,7 @@ class IssueToPRRunner:
                     final_patch.write_bytes(patch_bytes)
                     outcome = IssueToPROutcome.ACCEPTED
                     verdict = Verdict.ACCEPT
+                    self._emit("delivery.completed", source="fix", outcome=outcome.value)
                 else:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0.2:
@@ -226,6 +346,7 @@ class IssueToPRRunner:
                         run_directory / "review",
                         self._resolve_reviewer(self.reviewer),
                         self.repair_implementer,
+                        progress=self._forward_review_repair_progress,
                     ).run(
                         _as_review_repair_task(
                             task,
@@ -247,10 +368,16 @@ class IssueToPRRunner:
                         ReviewRepairOutcome.ACCEPTED_AFTER_REPAIR,
                     }
                     if review_report.outcome in accepted and review_report.final_patch:
+                        self._emit("delivery.started", source="review_repair")
                         final_patch = run_directory / "final.patch"
                         final_patch.write_bytes(_verified_review_delivery(review_report))
                         outcome = IssueToPROutcome.ACCEPTED
                         verdict = Verdict.ACCEPT
+                        self._emit(
+                            "delivery.completed",
+                            source="review_repair",
+                            outcome=outcome.value,
+                        )
                     elif review_report.outcome is ReviewRepairOutcome.POLICY_BLOCKED:
                         outcome = IssueToPROutcome.POLICY_BLOCKED
                     elif review_report.outcome is ReviewRepairOutcome.PREFLIGHT_FAILED:
@@ -298,4 +425,10 @@ class IssueToPRRunner:
                 }
             )
             finalize_issue_to_pr_artifacts(run_directory, task, report)
+        self._emit(
+            "pipeline.completed",
+            outcome=report.outcome.value,
+            verdict=report.verdict.value,
+            duration_seconds=round(report.duration_seconds, 3),
+        )
         return report
